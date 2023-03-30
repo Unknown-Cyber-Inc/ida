@@ -44,12 +44,8 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
 - In `idapro/python/examples/core` there is a script `idapythonrc.py`
     * Append the code in the following collapsible to `idapythonrc.py`
         * This will execute a script activating the virtual environment that IDA will use
-
-        <details>
-            <summary>
-                contents to add to <code>idapythonrc.py</code>
-            </summary>
-
+        
+        contents to add to `idapythonrc.py`:
         ```python
         import os
         virtualenv_path = "path/to/your/virtual/environment"
@@ -67,7 +63,6 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
 
         activate_virtualenv(os.path.join(idaapi.get_user_idadir(), virtualenv_path))
         ```
-        </details>
 
     * Move this script inside `~/.idapro/`
         * Placing it here means IDA will run this code directly after core initialization
@@ -75,11 +70,7 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
     * Create a file in `yourvenv/bin` called `activate_this.py`
     * Appending the code in the following collapsible essentially tells the running application (IDA in this case) to prepend the virtual environment to its PATH, thereby prioritizing that python environment
 
-        <details>
-            <summary>
-                contents of <code>activate_this.py</code>
-            </summary>
-
+        contents of `activate_this.py`:
         ```python
         """By using execfile(this_file, dict(__file__=this_file)) you will
         activate this virtualenv environment.
@@ -113,7 +104,6 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
                 sys.path.remove(item)
         sys.path[:0] = new_sys_path
         ```
-        </details>
 
 ## Environment Variables
 ### MAGIC related
