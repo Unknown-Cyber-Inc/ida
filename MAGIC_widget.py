@@ -1,13 +1,24 @@
 #IDA and UI imports
 import ida_idaapi
 import ida_kernwin
-from PyQt5 import QtCore, QtGui, QtWidgets
+# from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtWidgets
 
 #imports for other functionality
+import os
+from dotenv import load_dotenv 
 import requests
 
-#in development or not, changes that make quick editing easier
-DEVELOP = True
+#EnvironmentVariables
+load_dotenv()
+MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
+MAGIC_API_KEY = os.getenv("MAGIC_API_KEY")
+MAGIC_API_VERIFY = os.getenv("MAGIC_API_VERIFY")
+if MAGIC_API_VERIFY == "True": 
+    MAGIC_API_VERIFY = True
+elif MAGIC_API_VERIFY == "False":
+    MAGIC_API_VERIFY = False
+PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
 
 #ida plugin related constants
 PLUGIN_NAME = 'MAGIC interface'
@@ -16,11 +27,6 @@ PLUGIN_COMMENT = 'MAGICwidgettest'
 PLUGIN_HELP = ''
 PLUGIN_VERSION = '0.0.1'
 PLUGIN_WINDOW_TITLE = 'MAGIC interface'
-
-#constants related to making requsts to local instance of MAGIC
-CYTH_API_MAIN_ENDPOINT = 'https://api:80/v2/'
-CYTH_API_CERT_PATH = "/home/luka/Desktop/cythereal/development/certs/dev.crt"
-CYTH_API_KEY = "adminkey"
 
 # -----------------------------------------------------------------------
 """
@@ -66,8 +72,8 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         pass
 
     def pushbutton_click(self, form):
-        url = CYTH_API_MAIN_ENDPOINT + "files"
-        res = requests.get(url=url, params={"key":CYTH_API_KEY}, verify=CYTH_API_CERT_PATH)
+        url = MAGIC_API_ENDPOINT + "files"
+        res = requests.get(url=url, params={"key":MAGIC_API_KEY}, verify=MAGIC_API_VERIFY)
         self.textbrowser.clear()
         self.textbrowser.append(str(res.json()))
 
@@ -97,7 +103,7 @@ this is the class which manages the plugin entry
 """
 class MAGIC_widget_t(ida_idaapi.plugin_t):
     flags = ida_idaapi.PLUGIN_KEEP 
-    if DEVELOP: flags = ida_idaapi.PLUGIN_UNL #dev entry - unload plugin from memory when finished
+    if PLUGIN_DEVELOP: flags = ida_idaapi.PLUGIN_UNL #dev entry - unload plugin from memory when finished
     comment = PLUGIN_COMMENT
     help = PLUGIN_HELP
     wanted_name = PLUGIN_NAME
