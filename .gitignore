@@ -1,7 +1,8 @@
 *
 
 !MAGIC_widget.py
-!.env.example
 !README.md
-!requirements.txt
-!MAGIC_API_test.py
+!MAGIC/
+!MAGIC/.env.example
+!MAGIC/MAGIC_API_test.py
+!MAGIC/requirements.txt

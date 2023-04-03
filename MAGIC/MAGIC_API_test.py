@@ -13,7 +13,7 @@ files_url = MAGIC_API_ENDPOINT + 'files/'
 
 #automatically prettyprint the recieved response object to terminal
 #dependant on this website
-def p(res,data=None,files=None,full_filepath=False,print_header=False,indent=2):
+def prettyprint(res,data=None,files=None,full_filepath=False,print_header=False,indent=2):
 
     status = str(res.status_code)
     method = res.request.method
@@ -157,70 +157,72 @@ GET availability of a file through API
 DOWNLOAD file
 """
 
+
 """
 testing API functions
 """
 # ===================================================================================
+if __name__ == "__main__":
+    """
+    explain any endpoint
+    """
+    # p(explain_endpoint())
+    # p(explain_endpoint('files'))
+    # p(explain_endpoint('files','POST'))
 
-"""
-explain any endpoint
-"""
-# p(explain_endpoint())
-# p(explain_endpoint('files'))
-# p(explain_endpoint('files','POST'))
+    """
+    CRUD files
+    """
+    data = {
+        "tags":"tag",
+        "notes":"note"
+    }
+    files = [
+        MALWAREPATH + "COMPROBANTE_SWA0980011002021_ELECTRÓNICA.exe",
+        MALWAREPATH + "LooseFileB",
+    ]
 
-"""
-CRUD files
-"""
-data = {
-    "tags":"tag",
-    "notes":"note"
-}
-files = [
-    MALWAREPATH + "COMPROBANTE_SWA0980011002021_ELECTRÓNICA.exe",
-    MALWAREPATH + "LooseFileB",
-]
+    prettyprint(get_files())
 
-p(get_files())
+    res = post_file(files=files)
+    prettyprint(res,files=files)
 
-res = post_file(files=files)
-p(res,files=files)
+    prettyprint(get_files())
 
-p(get_files())
+    for resource in res.json()['resources']:
+        # prettyprint(patch_file())
+        # figure out how to pass envvars from IDA script to here to import it
+        prettyprint(delete_file(binary_id=resource['sha1'],force=True))
+    prettyprint(get_files())
 
-for resource in res.json()['resources']:
-    # p(patch_file())
-    p(delete_file(binary_id=resource['sha1'],force=True))
-p(get_files())
+    """
+    CRUD tags
+    """
 
-"""
-CRUD tags
-"""
+    """
+    GET av data and GET labels for given file
+    """
 
-"""
-GET av data and GET labels for given file
-"""
+    """
+    GENERATE yara rules for given file
+    """
 
-"""
-GENERATE yara rules for given file
-"""
+    """
+    GET all matches of a file
+    """
 
-"""
-GET all matches of a file
-"""
+    """
+    GET all procedures and info for a given file
+    """
 
-"""
-GET all procedures and info for a given file
-"""
+    """
+    GET availability of a file through API
+    """
 
-"""
-GET availability of a file through API
-"""
+    """
+    DOWNLOAD file
+    """
 
-"""
-DOWNLOAD file
-"""
-
-"""
-testing API functions
-"""
+    """
+    testing API functions
+    """
