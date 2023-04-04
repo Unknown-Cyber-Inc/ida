@@ -4,47 +4,70 @@ import json
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv 
 
-load_dotenv()
+# load dotenv depending if this is run through IDA or as its own script
+if __name__ != '__main__':
+    load_dotenv('MAGIC/.env')
+else:
+    load_dotenv()
 MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
 MAGIC_API_KEY = os.getenv("MAGIC_API_KEY")
 MALWAREPATH = os.getenv("MALWAREPATH")
-#other endpoints
-files_url = MAGIC_API_ENDPOINT + 'files/'
+PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
+
+#other endpoints for organization
+files_url = MAGIC_API_ENDPOINT + '/files'
 
 #automatically prettyprint the recieved response object to terminal
 #dependant on this website
-def prettyprint(res,data=None,files=None,full_filepath=False,print_header=False,indent=2):
+def prettyprint(res,headers=None,params=None,data=None,files=None,full_filepath=False,print_res_header=False,indent=2):
+    print(prettystring(res,headers,params,data,files,full_filepath,print_res_header,indent))
 
-    status = str(res.status_code)
+#need to build and return a string to print inside textboxes
+def prettystring(res,headers=None,params=None,data=None,files=None,full_filepath=False,print_res_header=False,indent=2):
+
+    status = res.status_code
     method = res.request.method
-    endpoint = res.url.split("?")[0].split(MAGIC_API_ENDPOINT)[1]
-    headers = res.headers
+    endpoint = res.url.split('?')[0].split(MAGIC_API_ENDPOINT)[-1]
+    if endpoint == '': endpoint = '/' #print root in case we hit root endpoint
+    res_headers = res.headers
 
-    printstring = status + ' ' + method + ' ' + endpoint
+    printstring = '\t' + str(status) + ' ' + method + ' ' + endpoint
+    if headers:
+        printstring = printstring + '\nheaders |'
+        for k,v in headers.items():
+            printstring = printstring + '\n        |' + k + ': ' + str(v)
+    if params:
+        printstring = printstring + '\nparams  |'
+        for k,v in params.items():
+            printstring = printstring + '\n        |' + k + ': ' + str(v)
     if data:
-        printstring = printstring + ' data|'
+        printstring = printstring + '\ndata    |'
         for k,v in data.items():
-            if type(v) == str:
-                printstring = printstring + ' ' + k + ':' + v
+            printstring = printstring + '\n        |' + k + ': ' + str(v)
     if files:
-        printstring = printstring + ' files|'
+        printstring = printstring + '\nfiles   |'
         for file in files:
             if full_filepath:
-                printstring = printstring + file + ',' 
+                printstring = printstring + '\n        |' + file + ',' 
             else:
-                printstring = printstring + file.split('/')[-1] + ',' 
+                printstring = printstring + '\n        |' + file.split('/')[-1] + ',' 
 
-    print("")
-    print("data sent:")
-    print(printstring)
-    if print_header: print(headers)
-    print("===========================================================================")
-    # successful delete methods don't return a body
-    # nor do patches (on files? or other things?)
-    if (method != "DELETE" ) or (method == "DELETE" and status != "204"):
-        body = res.json()
-        print(json.dumps(body,indent=indent))
-    print("")
+    printstring = '\nsent    |\n' + '===========================================================================' + '\n' + printstring + '\n'
+    printstring = printstring + 'recieved|\n' + '===========================================================================' + '\n'
+    
+    #printing RECIEVED header
+    if print_res_header: printstring = printstring + 'head:' + json.dumps(dict(res_headers),indent=indent) + '\n'
+    '''
+    successful delete/patch methods don't return a body
+    don't try to print body if method and status infer success
+    '''
+    bodyless_responses = { 
+        "DELETE":204,
+        "PATCH":200,
+    }
+    if not (method in bodyless_responses and bodyless_responses[method] is status):
+        printstring = printstring + 'body:' + json.dumps(res.json(),indent=indent) + '\n'
+    return printstring + '\n'
 
 #convert list of file paths to dict of files and binaries appropriate to upload
 #malware should generally be lightweight in theory
@@ -52,21 +75,22 @@ def prettyprint(res,data=None,files=None,full_filepath=False,print_header=False,
 #explicitly set rb to not ruin file integrity!!!
 def safeopen_filelist(filelist):
     files = []
-    print("\nfile io info:\n---------------------------------------------------------------------------")
+    if PLUGIN_DEBUG: print("\nfile io info:\n---------------------------------------------------------------------------")
     for filepath in filelist:
         try:
             files.append(('filedata',open(filepath,'rb')))
-            print(filepath.split('/')[-1] + ' opened successfully')
+            if PLUGIN_DEBUG: print(filepath.split('/')[-1] + ' opened successfully')
         except:
             print("error opening '" + filepath + "'. ignoring it.")
     return files
 
+# make sure imported files are closed just for the sake of correctness
 def close_filelist(filelist):
     for filetuple in filelist:
         filetuple[1].close()
-        if filetuple[1].closed: print(str(filetuple[1]).split('\'')[1].split('/')[-1] + " closed successfully")
+        if PLUGIN_DEBUG and filetuple[1].closed: print(str(filetuple[1]).split('\'')[1].split('/')[-1] + " closed successfully")
         else: print("file " + str(filetuple[1]) + " failed to close")
-    print("---------------------------------------------------------------------------")
+    if PLUGIN_DEBUG: print("---------------------------------------------------------------------------")
 
 """
 building API functions
@@ -101,6 +125,8 @@ CRUD Files
 
 #request file list and info
 def get_files(headers={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
     headers["X-API-KEY"] = MAGIC_API_KEY
 
     res = requests.get(url=files_url, params=params, headers=headers)
@@ -108,6 +134,8 @@ def get_files(headers={},params={}):
 
 #upload a file
 def post_file(headers={},data={},files=[]):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
     headers["X-API-KEY"] = MAGIC_API_KEY
     # headers["Content-Type"] = "multipart/form-data" # THIS ACTUALLY BREAKS DO NOT USE IT!!!! (not world-ending, just frustrating)
 
@@ -118,15 +146,20 @@ def post_file(headers={},data={},files=[]):
     return res
 
 #delete file
-def delete_file(binary_id, headers={}, params={}, force:bool=False):
+def delete_file(binary_id, headers={}, params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
     headers["X-API-KEY"] = MAGIC_API_KEY
-    params["force"] = force
 
-    res = requests.delete(url=files_url + binary_id, headers=headers, params=params)
+    res = requests.delete(url=files_url + '/' + binary_id, headers=headers, params=params)
     return res
 
 #update file
 def patch_file():
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
     return
 
 """
@@ -174,7 +207,7 @@ if __name__ == "__main__":
     CRUD files
     """
     data = {
-        "tags":"tag",
+        "tags":["tag1","tag2"],
         "notes":"note"
     }
     files = [
@@ -184,15 +217,17 @@ if __name__ == "__main__":
 
     prettyprint(get_files())
 
-    res = post_file(files=files)
-    prettyprint(res,files=files)
+    # need to grab the response in order to remove the added files
+    res = post_file(files=files,data=data)
+    prettyprint(res,files=files,data=data)
 
     prettyprint(get_files())
 
     for resource in res.json()['resources']:
         # prettyprint(patch_file())
-        # figure out how to pass envvars from IDA script to here to import it
-        prettyprint(delete_file(binary_id=resource['sha1'],force=True))
+        params = {"force":True}
+        prettyprint(delete_file(binary_id=resource['sha1'],params=params),params=params)
+
     prettyprint(get_files())
 
     """

@@ -79,7 +79,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         url = MAGIC_API_ENDPOINT + "files"
         res = requests.get(url=url, params={"key":MAGIC_API_KEY}, verify=MAGIC_API_VERIFY)
         self.textbrowser.clear()
-        self.textbrowser.append(prettyprint(get_files()))
+        self.textbrowser.append(prettystring(get_files()))
 
 # -----------------------------------------------------------------------
 """
