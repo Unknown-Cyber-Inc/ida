@@ -146,6 +146,7 @@ def post_file(headers={},data={},files=[]):
     return res
 
 #delete file
+# param - force required
 def delete_file(binary_id, headers={}, params={}):
     # this is to circumvent adding the api key to the headers object
     headers = headers.copy()
@@ -155,12 +156,14 @@ def delete_file(binary_id, headers={}, params={}):
     return res
 
 #update file
-def patch_file():
+# param - update_mask required
+def patch_file(binary_id, headers={}, params={}):
     # this is to circumvent adding the api key to the headers object
     headers = headers.copy()
     headers["X-API-KEY"] = MAGIC_API_KEY
 
-    return
+    res = requests.patch(url=files_url + '/' + binary_id, headers=headers, params=params)
+    return res
 
 """
 CRUD tags
@@ -215,20 +218,21 @@ if __name__ == "__main__":
         MALWAREPATH + "LooseFileB",
     ]
 
-    prettyprint(get_files())
+    # prettyprint(get_files())
 
     # need to grab the response in order to remove the added files
-    res = post_file(files=files,data=data)
-    prettyprint(res,files=files,data=data)
+    # res = post_file(files=files,data=data)
+    # prettyprint(res,files=files,data=data)
 
-    prettyprint(get_files())
+    # prettyprint(get_files())
 
-    for resource in res.json()['resources']:
-        # prettyprint(patch_file())
-        params = {"force":True}
-        prettyprint(delete_file(binary_id=resource['sha1'],params=params),params=params)
+    # for resource in res.json()['resources']:
+    #     params = {"update_mask":"public"}
+    #     prettyprint(patch_file(binary_id=resource,params=params),params=params)
+    #     params = {"force":True}
+    #     prettyprint(delete_file(binary_id=resource['sha1'],params=params),params=params)
 
-    prettyprint(get_files())
+    # prettyprint(get_files())
 
     """
     CRUD tags
