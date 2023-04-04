@@ -9,16 +9,20 @@ import os
 from dotenv import load_dotenv 
 import requests
 
+from MAGIC.MAGIC_API_test import prettystring,get_files
+
 #EnvironmentVariables
-load_dotenv()
+load_dotenv('./MAGIC/.env')
 MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
 MAGIC_API_KEY = os.getenv("MAGIC_API_KEY")
 MAGIC_API_VERIFY = os.getenv("MAGIC_API_VERIFY")
+# this value can be a boolean or string, that's why it's written like this
 if MAGIC_API_VERIFY == "True": 
     MAGIC_API_VERIFY = True
 elif MAGIC_API_VERIFY == "False":
     MAGIC_API_VERIFY = False
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
+PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
 #ida plugin related constants
 PLUGIN_NAME = 'MAGIC interface'
@@ -75,7 +79,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         url = MAGIC_API_ENDPOINT + "files"
         res = requests.get(url=url, params={"key":MAGIC_API_KEY}, verify=MAGIC_API_VERIFY)
         self.textbrowser.clear()
-        self.textbrowser.append(str(res.json()))
+        self.textbrowser.append(prettyprint(get_files()))
 
 # -----------------------------------------------------------------------
 """
