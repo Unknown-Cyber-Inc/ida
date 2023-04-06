@@ -280,6 +280,15 @@ def get_file_categories(binary_id, headers={},params={}):
     res = requests.get(url=files_url + '/' + binary_id + '/' + 'categories', params=params, headers=headers)
     return res
 
+# create category for a file
+def add_custom_category_to_file(binary_id, headers={},data={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.post(url=files_url + '/' + binary_id + '/' + 'categories', data=data, headers=headers, params=params)
+    return res
+
 """
 GENERATE yara rules for given file
 """
@@ -415,7 +424,12 @@ if __name__ == "__main__":
     GET av data and GET labels for given file
     """
 
-    prettyprint(get_file_categories("c5120cf63b470c2681769b833d3dabab66547c01"))
+    data={
+        "label":"",
+        "source":""
+    }
+    prettyprint(add_custom_category_to_file("c5120cf63b470c2681769b833d3dabab66547c01",data=data),data=data)
+    # prettyprint(get_file_categories("c5120cf63b470c2681769b833d3dabab66547c01"))
 
     """
     GENERATE yara rules for given file
