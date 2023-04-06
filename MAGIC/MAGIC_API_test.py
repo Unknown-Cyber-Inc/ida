@@ -268,7 +268,17 @@ def delete_tag_files(binary_id, headers={}, params={}):
 
 """
 GET av data and GET labels for given file
+categories, families, labels
 """
+
+#request categories associated with a file
+def get_file_categories(binary_id, headers={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.get(url=files_url + '/' + binary_id + '/' + 'categories', params=params, headers=headers)
+    return res
 
 """
 GENERATE yara rules for given file
@@ -404,6 +414,8 @@ if __name__ == "__main__":
     """
     GET av data and GET labels for given file
     """
+
+    prettyprint(get_file_categories("c5120cf63b470c2681769b833d3dabab66547c01"))
 
     """
     GENERATE yara rules for given file
