@@ -31,7 +31,7 @@ def prettystring(res,headers=None,params=None,data=None,files=None,full_filepath
     res_headers = res.headers
     explain = hasattr(res,"explain")
     body = None
-    if res.text != '':
+    if res.text != '': # if the response has a body, we can .json() to parse it. otherwise we crash.
         body = res.json()
 
     printstring = '\t'
@@ -340,6 +340,15 @@ def get_file_matches(binary_id, headers={},params={}):
     headers = headers.copy()
     headers["X-API-KEY"] = MAGIC_API_KEY
 
+    res = requests.get(url=files_url + '/' + binary_id + '/' + 'matches', params=params, headers=headers)
+    return res
+
+#get file matches based on yara
+def get_yara_matches(binary_id, headers={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
     res = requests.get(url=yara_url + '/' + binary_id + '/' + 'matches', params=params, headers=headers)
     return res
 
@@ -474,6 +483,7 @@ if __name__ == "__main__":
     GET all matches of a file
     """
 
+    # prettyprint(get_yara_matches("c5120cf63b470c2681769b833d3dabab66547c01"))
     # prettyprint(get_file_matches("c5120cf63b470c2681769b833d3dabab66547c01"))
 
     """
