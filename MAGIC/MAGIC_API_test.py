@@ -1,14 +1,11 @@
 import os
 import requests
 import json
-from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv 
 
-# load dotenv depending if this is run through IDA or as its own script
-if __name__ != '__main__':
-    load_dotenv('MAGIC/.env')
-else:
-    load_dotenv()
+# ENVPATH needs to be replaced by the actual path to the env file. absolute is easier to manage.
+# The rest come from .env
+load_dotenv(os.getenv("CYENVPATH")+'/.env')
 MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
 MAGIC_API_KEY = os.getenv("MAGIC_API_KEY")
 MALWAREPATH = os.getenv("MALWAREPATH")
@@ -16,6 +13,7 @@ PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
 #other endpoints for organization
 files_url = MAGIC_API_ENDPOINT + '/files'
+tags_url = MAGIC_API_ENDPOINT + '/tags'
 
 #automatically prettyprint the recieved response object to terminal
 #dependant on this website
@@ -30,8 +28,14 @@ def prettystring(res,headers=None,params=None,data=None,files=None,full_filepath
     endpoint = res.url.split('?')[0].split(MAGIC_API_ENDPOINT)[-1]
     if endpoint == '': endpoint = '/' #print root in case we hit root endpoint
     res_headers = res.headers
+    explain = hasattr(res,"explain")
+    body = None
+    if res.text != '':
+        body = res.json()
 
-    printstring = '\t' + str(status) + ' ' + method + ' ' + endpoint
+    printstring = '\t'
+    if explain: printstring = printstring + 'explain '
+    printstring = printstring + str(status) + ' ' + method + ' ' + endpoint
     if headers:
         printstring = printstring + '\nheaders |'
         for k,v in headers.items():
@@ -57,16 +61,12 @@ def prettystring(res,headers=None,params=None,data=None,files=None,full_filepath
     
     #printing RECIEVED header
     if print_res_header: printstring = printstring + 'head:' + json.dumps(dict(res_headers),indent=indent) + '\n'
-    '''
-    successful delete/patch methods don't return a body
-    don't try to print body if method and status infer success
-    '''
-    bodyless_responses = { 
-        "DELETE":204,
-        "PATCH":200,
-    }
-    if not (method in bodyless_responses and bodyless_responses[method] is status):
-        printstring = printstring + 'body:' + json.dumps(res.json(),indent=indent) + '\n'
+
+    #explain request
+    if explain:
+        printstring = printstring + json.dumps(body['resource'],indent=indent) + '\n'
+    elif body: #not explain, but has a body
+        printstring = printstring + 'body:' + json.dumps(body,indent=indent) + '\n'
     return printstring + '\n'
 
 #convert list of file paths to dict of files and binaries appropriate to upload
@@ -105,6 +105,7 @@ curl -F <-> requests.request(data/files={}) # applies to POST, PUT, PATCH
 explain any endpoint
 """
 def explain_endpoint(endpoint='',method='GET'):
+    endpoint = '/' + endpoint
     if method == 'GET':
         res = requests.get(url=MAGIC_API_ENDPOINT+endpoint, params={"explain":"true"})
     elif method == 'POST':
@@ -117,6 +118,8 @@ def explain_endpoint(endpoint='',method='GET'):
         res = requests.put(url=MAGIC_API_ENDPOINT+endpoint, params={"explain":"true"})
     else:
         res = requests.get(url=MAGIC_API_ENDPOINT+endpoint, params={"explain":"true"})
+    res.explain = True # add this attribute to response to determine if this is an explain function
+    # seems hacky
     return res
 
 """
@@ -157,7 +160,7 @@ def delete_file(binary_id, headers={}, params={}):
 
 #update file
 # param - update_mask required
-def patch_file(binary_id, headers={}, params={}):
+def patch_file(binary_id, headers={}, params={}, data={}):
     # this is to circumvent adding the api key to the headers object
     headers = headers.copy()
     headers["X-API-KEY"] = MAGIC_API_KEY
@@ -168,6 +171,99 @@ def patch_file(binary_id, headers={}, params={}):
 """
 CRUD tags
 """
+
+#request all tags list and info
+def get_tags(headers={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.get(url=tags_url, params=params, headers=headers)
+    return res
+
+#create project for tagging files
+def create_project(headers={},data={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.post(url=tags_url, headers=headers, data=data)
+    return res
+
+#update tags
+# param - update_mask required
+def update_all_tags(data={}, headers={}, params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.patch(url=tags_url, data=data, headers=headers, params=params)
+    return res
+
+# delete selected tags with passed filter
+# if no filter passed, this WILL DELETE ALL TAGS
+def delete_selected_tags(headers={}, params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.delete(url=tags_url, headers=headers, params=params)
+    return res
+
+"""
+CRUD tags/{id}
+"""
+
+
+#request tag and info
+def get_tag(binary_id, headers={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.get(url=tags_url + '/' + binary_id, params=params, headers=headers)
+    return res
+
+#update tag
+# param - update_mask required
+def update_tag(binary_id, data={}, headers={}, params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.patch(url=tags_url + '/' + binary_id, data=data, headers=headers, params=params)
+    return res
+
+#delete tag
+def delete_tag(binary_id, headers={}, params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.delete(url=tags_url + '/' + binary_id, headers=headers, params=params)
+    return res
+
+"""
+CRUD tags/{id}/files
+"""
+
+#request files associated with a specific tag
+def get_tag_files(binary_id, headers={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.get(url=tags_url + '/' + binary_id + '/' + 'files', params=params, headers=headers)
+    return res
+
+#delete tags from a file
+def delete_tag_files(binary_id, headers={}, params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.delete(url=tags_url + '/' + binary_id + '/' + 'files', headers=headers, params=params)
+    return res
 
 """
 GET av data and GET labels for given file
@@ -209,26 +305,25 @@ if __name__ == "__main__":
     """
     CRUD files
     """
-    data = {
-        "tags":["tag1","tag2"],
-        "notes":"note"
-    }
-    files = [
-        MALWAREPATH + "COMPROBANTE_SWA0980011002021_ELECTRÓNICA.exe",
-        MALWAREPATH + "LooseFileB",
-    ]
+    # data = {
+    #     "tags":["tag1","tag2","tag3","tag4","tag"],
+    #     "notes":"note"
+    # }
+    # files = [
+    #     MALWAREPATH + "COMPROBANTE_SWA0980011002021_ELECTRÓNICA.exe",
+    #     MALWAREPATH + "LooseFileB",
+    # ]
 
-    # prettyprint(get_files())
-
-    # need to grab the response in order to remove the added files
+    # # need to grab the response in order to remove the added files
     # res = post_file(files=files,data=data)
     # prettyprint(res,files=files,data=data)
 
-    # prettyprint(get_files())
+
 
     # for resource in res.json()['resources']:
     #     params = {"update_mask":"public"}
-    #     prettyprint(patch_file(binary_id=resource,params=params),params=params)
+    #     data = {"public":"true"}
+    #     prettyprint(patch_file(binary_id=resource['sha1'],params=params,data=data),params=params,data=data)
     #     params = {"force":True}
     #     prettyprint(delete_file(binary_id=resource['sha1'],params=params),params=params)
 
@@ -237,6 +332,54 @@ if __name__ == "__main__":
     """
     CRUD tags
     """
+
+    prettyprint(get_tags())
+
+    # data={
+    #     "name":"seg",
+    #     "color":"#329db6",
+    # }
+    # # prettyprint(create_project(data=data),data=data)
+
+    # data={
+    #     "color":"#ffffff",
+    # }
+    # params={
+    #     "update_mask":"color"
+    # }
+    # prettyprint(update_all_tags(params=params,data=data),params=params,data=data)
+
+    # params={
+    #     "filters":not *
+    #     "force":True
+    # }
+    # prettyprint(delete_selected_tags(params=params),params=params)
+
+    """
+    CRUD tags/{id}
+    """
+
+    # prettyprint(get_tag("642e433ea309161920bb7704"))
+
+    # prettyprint(explain_endpoint("tags/642e433ea309161920bb7703","PATCH"))
+
+    # params={
+    #     "update_mask":"color,name",
+    # }
+    # data={
+    #     "name":"tag22",
+    #     "color":"#ffffff"
+    # }
+    # prettyprint(update_tag("642e433ea309161920bb7703",params=params,data=data),params=params,data=data)
+
+    # params={
+    #     "force":True
+    # }
+    # prettyprint(delete_tag("642e433ea309161920bb7703",params=params),params=params)
+
+    # prettyprint(get_tag_files("642e433ea309161920bb7704"))
+
+    # prettyprint(delete_tag_files("642e433ea309161920bb7704",params={"force":True}))
 
     """
     GET av data and GET labels for given file
