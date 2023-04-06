@@ -14,6 +14,7 @@ PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 #other endpoints for organization
 files_url = MAGIC_API_ENDPOINT + '/files'
 tags_url = MAGIC_API_ENDPOINT + '/tags'
+yara_url = MAGIC_API_ENDPOINT + '/yara'
 
 #automatically prettyprint the recieved response object to terminal
 #dependant on this website
@@ -273,9 +274,28 @@ GET av data and GET labels for given file
 GENERATE yara rules for given file
 """
 
+# generate yara for file
+def gen_yara(headers={},data={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+    # headers["Content-Type"] = "multipart/form-data" # THIS ACTUALLY BREAKS DO NOT USE IT!!!! (not world-ending, just frustrating)
+
+    res = requests.post(url=yara_url, headers=headers, data=data)
+    return res
+
 """
 GET all matches of a file
 """
+
+#get file matches based on yara
+def get_file_matches(binary_id, headers={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.get(url=yara_url + '/' + binary_id + '/' + 'matches', params=params, headers=headers)
+    return res
 
 """
 GET all procedures and info for a given file
@@ -333,7 +353,7 @@ if __name__ == "__main__":
     CRUD tags
     """
 
-    prettyprint(get_tags())
+    # prettyprint(get_tags())
 
     # data={
     #     "name":"seg",
@@ -389,9 +409,16 @@ if __name__ == "__main__":
     GENERATE yara rules for given file
     """
 
+    # data={
+    #     "files":"c5120cf63b470c2681769b833d3dabab66547c01"
+    # }
+    # prettyprint(gen_yara(data=data),data=data)
+
     """
     GET all matches of a file
     """
+
+    prettyprint(get_file_matches("c5120cf63b470c2681769b833d3dabab66547c01"))
 
     """
     GET all procedures and info for a given file
