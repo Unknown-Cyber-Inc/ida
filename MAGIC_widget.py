@@ -11,8 +11,11 @@ import requests
 
 from MAGIC.MAGIC_API_test import prettystring,get_files
 
-#EnvironmentVariables
-load_dotenv('./MAGIC/.env')
+# replace load_dotenv(PATH) with absolute path to your .env
+# if relative path is used, behavior will change depending on which dir you initialize IDA from
+load_dotenv("/home/luka/Desktop/cythereal/idapro/plugins/MAGIC/.env")
+# load_dotenv is also called when importing MAGIC_API_test, so the next few lines could be cleaned up later
+# however if these are cleaned up, then removing the import would remove the env vars
 MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
 MAGIC_API_KEY = os.getenv("MAGIC_API_KEY")
 MAGIC_API_VERIFY = os.getenv("MAGIC_API_VERIFY")

@@ -3,9 +3,9 @@ import requests
 import json
 from dotenv import load_dotenv 
 
-# ENVPATH needs to be replaced by the actual path to the env file. absolute is easier to manage.
-# The rest come from .env
-load_dotenv(os.getenv("CYENVPATH"))
+# replace load_dotenv(PATH) with absolute path to your .env
+# if relative path is used, behavior will change depending on which dir you initialize IDA from
+load_dotenv("/home/luka/Desktop/cythereal/idapro/plugins/MAGIC/.env")
 MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
 MAGIC_API_KEY = os.getenv("MAGIC_API_KEY")
 MALWAREPATH = os.getenv("MALWAREPATH")
