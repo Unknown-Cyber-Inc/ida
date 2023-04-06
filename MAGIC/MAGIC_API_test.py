@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 # ENVPATH needs to be replaced by the actual path to the env file. absolute is easier to manage.
 # The rest come from .env
-load_dotenv(os.getenv("CYENVPATH")+'/.env')
+load_dotenv(os.getenv("CYENVPATH"))
 MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
 MAGIC_API_KEY = os.getenv("MAGIC_API_KEY")
 MALWAREPATH = os.getenv("MALWAREPATH")
@@ -418,7 +418,7 @@ if __name__ == "__main__":
     GET all matches of a file
     """
 
-    prettyprint(get_file_matches("c5120cf63b470c2681769b833d3dabab66547c01"))
+    # prettyprint(get_file_matches("c5120cf63b470c2681769b833d3dabab66547c01"))
 
     """
     GET all procedures and info for a given file
