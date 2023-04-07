@@ -280,13 +280,22 @@ def get_file_categories(binary_id, headers={},params={}):
     res = requests.get(url=files_url + '/' + binary_id + '/' + 'categories', params=params, headers=headers)
     return res
 
-#request categories associated with a file
+#request families associated with a file
 def get_file_families(binary_id, headers={},params={}):
     # this is to circumvent adding the api key to the headers object
     headers = headers.copy()
     headers["X-API-KEY"] = MAGIC_API_KEY
 
     res = requests.get(url=files_url + '/' + binary_id + '/' + 'families', params=params, headers=headers)
+    return res
+
+#request all labels associated with a file
+def get_file_labels(binary_id, headers={},params={}):
+    # this is to circumvent adding the api key to the headers object
+    headers = headers.copy()
+    headers["X-API-KEY"] = MAGIC_API_KEY
+
+    res = requests.get(url=files_url + '/' + binary_id + '/' + 'labels', params=params, headers=headers)
     return res
 
 # create category for a file
@@ -298,6 +307,7 @@ def add_custom_category_to_file(binary_id, headers={},data={},params={}):
     res = requests.post(url=files_url + '/' + binary_id + '/' + 'categories', data=data, headers=headers, params=params)
     return res
 
+# create family for a file
 def add_custom_family_to_file(binary_id, headers={},data={},params={}):
     # this is to circumvent adding the api key to the headers object
     headers = headers.copy()
@@ -441,15 +451,16 @@ if __name__ == "__main__":
     GET av data and GET labels for given file
     """
 
-    data={
-        "label":"",
-        "source":""
-    }
+    # data={
+    #     "label":"",
+    #     "source":""
+    # }
     # prettyprint(add_custom_category_to_file("c5120cf63b470c2681769b833d3dabab66547c01",data=data),data=data)
     # prettyprint(get_file_categories("c5120cf63b470c2681769b833d3dabab66547c01"))
     # prettyprint(get_file_families("c5120cf63b470c2681769b833d3dabab66547c01"))
-    prettyprint(add_custom_family_to_file("c5120cf63b470c2681769b833d3dabab66547c01",data=data),data=data)
-    
+    # prettyprint(add_custom_family_to_file("c5120cf63b470c2681769b833d3dabab66547c01",data=data),data=data)
+    prettyprint(get_file_labels("c5120cf63b470c2681769b833d3dabab66547c01"))
+
     """
     GENERATE yara rules for given file
     """
