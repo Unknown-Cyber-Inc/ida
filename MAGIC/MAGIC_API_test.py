@@ -494,22 +494,22 @@ if __name__ == "__main__":
     GET all matches of a file
     """
 
-    prettyprint(explain_endpoint("yara/1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5/matches","GET"))
-    params={}
-    prettyprint(get_yara_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
-    params["expand_mask"]="matches"
-    prettyprint(get_yara_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
+    # prettyprint(explain_endpoint("yara/1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5/matches","GET"))
+    # params={}
+    # prettyprint(get_yara_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
+    # params["expand_mask"]="matches"
+    # prettyprint(get_yara_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
 
-    # testing parameters expand_mask=matches, min_threshold and max_threshold
-    prettyprint(explain_endpoint("files/1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5/matches","GET"))
-    params={}
-    prettyprint(get_file_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
-    params["expand_mask"]="matches"
-    prettyprint(get_file_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
-    params["min_threshold"]="0.97"
-    prettyprint(get_file_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
-    params["max_threshold"]="0.9999"
-    prettyprint(get_file_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
+    # # testing parameters expand_mask=matches, min_threshold and max_threshold
+    # prettyprint(explain_endpoint("files/1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5/matches","GET"))
+    # params={}
+    # prettyprint(get_file_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
+    # params["expand_mask"]="matches"
+    # prettyprint(get_file_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
+    # params["min_threshold"]="0.97"
+    # prettyprint(get_file_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
+    # params["max_threshold"]="0.9999"
+    # prettyprint(get_file_matches("1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",params=params,timeout=999),params=params)
 
     """
     GET all procedures and info for a given file
