@@ -389,7 +389,7 @@ if __name__ == "__main__":
     #     MALWAREPATH + "COMPROBANTE_SWA0980011002021_ELECTRÓNICA.exe",
     #     MALWAREPATH + "LooseFileB",
     #     MALWAREPATH + "1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",
-    #     MALWAREPATH + "BlackBastaRansomware.json.gz",
+    #     MALWAREPATH + "BlackBastaRans.gettomware.json.gz",
     #     MALWAREPATH + "BlackBastaRansomware.tgz",
     #     MALWAREPATH + "BurntCigar.json.gz",
     #     MALWAREPATH + "BurntCigar.tgz",
@@ -420,9 +420,13 @@ if __name__ == "__main__":
         resource_path="/files",
         method="GET",
         header_params={"X-API-KEY":MAGIC_API_KEY},
+        response_type=cythereal_magic.models.file_list_response.FileListResponse,
+        # response_type="FileListResponse",
     )
-    print(type(ctmr))
-    print(ctmr)
+    for resource in ctmr[0].resources:
+        print(resource.sha1)
+    # print(ctmr[0].resources[0].sha1)
+    # print(ctmr[0].data)
 
     """
     CRUD tags
