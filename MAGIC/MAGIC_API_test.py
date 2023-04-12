@@ -2,6 +2,7 @@ import os
 import requests
 import json
 from dotenv import load_dotenv 
+import cythereal_magic
 
 # replace load_dotenv(PATH) with absolute path to your .env
 # if relative path is used, behavior will change depending on which dir you initialize IDA from
@@ -414,6 +415,14 @@ if __name__ == "__main__":
     #     prettyprint(delete_file(binary_id=resource['sha1'],params=params),params=params)
 
     # prettyprint(get_files())
+    ctm = cythereal_magic.ApiClient()
+    ctmr = ctm.call_api(
+        resource_path="/files",
+        method="GET",
+        header_params={"X-API-KEY":MAGIC_API_KEY},
+    )
+    print(type(ctmr))
+    print(ctmr)
 
     """
     CRUD tags
