@@ -9,7 +9,7 @@ import os
 from dotenv import load_dotenv 
 import requests
 
-from MAGIC.MAGIC_API_test import prettystring,get_files
+import cythereal_magic
 
 # replace load_dotenv(PATH) with absolute path to your .env
 # if relative path is used, behavior will change depending on which dir you initialize IDA from
@@ -47,7 +47,13 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         # Get parent widget
         self.parent = self.FormToPyQtWidget(form)
         self.PopulateForm()
-
+        try:
+            self.ctm = cythereal_magic.ApiClient()
+            self.ctmf = cythereal_magic.FilesApi(self.ctm)
+        except:
+            print("Error establishing magic API client.")
+            self.ctm = None
+            self.ctmf = None
 
     def PopulateForm(self):
         # Create layout
@@ -79,10 +85,13 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         pass
 
     def pushbutton_click(self, form):
-        url = MAGIC_API_ENDPOINT + "files"
-        res = requests.get(url=url, params={"key":MAGIC_API_KEY}, verify=MAGIC_API_VERIFY)
         self.textbrowser.clear()
-        self.textbrowser.append(prettystring(get_files()))
+        try:
+            ctmr = self.ctmf.list_files()
+            for resource in ctmr.resources:
+                self.textbrowser.append(resource.sha1 + ': ' + resource.filetype)
+        except:
+            self.textbrowser.append('No resources could be gathered.')
 
 # -----------------------------------------------------------------------
 """
