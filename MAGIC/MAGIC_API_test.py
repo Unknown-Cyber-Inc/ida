@@ -415,7 +415,13 @@ if __name__ == "__main__":
     #     prettyprint(delete_file(binary_id=resource['sha1'],params=params),params=params)
 
     # prettyprint(get_files())
+
+
+# ====================================================================
+    # two ways to access cythereal magic API
+    
     ctm = cythereal_magic.ApiClient()
+    # filesclient
     ctmr = ctm.call_api(
         resource_path="/files",
         method="GET",
@@ -425,8 +431,16 @@ if __name__ == "__main__":
     )
     for resource in ctmr[0].resources:
         print(resource.sha1)
+    print()
+    ctm = cythereal_magic.ApiClient()
+    filesApi = cythereal_magic.FilesApi(ctm)
+    ctmr = filesApi.list_files()
+    for resource in ctmr.resources:
+        print(resource.sha1)
+
     # print(ctmr[0].resources[0].sha1)
     # print(ctmr[0].data)
+# ====================================================================
 
     """
     CRUD tags
