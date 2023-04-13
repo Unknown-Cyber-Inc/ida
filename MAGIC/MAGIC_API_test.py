@@ -2,6 +2,7 @@ import os
 import requests
 import json
 from dotenv import load_dotenv 
+import cythereal_magic
 
 # replace load_dotenv(PATH) with absolute path to your .env
 # if relative path is used, behavior will change depending on which dir you initialize IDA from
@@ -388,7 +389,7 @@ if __name__ == "__main__":
     #     MALWAREPATH + "COMPROBANTE_SWA0980011002021_ELECTRÓNICA.exe",
     #     MALWAREPATH + "LooseFileB",
     #     MALWAREPATH + "1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",
-    #     MALWAREPATH + "BlackBastaRansomware.json.gz",
+    #     MALWAREPATH + "BlackBastaRans.gettomware.json.gz",
     #     MALWAREPATH + "BlackBastaRansomware.tgz",
     #     MALWAREPATH + "BurntCigar.json.gz",
     #     MALWAREPATH + "BurntCigar.tgz",
@@ -414,6 +415,32 @@ if __name__ == "__main__":
     #     prettyprint(delete_file(binary_id=resource['sha1'],params=params),params=params)
 
     # prettyprint(get_files())
+
+
+# ====================================================================
+    # two ways to access cythereal magic API
+    
+    ctm = cythereal_magic.ApiClient()
+    # filesclient
+    ctmr = ctm.call_api(
+        resource_path="/files",
+        method="GET",
+        header_params={"X-API-KEY":MAGIC_API_KEY},
+        response_type=cythereal_magic.models.file_list_response.FileListResponse,
+        # response_type="FileListResponse",
+    )
+    for resource in ctmr[0].resources:
+        print(resource.sha1)
+    print()
+    ctm = cythereal_magic.ApiClient()
+    filesApi = cythereal_magic.FilesApi(ctm)
+    ctmr = filesApi.list_files()
+    for resource in ctmr.resources:
+        print(resource.sha1)
+
+    # print(ctmr[0].resources[0].sha1)
+    # print(ctmr[0].data)
+# ====================================================================
 
     """
     CRUD tags
