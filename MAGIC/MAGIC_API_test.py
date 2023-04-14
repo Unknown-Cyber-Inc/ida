@@ -389,7 +389,7 @@ if __name__ == "__main__":
     #     MALWAREPATH + "COMPROBANTE_SWA0980011002021_ELECTRÓNICA.exe",
     #     MALWAREPATH + "LooseFileB",
     #     MALWAREPATH + "1bbcd17148888a2d92963b7a9c1fbc0e12eb53b5",
-    #     MALWAREPATH + "BlackBastaRans.gettomware.json.gz",
+    #     MALWAREPATH + "BlackBastaRansomware.json.gz",
     #     MALWAREPATH + "BlackBastaRansomware.tgz",
     #     MALWAREPATH + "BurntCigar.json.gz",
     #     MALWAREPATH + "BurntCigar.tgz",

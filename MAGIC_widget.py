@@ -7,7 +7,6 @@ from PyQt5 import QtWidgets
 #imports for other functionality
 import os
 from dotenv import load_dotenv 
-import requests
 
 import cythereal_magic
 

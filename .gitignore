@@ -1,8 +1,13 @@
+# ignore everything to hide the many IDA plugins files
 *
 
-!MAGIC_widget.py
+# include related project folders
 !README.md
-!MAGIC/
-!MAGIC/.env.example
-!MAGIC/MAGIC_API_test.py
-!MAGIC/requirements.txt
+
+# we want to track the actual plugin entry file and folder
+!MAGIC_widget.py
+!MAGIC
+!MAGIC/*
+
+# definitely ignore this
+.env
