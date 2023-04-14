@@ -1,6 +1,7 @@
 #IDA and UI imports
 import ida_idaapi
 import ida_kernwin
+import ida_nalt
 # from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5 import QtWidgets
 
@@ -45,7 +46,8 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         """
         # Get parent widget
         self.parent = self.FormToPyQtWidget(form)
-        self.PopulateForm()
+        self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
+        self.md5 = ida_nalt.retrieve_input_file_md5().hex()
         try:
             self.ctm = cythereal_magic.ApiClient()
             self.ctmf = cythereal_magic.FilesApi(self.ctm)
@@ -53,6 +55,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             print("Error establishing magic API client.")
             self.ctm = None
             self.ctmf = None
+        self.PopulateForm()
 
     def PopulateForm(self):
         # Create layout
