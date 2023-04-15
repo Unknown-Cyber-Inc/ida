@@ -13,7 +13,8 @@ import cythereal_magic
 
 # replace load_dotenv(PATH) with absolute path to your .env
 # if relative path is used, behavior will change depending on which dir you initialize IDA from
-load_dotenv(os.getenv("MAGICENVPATH"))
+load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'MAGIC','.env'))
+
 # load_dotenv is also called when importing MAGIC_API_test, so the next few lines could be cleaned up later
 # however if these are cleaned up, then removing the import would remove the env vars
 MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
