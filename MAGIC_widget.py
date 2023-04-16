@@ -2,29 +2,19 @@
 import ida_idaapi
 import ida_kernwin
 import ida_nalt
-# from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5 import QtWidgets
 
-#imports for other functionality
+#imports for setup
 import os
 from dotenv import load_dotenv 
 
+#cythereal magic for calling API
 import cythereal_magic
 
-# replace load_dotenv(PATH) with absolute path to your .env
-# if relative path is used, behavior will change depending on which dir you initialize IDA from
+# .env should be in the MAGIC folder
 load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'MAGIC','.env'))
 
-# load_dotenv is also called when importing MAGIC_API_test, so the next few lines could be cleaned up later
-# however if these are cleaned up, then removing the import would remove the env vars
-MAGIC_API_ENDPOINT = os.getenv("MAGIC_API_ENDPOINT")
-MAGIC_API_KEY = os.getenv("MAGIC_API_KEY")
-MAGIC_API_VERIFY = os.getenv("MAGIC_API_VERIFY")
-# this value can be a boolean or string, that's why it's written like this
-if MAGIC_API_VERIFY == "True": 
-    MAGIC_API_VERIFY = True
-elif MAGIC_API_VERIFY == "False":
-    MAGIC_API_VERIFY = False
+# load_dotenv sources the below environment variables from .env
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
