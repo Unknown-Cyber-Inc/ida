@@ -5,13 +5,8 @@ from PyQt5 import QtWidgets
 #cythereal magic for calling API
 import cythereal_magic
 
-# .env should be in the MAGIC folder
-import os
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'MAGIC','.env'))
-
 # load_dotenv sources the below environment variables from .env
-PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
+import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
 # -----------------------------------------------------------------------
