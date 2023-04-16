@@ -5,7 +5,7 @@
 !README.md
 
 # we want to track the actual plugin entry file and folder
-!MAGIC_widget.py
+!MAGIC_plugin_entry.py
 !MAGIC
 !MAGIC/*
 
