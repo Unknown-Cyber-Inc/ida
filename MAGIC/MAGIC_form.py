@@ -19,12 +19,12 @@ class FileListChooser(ida_kernwin.Choose):
             title,
             [ ["Sha1", 10 | ida_kernwin.Choose.CHCOL_HEX],
             ["Filetype",    30 | ida_kernwin.Choose.CHCOL_PLAIN] ],
-            embedded=True)
+            )
         self.items = []
 
         # .Embedded or .Show is REQUIRED to get the widget pointer
         # .Show will not work since we set embedded=True
-        self.Embedded()
+        self.Show()
         
     def OnGetSize(self):
         return len(self.items)
@@ -81,7 +81,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         """
         pass
 
-    def Show(self,title):
+    def Show(self,title,options=0):
         return super().Show(title)
 
     def CreateFormObjects(self):
