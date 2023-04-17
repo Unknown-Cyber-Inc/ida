@@ -14,12 +14,10 @@ load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.env'))
 
 #IDA imports
 import ida_idaapi
-from ida_kernwin import find_widget,is_idaq,UI_Hooks
-import ida_kernwin
+from ida_kernwin import find_widget,is_idaq
 
 # other MAGIC imports
-from MAGIC.MAGIC_form import MAGICPluginFormClass, FileListChooser
-# from MAGIC.MAGIC_hooks import register_open_action
+from MAGIC.MAGIC_form import MAGICPluginFormClass
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
@@ -48,6 +46,10 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
     wanted_hotkey = PLUGIN_HOTKEY
     version = PLUGIN_VERSION
 
+    def __init__(self):
+        super().__init__()
+        self.form: MAGICPluginFormClass
+
     def init(self):
         """
         IDA initializes and begins loading plugins. This is not the same as plugin_t's __init__.
@@ -67,9 +69,10 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
 
         print('\nMAGIC widget -- hotkey is \"'+PLUGIN_HOTKEY+'\"')
         if PLUGIN_DEVELOP: print("MAGIC running mode DEVELOP")
-        if PLUGIN_DEBUG: print("MAGIC running mode DEBUG")
-
-        return ida_idaapi.PLUGIN_KEEP
+        if PLUGIN_DEBUG: 
+            print("MAGIC running mode DEBUG")
+            return ida_idaapi.PLUGIN_KEEP
+        return ida_idaapi.PLUGIN_OK
 
     def run(self, args):
         """
@@ -79,7 +82,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         """
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
-            MAGICPluginFormClass().Show(PLUGIN_NAME)
+            self.form = MAGICPluginFormClass(PLUGIN_NAME)
 
     def term(self):
         """
