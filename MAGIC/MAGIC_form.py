@@ -10,10 +10,11 @@ import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
 # -----------------------------------------------------------------------
-"""
-This is IDA's chooser class. It is essentially a table with selectable lines
-"""
+
 class FileListChooser(ida_kernwin.Choose):
+    """
+    This is IDA's chooser class. It is essentially a table with selectable lines
+    """
     def __init__(self, title):
         super().__init__(
             title,
@@ -36,20 +37,20 @@ class FileListChooser(ida_kernwin.Choose):
         self.items = items
 
 # -----------------------------------------------------------------------
-"""
-populate_pluginform_with_pyqt_widgets.py code was used to create the base of the plugin
-this is the entire body of the plugin form
-"""
-class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
+class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
-    We need both the qw widget to add it to the pyqt layout object
-    and the tw object to actually make modifications to it
-    instead of making PluginForm.objecttw and PluginForm.objectqw
-    I made this class to automatically create the qw from passed tw
-    and store both in the same object
+    populate_pluginform_with_pyqt_widgets.py code was used to create the base of the plugin
+    this is the entire body of the plugin form
     """
     class TWidgetToPyQtWidget:
+        """
+        We need both the qw widget to add it to the pyqt layout object
+        and the tw object to actually make modifications to it
+        instead of making PluginForm.objecttw and PluginForm.objectqw
+        I made this class to automatically create the qw from passed tw
+        and store both in the same object
+        """
         def __init__(self,tw:object):
             self.tw = tw # tw is IDA python Twidget
             # qw is PyQt5 QtWidget
@@ -122,7 +123,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             ctmr = self.ctmfiles.list_files()
 
             # add the resources to the chooser object
-            self.filechooser.tw.SetItems([ [ resource.sha1, resource.filetype ] for resource in ctmr.resources ])
+            self.filechooser.tw.SetItems([ [ resource['sha1'], resource['filetype'] ] for resource in ctmr['resources'] ])
             self.filechooser.tw.Refresh()
             self.textbrowser.append('Resources gathered successfully.')
         except:

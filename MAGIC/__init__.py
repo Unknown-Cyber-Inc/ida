@@ -25,12 +25,11 @@ PLUGIN_HOTKEY = 'Ctrl-Shift-A'
 PLUGIN_COMMENT = 'IDA interface for Cythereal MAGIC'
 PLUGIN_HELP = 'Upload and request information about owned files. Not yet implemented for the terminal version of IDA.'
 PLUGIN_VERSION = '0.0.1'
-PLUGIN_WEBSITE = 'https://magic.unknowncyber.com'
 
-"""
-this is the class which manages the plugin entry
-"""
 class MAGIC_plugin(ida_idaapi.plugin_t):
+    """
+    this is the class which manages the plugin entry
+    """
 
     flags = ida_idaapi.PLUGIN_KEEP 
     if PLUGIN_DEVELOP: flags = ida_idaapi.PLUGIN_UNL #dev entry - unload plugin from memory when widget is closed
@@ -39,12 +38,11 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
     wanted_name = PLUGIN_NAME
     wanted_hotkey = PLUGIN_HOTKEY
     version = PLUGIN_VERSION
-    website = PLUGIN_WEBSITE
 
-    """
-    what to do on IDA startup
-    """
     def init(self):
+        """
+        what to do on IDA startup
+        """
         # check if this is the GUI version of IDA
         if not is_idaq():
             os.system("echo this plugin is not yet built for the terminal version.")
@@ -61,10 +59,10 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
 
         return ida_idaapi.PLUGIN_KEEP
 
-    """
-    what to do when running the plugin through shortcut or Edit -> Plugins -> PLUGIN_NAME
-    """
     def run(self, arg):
+        """
+        what to do when running the plugin through shortcut or Edit -> Plugins -> PLUGIN_NAME
+        """
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
             MAGICPluginFormClass().Show(PLUGIN_NAME)
@@ -72,8 +70,8 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
     def Create(self):
         pass
 
-    """
-    what to do on IDA shutdown
-    """
     def term(self):
+        """
+        what to do on IDA shutdown
+        """
         pass
