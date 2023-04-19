@@ -43,7 +43,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
 
     def init(self):
         """
-        IDA initializes and begins loading plugins.
+        IDA initializes and begins loading plugins. This is not the same as plugin_t's __init__.
         
         This is run once per plugin unless, for example, PLUGIN_UNL is specified in flags.
         @return literals defined by PLUGIN_SKIP, PLUGIN_KEEP, or PLUGIN_OK.
