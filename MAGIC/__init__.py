@@ -7,11 +7,9 @@ import ida_kernwin
 from MAGIC.MAGIC_form import MAGICPluginFormClass, FileListChooser
 # from MAGIC.MAGIC_hooks import register_open_action
 
-"""
-imports for setup
-load_dotenv sources the below environment variables from .env
-.env should be in the MAGIC folder and os.path ensures this will always be the correct absolute path
-"""
+# imports for setup
+# load_dotenv sources the below environment variables from .env
+# .env should be in the MAGIC folder and os.path ensures this will always be the correct absolute path
 import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.env'))
@@ -28,10 +26,14 @@ PLUGIN_VERSION = '0.0.1'
 
 class MAGIC_plugin(ida_idaapi.plugin_t):
     """
-    this is the class which manages the plugin entry
+    Inherits base IDA plugin class. 
+    
+    Declare attributes below which are parsed by IDA to appropriate UI spots around IDA.
+    For example, wanted_hotkey shows up in Edit -> Plugins to the right of wanted_name.
+    This hotkey is linked to plugin_t.run().
     """
 
-    flags = ida_idaapi.PLUGIN_KEEP 
+    flags = ida_idaapi.PLUGIN_FIX 
     if PLUGIN_DEVELOP: flags = ida_idaapi.PLUGIN_UNL #dev entry - unload plugin from memory when widget is closed
     comment = PLUGIN_COMMENT
     help = PLUGIN_HELP
@@ -41,7 +43,10 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
 
     def init(self):
         """
-        what to do on IDA startup
+        IDA initializes and begins loading plugins.
+        
+        This is run once per plugin unless, for example, PLUGIN_UNL is specified in flags.
+        @return literals defined by PLUGIN_SKIP, PLUGIN_KEEP, or PLUGIN_OK.
         """
         # check if this is the GUI version of IDA
         if not is_idaq():
@@ -59,19 +64,18 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
 
         return ida_idaapi.PLUGIN_KEEP
 
-    def run(self, arg):
+    def run(self, args):
         """
-        what to do when running the plugin through shortcut or Edit -> Plugins -> PLUGIN_NAME
+        Edit -> Plugins -> PLUGIN_NAME or the plugin shortcut has been hit. This should have most of the functionality.
+        
+        @param args: int, most likely bits demonstrating different flags. More research required
         """
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
             MAGICPluginFormClass().Show(PLUGIN_NAME)
 
-    def Create(self):
-        pass
-
     def term(self):
         """
-        what to do on IDA shutdown
+        Plugin is unloaded by IDA.
         """
         pass

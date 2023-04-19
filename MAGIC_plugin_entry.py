@@ -2,7 +2,8 @@ from MAGIC import MAGIC_plugin
 
 def PLUGIN_ENTRY():
     """
-    this is the required function that IDA uses as an entry to the plugin functionality
-    you'll see it in Edit -> Plugins -> PLUGIN_NAME
+    python plugin entrypoint for IDA. You'll see it in Edit -> Plugins -> PLUGIN_NAME.
+    
+    @return ida_idaapi.plugin_t: plugin object
     """
     return MAGIC_plugin()

@@ -3,12 +3,18 @@ from MAGIC_form import MAGICPluginFormClass
 
 def register_autoinst_hooks(PLUGIN_NAME):
     """
-    auto_instantiate_widget_plugin.py code was used to make the plugin window persist on IDA launch
+    Register hook to start plugin automatically at IDA launch, if previously unclosed during last session.
+
+    @param PLUGIN_NAME: pass the name of the plugin to select it
+    @global hook: hook to register globally with IDA
+    auto_instantiate_widget_plugin.py code was used to make this.
     """
-    class auto_inst_hooks_t(ida_kernwin.UI_Hooks):
+    class MAGIC_inst_auto_hook_t(ida_kernwin.UI_Hooks):
         """
-        Register hooks that will create the widget when IDA
-        requires it because of the IDB/desktop
+        Inherets UI_hooks functionality from IDA C++ objects.
+
+        Register hooks that will be used by IDA.
+        These are essentially listeners for certain global events associated with a particular task/function.
         """
         def create_desktop_widget(self, ttl, cfg):
             if ttl == PLUGIN_NAME:
@@ -16,6 +22,6 @@ def register_autoinst_hooks(PLUGIN_NAME):
                 MAGICWidgetPage.Show(PLUGIN_NAME)
                 return MAGICWidgetPage.GetWidget()
 
-    global auto_inst_hooks
-    auto_inst_hooks = auto_inst_hooks_t()
-    auto_inst_hooks.hook()
+    global hook
+    hook = MAGIC_inst_auto_hook_t()
+    hook.hook()

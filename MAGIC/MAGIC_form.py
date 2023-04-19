@@ -13,7 +13,9 @@ PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
 class FileListChooser(ida_kernwin.Choose):
     """
-    This is IDA's chooser class. It is essentially a table with selectable lines
+    Inhereits IDA's chooser class. By default it is a TWidget.
+    
+    It is a table with selectable lines.
     """
     def __init__(self, title):
         super().__init__(
@@ -34,24 +36,37 @@ class FileListChooser(ida_kernwin.Choose):
         return self.items[n]
     
     def SetItems(self,items=[]):
+        """
+        Set columns of the chooser from outside the class.
+
+        @param items: array of arrays, with columns = num of table columns and rows = num of entries.
+        """
         self.items = items
 
 # -----------------------------------------------------------------------
 
 class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
-    populate_pluginform_with_pyqt_widgets.py code was used to create the base of the plugin
-    this is the entire body of the plugin form
+    Highest level of the plugin UI object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
+
+    Populate_pluginform_with_pyqt_widgets.py code was used to create the basics of the plugin.
     """
     class TWidgetToPyQtWidget:
         """
+        Object grouping TWidgets and their converted QtWidgets
+
         We need both the qw widget to add it to the pyqt layout object
-        and the tw object to actually make modifications to it
-        instead of making PluginForm.objecttw and PluginForm.objectqw
+        and the tw object to actually make modifications to it.
+        Instead of making PluginForm.objecttw and PluginForm.objectqw in the form class
         I made this class to automatically create the qw from passed tw
-        and store both in the same object
+        and store both in the same object.
         """
         def __init__(self,tw:object):
+            """ 
+            @param tw: TWidget to be converted to QtWidget
+            @attribute tw: stored version of passed tw
+            @attribute qw: converted QtWidget from tw 
+            """
             self.tw = tw # tw is IDA python Twidget
             # qw is PyQt5 QtWidget
             self.qw = ida_kernwin.PluginForm.TWidgetToPyQtWidget(tw.GetWidget())
@@ -61,9 +76,6 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         super().__init__()     
 
     def OnCreate(self, form):
-        """
-        Called when the widget is created
-        """
         # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
 
@@ -77,9 +89,6 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.PopulateForm()
 
     def OnClose(self, form):
-        """
-        Called when the widget is closed
-        """
         pass
 
     def Show(self,title,options=0):
