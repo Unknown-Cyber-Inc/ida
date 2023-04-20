@@ -20,8 +20,9 @@ class FileListChooser(ida_kernwin.Choose):
     def __init__(self, title):
         super().__init__(
             title,
-            [ ["Sha1", 10 | ida_kernwin.Choose.CHCOL_HEX],
-            ["Filetype",    30 | ida_kernwin.Choose.CHCOL_PLAIN] ],
+            [ ["Sha256", 45 | ida_kernwin.Choose.CHCOL_PLAIN],
+            ["Filetype",    25 | ida_kernwin.Choose.CHCOL_PLAIN],],
+            flags=ida_kernwin.CH_NOIDB,
             )
         self.items = []
 
@@ -129,10 +130,10 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
         try:
             # request file from website
-            ctmr = self.ctmfiles.list_files()
+            ctmr = self.ctmfiles.list_files(read_mask="sha256,filetype")
 
             # add the resources to the chooser object
-            self.filechooser.tw.SetItems([ [ resource['sha1'], resource['filetype'] ] for resource in ctmr['resources'] ])
+            self.filechooser.tw.SetItems([ [ resource['sha256'], resource['filetype'] ] for resource in ctmr['resources'] ])
             self.filechooser.tw.Refresh()
             self.textbrowser.append('Resources gathered successfully.')
         except:
