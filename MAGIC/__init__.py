@@ -1,3 +1,10 @@
+# imports for setup
+# load_dotenv sources the below environment variables from .env
+# .env should be in the MAGIC folder and os.path ensures this will always be the correct absolute path
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.env'))
+
 #IDA imports
 import ida_idaapi
 from ida_kernwin import find_widget,is_idaq,UI_Hooks
@@ -6,13 +13,6 @@ import ida_kernwin
 # other MAGIC imports
 from MAGIC.MAGIC_form import MAGICPluginFormClass, FileListChooser
 # from MAGIC.MAGIC_hooks import register_open_action
-
-# imports for setup
-# load_dotenv sources the below environment variables from .env
-# .env should be in the MAGIC folder and os.path ensures this will always be the correct absolute path
-import os
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.env'))
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
