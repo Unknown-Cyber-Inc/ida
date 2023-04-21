@@ -63,56 +63,87 @@ class FileListChooser(ida_kernwin.Choose):
 
 # -----------------------------------------------------------------------
 
+class TWidgetToPyQtWidget:
+    """
+    Object grouping TWidgets and their converted QtWidgets
+
+    We need both the qw widget to add it to the pyqt layout object
+    and the tw object to actually make modifications to it.
+    Instead of making PluginForm.objecttw and PluginForm.objectqw in the form class
+    I made this class to automatically create the qw from passed tw
+    and store both in the same object.
+    """
+    def __init__(self,tw:object):
+        """ 
+        @param tw: TWidget to be converted to QtWidget
+        @attribute tw: stored version of passed tw
+        @attribute qw: converted QtWidget from tw 
+        """
+        self.tw = tw # tw is IDA python Twidget
+        # qw is PyQt5 QtWidget
+        self.qw = ida_kernwin.PluginForm.TWidgetToPyQtWidget(tw.GetWidget())
+
+# -----------------------------------------------------------------------
+
 class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin UI object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
 
     Populate_pluginform_with_pyqt_widgets.py code was used to create the basics of the plugin.
     """
-    class TWidgetToPyQtWidget:
-        """
-        Object grouping TWidgets and their converted QtWidgets
 
-        We need both the qw widget to add it to the pyqt layout object
-        and the tw object to actually make modifications to it.
-        Instead of making PluginForm.objecttw and PluginForm.objectqw in the form class
-        I made this class to automatically create the qw from passed tw
-        and store both in the same object.
-        """
-        def __init__(self,tw:object):
-            """ 
-            @param tw: TWidget to be converted to QtWidget
-            @attribute tw: stored version of passed tw
-            @attribute qw: converted QtWidget from tw 
-            """
-            self.tw = tw # tw is IDA python Twidget
-            # qw is PyQt5 QtWidget
-            self.qw = ida_kernwin.PluginForm.TWidgetToPyQtWidget(tw.GetWidget())
-
-
-    def __init__(self):
-        super().__init__()     
-
-    def OnCreate(self, form):
-        # Convert form to PyQt obj
-        self.parent = self.FormToPyQtWidget(form)
-
-        #gather important form information -- consider moving the location of this
+    def __init__(self, title:str):
+        super().__init__()
+        
+        self.title: str = title 
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
         self.ctm = cythereal_magic.ApiClient()
-        self.ctmfiles = cythereal_magic.FilesApi(self.ctm)
+        self.ctmfiles = cythereal_magic.FilesApi(self.ctm) 
 
-        self.CreateFormObjects()
-        self.PopulateForm()
+        self.parent: QtWidgets.QtWidget 
 
+        self.t1: QtWidgets.QLabel
+        self.t2: QtWidgets.QLabel
+        self.pushbutton: QtWidgets.QPushButton
+        self.textbrowser: QtWidgets.QTextEdit
+
+        self.filechooser: TWidgetToPyQtWidget
+
+        self.Show()         
+
+    def OnCreate(self, form):
+        """
+        Called when the widget is created
+        """
+        # Convert form to PyQt obj
+        self.parent = self.FormToPyQtWidget(form)
+
+        self.load_views()
+     
     def OnClose(self, form):
-        pass
+        """
+        Called when the widget is closed
+        """
+        return
 
-    def Show(self,title,options=0):
-        return super().Show(title)
+    def Show(self):   
+        return super().Show(
+            self.title,
+            options=(
+            ida_kernwin.PluginForm.WOPN_TAB
+            | ida_kernwin.PluginForm.WOPN_RESTORE
+            | ida_kernwin.PluginForm.WCLS_CLOSE_LATER
+            | ida_kernwin.PluginForm.WCLS_SAVE
+            ),
+        )
+    
+    def load_views(self):
+        self.get_file_view()
 
-    def CreateFormObjects(self):
+    def get_file_view(self):
+        # Create layout
+        layout = QtWidgets.QVBoxLayout()
 
         #personalizing QT widgets
         self.t1 = QtWidgets.QLabel("Hello from <font color=red>PyQt</font>")
@@ -126,14 +157,9 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.textbrowser.setReadOnly(True)
 
         # personalizing T widgets
-        self.filechooser = self.TWidgetToPyQtWidget(FileListChooser("FileListChooser"))
+        self.filechooser = TWidgetToPyQtWidget(FileListChooser("FileListChooser"))
 
-
-    def PopulateForm(self):
-        # Create layout
-        layout = QtWidgets.QVBoxLayout()
-
-        #adding widgets
+        #adding widgets to layout
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
