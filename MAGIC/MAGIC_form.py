@@ -37,7 +37,7 @@ class FileListChooser(ida_kernwin.Choose):
 
         # .Embedded or .Show is REQUIRED to get the widget pointer
         # .Show will not work since we set embedded=True
-        self.Embedded()
+        self.Show()
         
     def OnGetSize(self):
         return len(self.items)
@@ -117,9 +117,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         Called when the widget is created
         """
         # Convert form to PyQt obj
-        self.parent = self.FormToPyQtWidget(form)
-
-        
+        self.parent = self.FormToPyQtWidget(form)       
 
     def OnCreate(self, form):
         # Convert form to PyQt obj

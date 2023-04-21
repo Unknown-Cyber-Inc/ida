@@ -17,7 +17,7 @@ import ida_idaapi
 from ida_kernwin import find_widget,is_idaq
 
 # other MAGIC imports
-from MAGIC.MAGIC_form import MAGICPluginFormClass
+from MAGIC import MAGIC_form
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
@@ -48,7 +48,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
 
     def __init__(self):
         super().__init__()
-        self.form: MAGICPluginFormClass
+        self.form: MAGIC_form.MAGICPluginFormClass
 
     def init(self):
         """
@@ -67,10 +67,12 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         #if not found, register it
         # register_autoinst_hooks()
 
-        print('\nMAGIC widget -- hotkey is \"'+PLUGIN_HOTKEY+'\"')
-        if PLUGIN_DEVELOP: print("MAGIC running mode DEVELOP")
+        print('\nMAGIC widget -- hotkey is \"'+PLUGIN_HOTKEY+'\"')        
         if PLUGIN_DEBUG: 
             print("MAGIC running mode DEBUG")
+        if PLUGIN_DEVELOP: 
+            print("MAGIC running mode DEVELOP")
+            ida_idaapi.require("MAGIC.MAGIC_form") # reloads the module so we can make changes without restarting IDA
             return ida_idaapi.PLUGIN_KEEP
         return ida_idaapi.PLUGIN_OK
 
@@ -82,7 +84,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         """
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
-            self.form = MAGICPluginFormClass(PLUGIN_NAME)
+            self.form = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
 
     def term(self):
         """
