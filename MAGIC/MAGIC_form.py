@@ -110,16 +110,12 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
         self.filechooser: TWidgetToPyQtWidget
 
-        self.Show()    
+        self.Show()         
 
     def OnCreate(self, form):
         """
         Called when the widget is created
         """
-        # Convert form to PyQt obj
-        self.parent = self.FormToPyQtWidget(form)       
-
-    def OnCreate(self, form):
         # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
 
