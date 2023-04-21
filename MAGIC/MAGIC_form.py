@@ -1,3 +1,11 @@
+"""
+Main pluginform object at the highest level. 
+
+This is the scaffolding of the form object which will be displayed to the viewer.
+Contains ida_kernwin.PluginForm and also ida_kernwin.Choose.
+Will likely be broken into components as the insides of the form grow.
+"""
+
 # IDA and UI imports
 import ida_nalt, ida_kernwin
 from PyQt5 import QtWidgets

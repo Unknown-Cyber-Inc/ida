@@ -1,3 +1,10 @@
+"""
+Main plugin object at the highest level. 
+
+Contains ida_idaapi.plugin_t and environment variable information.
+Will contain auto_inst_hooks if they are available
+"""
+
 # imports for setup
 # load_dotenv sources the below environment variables from .env
 # .env should be in the MAGIC folder and os.path ensures this will always be the correct absolute path

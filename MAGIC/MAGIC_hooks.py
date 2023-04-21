@@ -1,3 +1,7 @@
+"""
+Will contain IDA UI hooks for the MAGIC plugin.
+"""
+
 import ida_kernwin
 from MAGIC_form import MAGICPluginFormClass
 
