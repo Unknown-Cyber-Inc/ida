@@ -22,9 +22,10 @@ class FileListChooser(ida_kernwin.Choose):
             title,
             [ ["Sha256", 45 | ida_kernwin.Choose.CHCOL_PLAIN],
             ["Filetype",    25 | ida_kernwin.Choose.CHCOL_PLAIN],],
-            flags=ida_kernwin.CH_NOIDB,
+            flags=ida_kernwin.Choose.CH_NOIDB,
             )
         self.items = []
+        self.inputfilehash=None
 
         # .Embedded or .Show is REQUIRED to get the widget pointer
         # .Show will not work since we set embedded=True
@@ -36,12 +37,20 @@ class FileListChooser(ida_kernwin.Choose):
     def OnGetLine(self, n):
         return self.items[n]
     
-    def SetItems(self,items=[]):
+    def OnGetLineAttr(self, n):
+        # check row to be populated contains hash of the file input (we're using sha256 for now)
+        if self.items[n][0]==self.filehash:
+            # set the text in this row to bold and highlight it in pink. color hex is BGR format
+            return [0xE8E0FC,ida_kernwin.CHITEM_BOLD]
+    
+    def SetItems(self,items=[],inputfilehash=None):
         """
         Set columns of the chooser from outside the class.
 
         @param items: array of arrays, with columns = num of table columns and rows = num of entries.
+        @param filehash: hash of the input file, just to highlight it in the menu
         """
+        self.filehash = inputfilehash
         self.items = items
 
 # -----------------------------------------------------------------------
@@ -133,7 +142,8 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             ctmr = self.ctmfiles.list_files(read_mask="sha256,filetype")
 
             # add the resources to the chooser object
-            self.filechooser.tw.SetItems([ [ resource['sha256'], resource['filetype'] ] for resource in ctmr['resources'] ])
+            self.filechooser.tw.SetItems([ [ resource['sha256'], resource['filetype'] ] for resource in ctmr['resources'] ],
+                                         self.sha256)
             self.filechooser.tw.Refresh()
             self.textbrowser.append('Resources gathered successfully.')
         except:
