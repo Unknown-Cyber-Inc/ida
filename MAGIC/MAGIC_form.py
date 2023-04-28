@@ -146,8 +146,8 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         layout = QtWidgets.QVBoxLayout()
 
         #personalizing QT widgets
-        self.t1 = QtWidgets.QLabel("Hello from <font color=red>PyQt</font>")
-        self.t2 = QtWidgets.QLabel("Hello from <font color=blue>IDAPython</font>")
+        self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
+        self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
 
         self.pushbutton = QtWidgets.QPushButton("request files")
         self.pushbutton.setCheckable(True)
