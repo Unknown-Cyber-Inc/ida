@@ -17,74 +17,6 @@ import cythereal_magic
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-# -----------------------------------------------------------------------
-
-class FileListChooser(ida_kernwin.Choose):
-    """
-    Inhereits IDA's chooser class. By default it is a TWidget.
-    
-    It is a table with selectable lines.
-    """
-    def __init__(self, title):
-        super().__init__(
-            title,
-            [ ["Sha256", 45 | ida_kernwin.Choose.CHCOL_PLAIN],
-            ["Filetype",    25 | ida_kernwin.Choose.CHCOL_PLAIN],],
-            flags=ida_kernwin.Choose.CH_NOIDB,
-            )
-        self.items = []
-        self.inputfilehash=None
-
-        # .Embedded or .Show is REQUIRED to get the widget pointer
-        # .Show will not work since we set embedded=True
-        self.Show()
-        
-    def OnGetSize(self):
-        return len(self.items)
-    
-    def OnGetLine(self, n):
-        return self.items[n]
-    
-    def OnGetLineAttr(self, n):
-        # check row to be populated contains hash of the file input (we're using sha256 for now)
-        if self.items[n][0]==self.filehash:
-            # set the text in this row to bold and highlight it in pink. color hex is BGR format
-            return [0xE8E0FC,ida_kernwin.CHITEM_BOLD]
-    
-    def SetItems(self,items=[],inputfilehash=None):
-        """
-        Set columns of the chooser from outside the class.
-
-        @param items: array of arrays, with columns = num of table columns and rows = num of entries.
-        @param filehash: hash of the input file, just to highlight it in the menu
-        """
-        self.filehash = inputfilehash
-        self.items = items
-
-# -----------------------------------------------------------------------
-
-class TWidgetToPyQtWidget:
-    """
-    Object grouping TWidgets and their converted QtWidgets
-
-    We need both the qw widget to add it to the pyqt layout object
-    and the tw object to actually make modifications to it.
-    Instead of making PluginForm.objecttw and PluginForm.objectqw in the form class
-    I made this class to automatically create the qw from passed tw
-    and store both in the same object.
-    """
-    def __init__(self,tw:object):
-        """ 
-        @param tw: TWidget to be converted to QtWidget
-        @attribute tw: stored version of passed tw
-        @attribute qw: converted QtWidget from tw 
-        """
-        self.tw = tw # tw is IDA python Twidget
-        # qw is PyQt5 QtWidget
-        self.qw = ida_kernwin.PluginForm.TWidgetToPyQtWidget(tw.GetWidget())
-
-# -----------------------------------------------------------------------
-
 class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin UI object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
@@ -107,8 +39,6 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.t2: QtWidgets.QLabel
         self.pushbutton: QtWidgets.QPushButton
         self.textbrowser: QtWidgets.QTextEdit
-
-        self.filechooser: TWidgetToPyQtWidget
 
         self.Show()         
 
@@ -175,7 +105,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
         self.tab_tables.addTab(self.files_analysis_tab,"Analysis")
 
-    def pushbutton_click(self, form):
+    def pushbutton_click(self):
         self.textbrowser.clear()
 
         try:
