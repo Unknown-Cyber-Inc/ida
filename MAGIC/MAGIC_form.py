@@ -140,33 +140,40 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
     
     def load_views(self):
         self.get_file_view()
+        self.get_files_table_subview()
 
-    def get_file_view(self):
+        self.populate_layout()
+
+    def populate_layout(self):
         # Create layout
         layout = QtWidgets.QVBoxLayout()
-
-        #personalizing QT widgets
-        self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
-        self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
-
-        self.pushbutton = QtWidgets.QPushButton("request files")
-        self.pushbutton.setCheckable(True)
-        self.pushbutton.clicked.connect(self.pushbutton_click)
-
-        self.textbrowser = QtWidgets.QTextEdit()
-        self.textbrowser.setReadOnly(True)
-
-        # personalizing T widgets
-        self.filechooser = TWidgetToPyQtWidget(FileListChooser("FileListChooser"))
 
         #adding widgets to layout
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
-        layout.addWidget(self.filechooser.qw)
+        layout.addWidget(self.tab_tables)
         layout.addWidget(self.textbrowser)
 
         self.parent.setLayout(layout)
+
+    def get_file_view(self):
+        #personalizing QT widgets
+        self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
+        self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
+
+        self.textbrowser = QtWidgets.QTextEdit()
+        self.textbrowser.setReadOnly(True)
+
+        self.pushbutton = QtWidgets.QPushButton("request files")
+        self.pushbutton.setCheckable(True)
+        self.pushbutton.clicked.connect(self.pushbutton_click)
+
+    def get_files_table_subview(self):
+        self.tab_tables = QtWidgets.QTabWidget()
+        self.files_analysis_tab = QtWidgets.QTableView()
+
+        self.tab_tables.addTab(self.files_analysis_tab,"Analysis")
 
     def pushbutton_click(self, form):
         self.textbrowser.clear()
@@ -175,10 +182,6 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             # request file from website
             ctmr = self.ctmfiles.list_files(read_mask="sha256,filetype")
 
-            # add the resources to the chooser object
-            self.filechooser.tw.SetItems([ [ resource['sha256'], resource['filetype'] ] for resource in ctmr['resources'] ],
-                                         self.sha256)
-            self.filechooser.tw.Refresh()
             self.textbrowser.append('Resources gathered successfully.')
         except:
             self.textbrowser.append('No resources could be gathered.')
