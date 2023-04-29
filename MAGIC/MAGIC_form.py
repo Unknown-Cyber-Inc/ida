@@ -82,7 +82,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
-        layout.addWidget(self.tab_tables)
+        layout.addWidget(self.files_analysis_tab)
         layout.addWidget(self.textbrowser)
 
         self.parent.setLayout(layout)
@@ -97,11 +97,15 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
         self.pushbutton = QtWidgets.QPushButton("request files")
         self.pushbutton.setCheckable(True)
+        #button actions
         self.pushbutton.clicked.connect(self.pushbutton_click)
 
     def get_files_table_subview(self):
         self.tab_tables = QtWidgets.QTabWidget()
-        self.files_analysis_tab = QtWidgets.QTableView()
+        self.files_analysis_tab = QtWidgets.QTableWidget()
+        self.files_analysis_tab.setRowCount(5)
+        self.files_analysis_tab.setColumnCount(3)
+        self.files_analysis_tab.setItem(0, 0, QtWidgets.QTableWidgetItem("test"))
 
         self.tab_tables.addTab(self.files_analysis_tab,"Analysis")
 
@@ -111,7 +115,9 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         try:
             # request file from website
             ctmr = self.ctmfiles.list_files(read_mask="sha256,filetype")
-
+            for item in ctmr['resources']:
+                print(item)
+            self.textbrowser.append(str(ctmr['resources']))
             self.textbrowser.append('Resources gathered successfully.')
         except:
             self.textbrowser.append('No resources could be gathered.')
