@@ -14,7 +14,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.env'))
 
 #IDA imports
 import ida_idaapi
-from ida_kernwin import find_widget,is_idaq
+from ida_kernwin import find_widget,is_idaq,close_widget
 
 # other MAGIC imports
 from MAGIC import MAGIC_form
@@ -87,6 +87,13 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         
         @param args: int, most likely bits demonstrating different flags. More research required
         """
+    
+        # in development mode, close and reopen the widget every time the shortcut is hit
+        if PLUGIN_DEVELOP:
+            close_widget(find_widget(PLUGIN_NAME),0)
+            MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
+            return
+        
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
             self.form = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
