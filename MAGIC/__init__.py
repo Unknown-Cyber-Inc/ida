@@ -14,10 +14,11 @@ load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.env'))
 
 #IDA imports
 import ida_idaapi
-from ida_kernwin import find_widget,is_idaq
+from ida_kernwin import find_widget,is_idaq,close_widget
 
 # other MAGIC imports
 from MAGIC import MAGIC_form
+from MAGIC import MAGIC_hooks
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
@@ -62,19 +63,23 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
             os.system("echo this plugin is not yet built for the terminal version.")
             return ida_idaapi.PLUGIN_SKIP
         
-        #check if our widget is registered with IDA
-        #if found, display it
-        #if not found, register it
-        # register_autoinst_hooks()
-
-        print('\nMAGIC widget -- hotkey is \"'+PLUGIN_HOTKEY+'\"')        
+        #display hotkey to user
+        print('\nMAGIC widget -- hotkey is \"'+PLUGIN_HOTKEY+'\"')
+      
         if PLUGIN_DEBUG: 
             print("MAGIC running mode DEBUG")
         if PLUGIN_DEVELOP: 
             print("MAGIC running mode DEVELOP")
             ida_idaapi.require("MAGIC.MAGIC_form") # reloads the module so we can make changes without restarting IDA
-            return ida_idaapi.PLUGIN_KEEP
-        return ida_idaapi.PLUGIN_OK
+            ida_idaapi.require("MAGIC.MAGIC_hooks")
+            return ida_idaapi.PLUGIN_OK
+        
+        # check if our widget is registered with IDA
+        # if found, display it
+        # if not found, register it
+        self.form = MAGIC_hooks.register_autoinst_hooks(PLUGIN_NAME)
+
+        return ida_idaapi.PLUGIN_KEEP
 
     def run(self, args):
         """
@@ -82,6 +87,13 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         
         @param args: int, most likely bits demonstrating different flags. More research required
         """
+    
+        # in development mode, close and reopen the widget every time the shortcut is hit
+        if PLUGIN_DEVELOP:
+            close_widget(find_widget(PLUGIN_NAME),0)
+            MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
+            return
+        
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
             self.form = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)

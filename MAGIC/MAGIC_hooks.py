@@ -3,7 +3,7 @@ Will contain IDA UI hooks for the MAGIC plugin.
 """
 
 import ida_kernwin
-from MAGIC_form import MAGICPluginFormClass
+from MAGIC import MAGIC_form
 
 def register_autoinst_hooks(PLUGIN_NAME):
     """
@@ -22,10 +22,10 @@ def register_autoinst_hooks(PLUGIN_NAME):
         """
         def create_desktop_widget(self, ttl, cfg):
             if ttl == PLUGIN_NAME:
-                MAGICWidgetPage = MAGICPluginFormClass()
-                MAGICWidgetPage.Show(PLUGIN_NAME)
+                MAGICWidgetPage = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
+                MAGICWidgetPage.Show()
                 return MAGICWidgetPage.GetWidget()
 
-    global hook
-    hook = MAGIC_inst_auto_hook_t()
-    hook.hook()
+    global hooks
+    hooks = MAGIC_inst_auto_hook_t()
+    hooks.hook()
