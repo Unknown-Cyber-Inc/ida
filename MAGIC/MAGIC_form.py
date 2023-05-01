@@ -8,7 +8,7 @@ Will likely be broken into components as the insides of the form grow.
 
 # IDA and UI imports
 import ida_nalt, ida_kernwin
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui
 
 #cythereal magic for calling API
 import cythereal_magic
@@ -141,6 +141,12 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
                 self.textbrowser.append(traceback.format_exc())
 
     def get_and_populate_tables(self):
+        """
+        calls GET /files and populates table widgets
+
+        In the future we can invoke read_mask explicitly as a list, so that the following table functions can be adjusted.
+        Also there must be some way to populate without setting every single row.
+        """
         # request file from website
         ctmr = self.ctmfiles.list_files(read_mask="sha256,filetype")
 
@@ -159,6 +165,12 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         for i,resource in enumerate(ctmr['resources']):
             for j,key in enumerate(resource):
                 self.files_analysis_tab.setItem(i, j, QtWidgets.QTableWidgetItem(resource[key]))
+
+            # show obviously to user that the input file is currently in the received list of files
+            if resource["sha256"] == self.sha256:
+                self.files_analysis_tab.selectRow(i)
+                for j in range(self.files_analysis_tab.columnCount()):
+                    self.files_analysis_tab.item(i,j).setBackground(QtGui.QColor(255,232,255))
 
         # resize first column (assuming sha256) to show entire entry
         self.files_analysis_tab.resizeColumnToContents(0)
