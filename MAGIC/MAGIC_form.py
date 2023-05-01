@@ -144,35 +144,67 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         """
         calls GET /files and populates table widgets
 
-        In the future we can invoke read_mask explicitly as a list, so that the following table functions can be adjusted.
-        Also there must be some way to populate without setting every single row.
+        Also there must be some way to populate without setting every single row. This might be through some custom table class.
         """
-        # request file from website
-        ctmr = self.ctmfiles.list_files(read_mask="sha256,filetype")
+        #setting up column names
+        identifier = ["sha256"]
+        analysis_tab_columns = ["filenames","filetype"]
+        inputfile_highlight_color = QtGui.QColor(255,232,255)
+
+        # request file from website with the above columns of info
+        ctmr = self.ctmfiles.list_files(read_mask=','.join(identifier + analysis_tab_columns))
 
         # set row and col of table based on returned data sizes
         self.files_analysis_tab.setRowCount(len(ctmr['resources']))
-        # assuming here that every returned entry has the same number of columns
-        self.files_analysis_tab.setColumnCount(len(ctmr['resources'][0]))
+        # number of columns = number of analysis_tab_columns + identifier entry (1)
+        self.files_analysis_tab.setColumnCount(len(analysis_tab_columns)+1)
         
-        # label the column based on returned keys
-        self.files_analysis_tab.setHorizontalHeaderLabels(ctmr['resources'][0].keys())   
+        # label the column based on returned labels
+        self.files_analysis_tab.setHorizontalHeaderLabels(identifier + analysis_tab_columns)   
         # hide the row headers
         self.files_analysis_tab.verticalHeader().setVisible(False)  
 
         # this is almost certainly not the most effecient way
         # loop through every single value and add it to the table
-        for i,resource in enumerate(ctmr['resources']):
-            for j,key in enumerate(resource):
-                self.files_analysis_tab.setItem(i, j, QtWidgets.QTableWidgetItem(resource[key]))
+        for row,resource in enumerate(ctmr['resources']):
+            # makae sure first column is always identifier
+            self.files_analysis_tab.setItem(row, 0, QtWidgets.QTableWidgetItem(resource[identifier[0]]))
 
-            # show obviously to user that the input file is currently in the received list of files
-            if resource["sha256"] == self.sha256:
-                self.files_analysis_tab.selectRow(i)
-                for j in range(self.files_analysis_tab.columnCount()):
-                    self.files_analysis_tab.item(i,j).setBackground(QtGui.QColor(255,232,255))
+            #for this row check if the hash of input file matches the hash of the file in this row and change cell bg color
+            current_is_infile = False
+            if resource[identifier[0]] == self.sha256:
+                self.files_analysis_tab.item(row,0).setBackground(inputfile_highlight_color)
+                self.files_analysis_tab.selectRow(row)
+                current_is_infile = True
+            
+            self.populate_analysis_table_row(resource,row,analysis_tab_columns,current_is_infile,inputfile_highlight_color)
 
         # resize first column (assuming sha256) to show entire entry
         self.files_analysis_tab.resizeColumnToContents(0)
         #stretch the final column to the end of the widget
         self.files_analysis_tab.horizontalHeader().setStretchLastSection(True)
+
+    def populate_analysis_table_row(self,resource,row,analysis_tab_columns,current_is_infile,inputfile_highlight_color):
+        """
+        When looping through returned resources, call this func to populate a row of the table held in the "analysis" tab.
+
+        Needed this function to reduce clutter. Each column in each tab may require specific handling before it can be displayed.
+        @param self: overarching MAGICPluginFormClass
+        @param resource: a single file object returned when calling GET /files
+        @param row: row index
+        @param analysis_tab_columns: column names/resource keys as specified at the top of get_and_populate_tables
+        @param current_is_infile: boolean on whether or not the current resource is also the input file
+        @param inputfile_highlight_color: the QtGui.QColor object defining the color to highlight the infile with
+        """
+        # check all keys which belong to columns specified by analysis table tab
+        # note first col (0) is always identifier. hence why we use col+1
+        for col,key in enumerate(analysis_tab_columns):
+            # if key requires special handling:
+            if key == "filenames":
+                self.files_analysis_tab.setItem(row, col+1, QtWidgets.QTableWidgetItem(','.join(resource[key])))
+            else: # returned item is string, add to table cell as normal
+                self.files_analysis_tab.setItem(row, col+1, QtWidgets.QTableWidgetItem(resource[key]))
+
+            # current hash is infile, change cell background color so user can identify it easily
+            if current_is_infile:
+                self.files_analysis_tab.item(row,col+1).setBackground(inputfile_highlight_color)
