@@ -17,6 +17,23 @@ import cythereal_magic
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
+class TableView(QtWidgets.QTableWidget):
+    def __init__(self, data, *args):
+        QtWidgets.QTableWidget.__init__(self, *args)
+        self.data = data
+        self.setData()
+        self.resizeColumnsToContents()
+        self.resizeRowsToContents()
+ 
+    def setData(self): 
+        horHeaders = []
+        for n, key in enumerate(sorted(self.data.keys())):
+            horHeaders.append(key)
+            for m, item in enumerate(self.data[key]):
+                newitem = QtWidgets.QTableWidgetItem(item)
+                self.setItem(m, n, newitem)
+        self.setHorizontalHeaderLabels(horHeaders)
+
 class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin UI object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
@@ -82,7 +99,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
-        layout.addWidget(self.files_analysis_tab)
+        layout.addWidget(self.tab_tables)
         layout.addWidget(self.textbrowser)
 
         self.parent.setLayout(layout)
@@ -101,26 +118,49 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.pushbutton.clicked.connect(self.pushbutton_click)
 
     def get_files_table_subview(self):
+        # create tab widget
         self.tab_tables = QtWidgets.QTabWidget()
-        self.files_analysis_tab = QtWidgets.QTableWidget()
-        self.files_analysis_tab.setRowCount(5)
-        self.files_analysis_tab.setColumnCount(3)
-        self.files_analysis_tab.setItem(0, 0, QtWidgets.QTableWidgetItem("test"))
 
+        # create table widget to fill tab
+        self.files_analysis_tab = QtWidgets.QTableWidget()
+
+        # add table tab to tab widget
         self.tab_tables.addTab(self.files_analysis_tab,"Analysis")
 
     def pushbutton_click(self):
         self.textbrowser.clear()
 
         try:
-            # request file from website
-            ctmr = self.ctmfiles.list_files(read_mask="sha256,filetype")
-            for item in ctmr['resources']:
-                print(item)
-            self.textbrowser.append(str(ctmr['resources']))
+            self.get_and_populate_tables()
+
             self.textbrowser.append('Resources gathered successfully.')
         except:
             self.textbrowser.append('No resources could be gathered.')
             if PLUGIN_DEBUG: 
                 import traceback
                 self.textbrowser.append(traceback.format_exc())
+
+    def get_and_populate_tables(self):
+        # request file from website
+        ctmr = self.ctmfiles.list_files(read_mask="sha256,filetype")
+
+        # set row and col of table based on returned data sizes
+        self.files_analysis_tab.setRowCount(len(ctmr['resources']))
+        # assuming here that every returned entry has the same number of columns
+        self.files_analysis_tab.setColumnCount(len(ctmr['resources'][0]))
+        
+        # label the column based on returned keys
+        self.files_analysis_tab.setHorizontalHeaderLabels(ctmr['resources'][0].keys())   
+        # hide the row headers
+        self.files_analysis_tab.verticalHeader().setVisible(False)  
+
+        # this is almost certainly not the most effecient way
+        # loop through every single value and add it to the table
+        for i,resource in enumerate(ctmr['resources']):
+            for j,key in enumerate(resource):
+                self.files_analysis_tab.setItem(i, j, QtWidgets.QTableWidgetItem(resource[key]))
+
+        # resize first column (assuming sha256) to show entire entry
+        self.files_analysis_tab.resizeColumnToContents(0)
+        #stretch the final column to the end of the widget
+        self.files_analysis_tab.horizontalHeader().setStretchLastSection(True)
