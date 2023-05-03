@@ -41,40 +41,53 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
     Populate_pluginform_with_pyqt_widgets.py code was used to create the basics of the plugin.
     """
 
+    """
+    functions for PluginForm object functionality.
+    """
     def __init__(self, title:str):
         super().__init__()
         
+        # non pyqt attrs
         self.title: str = title 
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
         self.ctm = cythereal_magic.ApiClient()
         self.ctmfiles = cythereal_magic.FilesApi(self.ctm) 
 
-        self.parent: QtWidgets.QWidget 
+        self.parent: QtWidgets.QWidget # overarching pyqt widget of this form
 
+        # main pyqt widgets used
         self.t1: QtWidgets.QLabel
         self.t2: QtWidgets.QLabel
         self.pushbutton: QtWidgets.QPushButton
+        self.tab_tables: QtWidgets.QTabWidget
         self.textbrowser: QtWidgets.QTextEdit
 
+        # pyqt widgets in tab_tables
+        # analysis tab
+        self.files_analysis_tab: QtWidgets.QWidget
+        self.files_analysis_tab_table: QtWidgets.QTableWidget
+
+        # show widget on creation of new form
         self.Show()         
 
     def OnCreate(self, form):
         """
-        Called when the widget is created
+        Called when the widget is created.
         """
         # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
 
-        self.load_views()
+        self.load_files_view()
      
     def OnClose(self, form):
         """
-        Called when the widget is closed
+        Called when the widget is closed.
         """
         return
 
-    def Show(self):   
+    def Show(self):
+        #show with intrinsic title, specific options
         return super().Show(
             self.title,
             options=(
@@ -85,58 +98,85 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             ),
         )
     
-    def load_views(self):
-        self.init_file_view()
-        self.init_files_table_subview()
+    """
+    functions for building and displaying pyqt.
+    """
+    def load_files_view(self):
+        """
+        Create form items then populate page with them.
+        """
+        self.init_files_view()
+        self.populate_files_view()
 
-        self.populate_layout()
-
-    def populate_layout(self):
-        # Create layout
+    def populate_files_view(self):
+        """
+        After individual form items are initialized, populate the form with them.
+        """
+        # Create layout object
         layout = QtWidgets.QVBoxLayout()
 
-        #adding widgets to layout
+        #adding widgets to layout, order here matters
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
         layout.addWidget(self.tab_tables)
         layout.addWidget(self.textbrowser)
 
+        # set main widget's layout based on the above items
         self.parent.setLayout(layout)
 
-    def init_file_view(self):
-        #personalizing QT widgets
+    def init_files_view(self):
+        """
+        Initialize individual items which will be added to the form.
+        """
+        #personalizing QT items, in order of appearance (order is set by layout though)
         self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
+
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
+
+        self.pushbutton = QtWidgets.QPushButton("request files")
+        self.pushbutton.setCheckable(True)
+
+        self.tab_tables = QtWidgets.QTabWidget() # create overarching tab widget
+        self.init_and_populate_files_analysis_tab() # help create items in analysis tab, add to tab widget 
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
 
-        self.pushbutton = QtWidgets.QPushButton("request files")
-        self.pushbutton.setCheckable(True)
-        #button actions
+        #connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click)
 
-    def init_files_table_subview(self):
-        # create tab widget
-        self.tab_tables = QtWidgets.QTabWidget()
-        # create individual tabs and add them to tab widget
-        self.analysis_tab = QtWidgets.QWidget()
-        self.tab_tables.addTab(self.analysis_tab,"Analysis")
+    def init_and_populate_files_analysis_tab(self):
+        """
+        Helper, initialize and populate items in analysis tab widget
+        """
+        # create empty widget and add it as a tab to tab widget
+        self.files_analysis_tab = QtWidgets.QWidget()
+        self.tab_tables.addTab(self.files_analysis_tab,"Analysis")
 
         # create the objects that will be placed in the analysis tab widget
         self.files_analysis_tab_table = QtWidgets.QTableWidget()
         self.files_analysis_tab_testbutton = QtWidgets.QPushButton("test")
 
-        # create layout for tab widget, add items to it
-        self.analysis_tab.layout = QtWidgets.QVBoxLayout()
+        # ---------------------------------------------------------------------------
+        # populate this tab similar to populate_files_view
+        # it's less confusing if individual tab population is not in its own function
+        self.files_analysis_tab.layout = QtWidgets.QVBoxLayout()
 
-        self.analysis_tab.layout.addWidget(self.files_analysis_tab_table)
-        self.analysis_tab.layout.addWidget(self.files_analysis_tab_testbutton)
+        self.files_analysis_tab.layout.addWidget(self.files_analysis_tab_table)
+        self.files_analysis_tab.layout.addWidget(self.files_analysis_tab_testbutton)
 
-        self.analysis_tab.setLayout(self.analysis_tab.layout)
+        self.files_analysis_tab.setLayout(self.files_analysis_tab.layout)
 
+    """
+    functions for connecting pyqt signals
+    """
     def pushbutton_click(self):
+        """
+        User clicks "get resources" button, call cythereal API and populate tables.
+
+        Provide information through textbox
+        """
         self.textbrowser.clear()
 
         try:
@@ -151,7 +191,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
     def get_and_populate_tables(self):
         """
-        calls GET /files and populates table widgets
+        calls GET /files and populates the different tables
 
         Also there must be some way to populate without setting every single row. This might be through some custom table class.
         """
@@ -174,7 +214,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.files_analysis_tab_table.verticalHeader().setVisible(False)  
 
         # this is almost certainly not the most effecient way
-        # loop through every single value and add it to the table
+        # loop through every single value and add it to the table cell by cell
         for row,resource in enumerate(ctmr['resources']):
             # makae sure first column is always identifier
             self.files_analysis_tab_table.setItem(row, 0, QtWidgets.QTableWidgetItem(resource[identifier[0]]))
