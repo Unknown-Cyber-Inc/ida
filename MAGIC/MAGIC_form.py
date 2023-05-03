@@ -50,7 +50,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.ctm = cythereal_magic.ApiClient()
         self.ctmfiles = cythereal_magic.FilesApi(self.ctm) 
 
-        self.parent: QtWidgets.QtWidget 
+        self.parent: QtWidgets.QWidget 
 
         self.t1: QtWidgets.QLabel
         self.t2: QtWidgets.QLabel
@@ -86,8 +86,8 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         )
     
     def load_views(self):
-        self.get_file_view()
-        self.get_files_table_subview()
+        self.init_file_view()
+        self.init_files_table_subview()
 
         self.populate_layout()
 
@@ -104,7 +104,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
         self.parent.setLayout(layout)
 
-    def get_file_view(self):
+    def init_file_view(self):
         #personalizing QT widgets
         self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
@@ -117,15 +117,24 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         #button actions
         self.pushbutton.clicked.connect(self.pushbutton_click)
 
-    def get_files_table_subview(self):
+    def init_files_table_subview(self):
         # create tab widget
         self.tab_tables = QtWidgets.QTabWidget()
+        # create individual tabs and add them to tab widget
+        self.analysis_tab = QtWidgets.QWidget()
+        self.tab_tables.addTab(self.analysis_tab,"Analysis")
 
-        # create table widget to fill tab
-        self.files_analysis_tab = QtWidgets.QTableWidget()
+        # create the objects that will be placed in the analysis tab widget
+        self.files_analysis_tab_table = QtWidgets.QTableWidget()
+        self.files_analysis_tab_testbutton = QtWidgets.QPushButton("test")
 
-        # add table tab to tab widget
-        self.tab_tables.addTab(self.files_analysis_tab,"Analysis")
+        # create layout for tab widget, add items to it
+        self.analysis_tab.layout = QtWidgets.QVBoxLayout()
+
+        self.analysis_tab.layout.addWidget(self.files_analysis_tab_table)
+        self.analysis_tab.layout.addWidget(self.files_analysis_tab_testbutton)
+
+        self.analysis_tab.setLayout(self.analysis_tab.layout)
 
     def pushbutton_click(self):
         self.textbrowser.clear()
@@ -155,34 +164,34 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         ctmr = self.ctmfiles.list_files(read_mask=','.join(identifier + analysis_tab_columns))
 
         # set row and col of table based on returned data sizes
-        self.files_analysis_tab.setRowCount(len(ctmr['resources']))
+        self.files_analysis_tab_table.setRowCount(len(ctmr['resources']))
         # number of columns = number of analysis_tab_columns + identifier entry (1)
-        self.files_analysis_tab.setColumnCount(len(analysis_tab_columns)+1)
+        self.files_analysis_tab_table.setColumnCount(len(analysis_tab_columns)+1)
         
         # label the column based on returned labels
-        self.files_analysis_tab.setHorizontalHeaderLabels(identifier + analysis_tab_columns)   
+        self.files_analysis_tab_table.setHorizontalHeaderLabels(identifier + analysis_tab_columns)   
         # hide the row headers
-        self.files_analysis_tab.verticalHeader().setVisible(False)  
+        self.files_analysis_tab_table.verticalHeader().setVisible(False)  
 
         # this is almost certainly not the most effecient way
         # loop through every single value and add it to the table
         for row,resource in enumerate(ctmr['resources']):
             # makae sure first column is always identifier
-            self.files_analysis_tab.setItem(row, 0, QtWidgets.QTableWidgetItem(resource[identifier[0]]))
+            self.files_analysis_tab_table.setItem(row, 0, QtWidgets.QTableWidgetItem(resource[identifier[0]]))
 
             #for this row check if the hash of input file matches the hash of the file in this row and change cell bg color
             current_is_infile = False
             if resource[identifier[0]] == self.sha256:
-                self.files_analysis_tab.item(row,0).setBackground(inputfile_highlight_color)
-                self.files_analysis_tab.selectRow(row)
+                self.files_analysis_tab_table.item(row,0).setBackground(inputfile_highlight_color)
+                self.files_analysis_tab_table.selectRow(row)
                 current_is_infile = True
             
             self.populate_analysis_table_row(resource,row,analysis_tab_columns,current_is_infile,inputfile_highlight_color)
 
         # resize first column (assuming sha256) to show entire entry
-        self.files_analysis_tab.resizeColumnToContents(0)
+        self.files_analysis_tab_table.resizeColumnToContents(0)
         #stretch the final column to the end of the widget
-        self.files_analysis_tab.horizontalHeader().setStretchLastSection(True)
+        self.files_analysis_tab_table.horizontalHeader().setStretchLastSection(True)
 
     def populate_analysis_table_row(self,resource,row,analysis_tab_columns,current_is_infile,inputfile_highlight_color):
         """
@@ -201,10 +210,10 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         for col,key in enumerate(analysis_tab_columns):
             # if key requires special handling:
             if key == "filenames":
-                self.files_analysis_tab.setItem(row, col+1, QtWidgets.QTableWidgetItem(','.join(resource[key])))
+                self.files_analysis_tab_table.setItem(row, col+1, QtWidgets.QTableWidgetItem(','.join(resource[key])))
             else: # returned item is string, add to table cell as normal
-                self.files_analysis_tab.setItem(row, col+1, QtWidgets.QTableWidgetItem(resource[key]))
+                self.files_analysis_tab_table.setItem(row, col+1, QtWidgets.QTableWidgetItem(resource[key]))
 
             # current hash is infile, change cell background color so user can identify it easily
             if current_is_infile:
-                self.files_analysis_tab.item(row,col+1).setBackground(inputfile_highlight_color)
+                self.files_analysis_tab_table.item(row,col+1).setBackground(inputfile_highlight_color)
