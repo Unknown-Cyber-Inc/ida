@@ -41,40 +41,53 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
     Populate_pluginform_with_pyqt_widgets.py code was used to create the basics of the plugin.
     """
 
+    """
+    functions for PluginForm object functionality.
+    """
     def __init__(self, title:str):
         super().__init__()
         
+        # non pyqt attrs
         self.title: str = title 
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
         self.ctm = cythereal_magic.ApiClient()
         self.ctmfiles = cythereal_magic.FilesApi(self.ctm) 
 
-        self.parent: QtWidgets.QtWidget 
+        self.parent: QtWidgets.QWidget # overarching pyqt widget of this form
 
+        # main pyqt widgets used
         self.t1: QtWidgets.QLabel
         self.t2: QtWidgets.QLabel
         self.pushbutton: QtWidgets.QPushButton
+        self.tab_tables: QtWidgets.QTabWidget
         self.textbrowser: QtWidgets.QTextEdit
 
+        # pyqt widgets in tab_tables
+        # analysis tab
+        self.files_analysis_tab: QtWidgets.QWidget
+        self.files_analysis_tab_table: QtWidgets.QTableWidget
+
+        # show widget on creation of new form
         self.Show()         
 
     def OnCreate(self, form):
         """
-        Called when the widget is created
+        Called when the widget is created.
         """
         # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
 
-        self.load_views()
+        self.load_files_view()
      
     def OnClose(self, form):
         """
-        Called when the widget is closed
+        Called when the widget is closed.
         """
         return
 
-    def Show(self):   
+    def Show(self):
+        #show with intrinsic title, specific options
         return super().Show(
             self.title,
             options=(
@@ -85,49 +98,85 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             ),
         )
     
-    def load_views(self):
-        self.get_file_view()
-        self.get_files_table_subview()
+    """
+    functions for building and displaying pyqt.
+    """
+    def load_files_view(self):
+        """
+        Create form items then populate page with them.
+        """
+        self.init_files_view()
+        self.populate_files_view()
 
-        self.populate_layout()
-
-    def populate_layout(self):
-        # Create layout
+    def populate_files_view(self):
+        """
+        After individual form items are initialized, populate the form with them.
+        """
+        # Create layout object
         layout = QtWidgets.QVBoxLayout()
 
-        #adding widgets to layout
+        #adding widgets to layout, order here matters
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
         layout.addWidget(self.tab_tables)
         layout.addWidget(self.textbrowser)
 
+        # set main widget's layout based on the above items
         self.parent.setLayout(layout)
 
-    def get_file_view(self):
-        #personalizing QT widgets
+    def init_files_view(self):
+        """
+        Initialize individual items which will be added to the form.
+        """
+        #personalizing QT items, in order of appearance (order is set by layout though)
         self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
+
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
+
+        self.pushbutton = QtWidgets.QPushButton("request files")
+        self.pushbutton.setCheckable(True)
+
+        self.tab_tables = QtWidgets.QTabWidget() # create overarching tab widget
+        self.init_and_populate_files_analysis_tab() # help create items in analysis tab, add to tab widget 
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
 
-        self.pushbutton = QtWidgets.QPushButton("request files")
-        self.pushbutton.setCheckable(True)
-        #button actions
+        #connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click)
 
-    def get_files_table_subview(self):
-        # create tab widget
-        self.tab_tables = QtWidgets.QTabWidget()
-
-        # create table widget to fill tab
-        self.files_analysis_tab = QtWidgets.QTableWidget()
-
-        # add table tab to tab widget
+    def init_and_populate_files_analysis_tab(self):
+        """
+        Helper, initialize and populate items in analysis tab widget
+        """
+        # create empty widget and add it as a tab to tab widget
+        self.files_analysis_tab = QtWidgets.QWidget()
         self.tab_tables.addTab(self.files_analysis_tab,"Analysis")
 
+        # create the objects that will be placed in the analysis tab widget
+        self.files_analysis_tab_table = QtWidgets.QTableWidget()
+        self.files_analysis_tab_testbutton = QtWidgets.QPushButton("test")
+
+        # ---------------------------------------------------------------------------
+        # populate this tab similar to populate_files_view
+        # it's less confusing if individual tab population is not in its own function
+        self.files_analysis_tab.layout = QtWidgets.QVBoxLayout()
+
+        self.files_analysis_tab.layout.addWidget(self.files_analysis_tab_table)
+        self.files_analysis_tab.layout.addWidget(self.files_analysis_tab_testbutton)
+
+        self.files_analysis_tab.setLayout(self.files_analysis_tab.layout)
+
+    """
+    functions for connecting pyqt signals
+    """
     def pushbutton_click(self):
+        """
+        User clicks "get resources" button, call cythereal API and populate tables.
+
+        Provide information through textbox
+        """
         self.textbrowser.clear()
 
         try:
@@ -142,7 +191,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
     def get_and_populate_tables(self):
         """
-        calls GET /files and populates table widgets
+        calls GET /files and populates the different tables
 
         Also there must be some way to populate without setting every single row. This might be through some custom table class.
         """
@@ -155,34 +204,34 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         ctmr = self.ctmfiles.list_files(read_mask=','.join(identifier + analysis_tab_columns))
 
         # set row and col of table based on returned data sizes
-        self.files_analysis_tab.setRowCount(len(ctmr['resources']))
+        self.files_analysis_tab_table.setRowCount(len(ctmr['resources']))
         # number of columns = number of analysis_tab_columns + identifier entry (1)
-        self.files_analysis_tab.setColumnCount(len(analysis_tab_columns)+1)
+        self.files_analysis_tab_table.setColumnCount(len(analysis_tab_columns)+1)
         
         # label the column based on returned labels
-        self.files_analysis_tab.setHorizontalHeaderLabels(identifier + analysis_tab_columns)   
+        self.files_analysis_tab_table.setHorizontalHeaderLabels(identifier + analysis_tab_columns)   
         # hide the row headers
-        self.files_analysis_tab.verticalHeader().setVisible(False)  
+        self.files_analysis_tab_table.verticalHeader().setVisible(False)  
 
         # this is almost certainly not the most effecient way
-        # loop through every single value and add it to the table
+        # loop through every single value and add it to the table cell by cell
         for row,resource in enumerate(ctmr['resources']):
             # makae sure first column is always identifier
-            self.files_analysis_tab.setItem(row, 0, QtWidgets.QTableWidgetItem(resource[identifier[0]]))
+            self.files_analysis_tab_table.setItem(row, 0, QtWidgets.QTableWidgetItem(resource[identifier[0]]))
 
             #for this row check if the hash of input file matches the hash of the file in this row and change cell bg color
             current_is_infile = False
             if resource[identifier[0]] == self.sha256:
-                self.files_analysis_tab.item(row,0).setBackground(inputfile_highlight_color)
-                self.files_analysis_tab.selectRow(row)
+                self.files_analysis_tab_table.item(row,0).setBackground(inputfile_highlight_color)
+                self.files_analysis_tab_table.selectRow(row)
                 current_is_infile = True
             
             self.populate_analysis_table_row(resource,row,analysis_tab_columns,current_is_infile,inputfile_highlight_color)
 
         # resize first column (assuming sha256) to show entire entry
-        self.files_analysis_tab.resizeColumnToContents(0)
+        self.files_analysis_tab_table.resizeColumnToContents(0)
         #stretch the final column to the end of the widget
-        self.files_analysis_tab.horizontalHeader().setStretchLastSection(True)
+        self.files_analysis_tab_table.horizontalHeader().setStretchLastSection(True)
 
     def populate_analysis_table_row(self,resource,row,analysis_tab_columns,current_is_infile,inputfile_highlight_color):
         """
@@ -201,10 +250,10 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         for col,key in enumerate(analysis_tab_columns):
             # if key requires special handling:
             if key == "filenames":
-                self.files_analysis_tab.setItem(row, col+1, QtWidgets.QTableWidgetItem(','.join(resource[key])))
+                self.files_analysis_tab_table.setItem(row, col+1, QtWidgets.QTableWidgetItem(','.join(resource[key])))
             else: # returned item is string, add to table cell as normal
-                self.files_analysis_tab.setItem(row, col+1, QtWidgets.QTableWidgetItem(resource[key]))
+                self.files_analysis_tab_table.setItem(row, col+1, QtWidgets.QTableWidgetItem(resource[key]))
 
             # current hash is infile, change cell background color so user can identify it easily
             if current_is_infile:
-                self.files_analysis_tab.item(row,col+1).setBackground(inputfile_highlight_color)
+                self.files_analysis_tab_table.item(row,col+1).setBackground(inputfile_highlight_color)
