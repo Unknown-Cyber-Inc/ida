@@ -69,7 +69,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.files_analysis_tab_table: QtWidgets.QTableWidget
 
         # show widget on creation of new form
-        self.Show()      
+        self.Show()         
 
     def OnCreate(self, form):
         """
@@ -88,7 +88,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
     def Show(self):
         #show with intrinsic title, specific options
-        returnShow = super().Show(
+        return super().Show(
             self.title,
             options=(
             # for some reason the options appear to only work once after resetting desktop in IDA
@@ -98,13 +98,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             | ida_kernwin.PluginForm.WCLS_SAVE
             ),
         )
-        # dock this widget on the right side of IDA, ensure this by setting dest_ctrl to an empty string
-        ida_kernwin.set_dock_pos(self.title,"",ida_kernwin.DP_RIGHT)
 
-        w = self.parent.parent().parent()
-        w.setSizes([750,1])
-
-        return returnShow
     
     """
     functions for building and displaying pyqt.
