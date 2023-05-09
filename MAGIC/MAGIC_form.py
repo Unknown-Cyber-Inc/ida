@@ -69,7 +69,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.files_analysis_tab_table: QtWidgets.QTableWidget
 
         # show widget on creation of new form
-        self.Show()         
+        self.Show()      
 
     def OnCreate(self, form):
         """
@@ -88,15 +88,18 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
 
     def Show(self):
         #show with intrinsic title, specific options
-        return super().Show(
+        returnShow = super().Show(
             self.title,
             options=(
+            # for some reason the options appear to only work once after resetting desktop in IDA
             ida_kernwin.PluginForm.WOPN_TAB
             | ida_kernwin.PluginForm.WOPN_RESTORE
             | ida_kernwin.PluginForm.WCLS_CLOSE_LATER
             | ida_kernwin.PluginForm.WCLS_SAVE
             ),
         )
+
+        return returnShow
     
     """
     functions for building and displaying pyqt.
