@@ -17,7 +17,7 @@ import cythereal_magic
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-class TableView(QtWidgets.QTableWidget):
+class ScrTableView(QtWidgets.QTableWidget):
     def __init__(self, data, *args):
         QtWidgets.QTableWidget.__init__(self, *args)
         self.data = data
@@ -34,7 +34,7 @@ class TableView(QtWidgets.QTableWidget):
                 self.setItem(m, n, newitem)
         self.setHorizontalHeaderLabels(horHeaders)
 
-class MAGICPluginFormClass(ida_kernwin.PluginForm):
+class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin UI object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
 
@@ -69,7 +69,13 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.files_analysis_tab_table: QtWidgets.QTableWidget
 
         # show widget on creation of new form
-        self.Show()         
+        self.Show()      
+
+        # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
+        ida_kernwin.set_dock_pos(self.title,"",ida_kernwin.DP_RIGHT)
+        # A 'QSplitter' is created which can handle the default creation size
+        # Through testing I have found out which widget this is relative to self
+        self.parent.parent().parent().setSizes([800,1])     
 
     def OnCreate(self, form):
         """
@@ -98,7 +104,6 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             | ida_kernwin.PluginForm.WCLS_SAVE
             ),
         )
-
     
     """
     functions for building and displaying pyqt.
