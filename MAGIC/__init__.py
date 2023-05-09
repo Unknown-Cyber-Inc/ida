@@ -18,11 +18,14 @@ from ida_kernwin import find_widget,is_idaq,close_widget
 
 # other MAGIC imports
 from MAGIC import MAGIC_form
+from MAGIC import MAGIC_sync_scroll
 from MAGIC import MAGIC_hooks
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
+#ida synchronized scroll widget constants
+PLUGIN_SCROLLWIDGET_NAME = 'MAGIC Procedures'
 #ida plugin constants
 PLUGIN_NAME = 'MAGIC'
 PLUGIN_HOTKEY = 'Ctrl-Shift-A'
@@ -71,6 +74,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         if PLUGIN_DEVELOP: 
             print("MAGIC running mode DEVELOP")
             ida_idaapi.require("MAGIC.MAGIC_form") # reloads the module so we can make changes without restarting IDA
+            ida_idaapi.require("MAGIC.MAGIC_sync_scroll")
             ida_idaapi.require("MAGIC.MAGIC_hooks")
             return ida_idaapi.PLUGIN_OK
         
@@ -91,12 +95,16 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         # in development mode, close and reopen the widget every time the shortcut is hit
         if PLUGIN_DEVELOP:
             close_widget(find_widget(PLUGIN_NAME),0)
+            close_widget(find_widget(PLUGIN_SCROLLWIDGET_NAME),0)
             MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
+            MAGIC_sync_scroll.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME)
             return
         
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
             self.form = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
+        if find_widget(PLUGIN_SCROLLWIDGET_NAME) is None:    
+            self.syncscroll = MAGIC_sync_scroll.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME)
 
     def term(self):
         """
