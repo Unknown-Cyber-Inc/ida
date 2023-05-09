@@ -98,6 +98,11 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             | ida_kernwin.PluginForm.WCLS_SAVE
             ),
         )
+        # dock this widget on the right side of IDA, ensure this by setting dest_ctrl to an empty string
+        ida_kernwin.set_dock_pos(self.title,"",ida_kernwin.DP_RIGHT)
+
+        w = self.parent.parent().parent()
+        w.setSizes([750,1])
 
         return returnShow
     
