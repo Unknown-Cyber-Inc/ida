@@ -22,6 +22,7 @@ from MAGIC import MAGIC_sync_scroll
 from MAGIC import MAGIC_hooks
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
+PLUGIN_DEVELOP_RECREATE_WIDGETS = True if os.getenv("PLUGIN_DEVELOP_RECREATE_WIDGETS") == "True" else False
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
 #ida synchronized scroll widget constants
@@ -93,12 +94,9 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         """
     
         # in development mode, close and reopen the widget every time the shortcut is hit
-        if PLUGIN_DEVELOP:
+        if PLUGIN_DEVELOP and PLUGIN_DEVELOP_RECREATE_WIDGETS:
             close_widget(find_widget(PLUGIN_NAME),0)
             close_widget(find_widget(PLUGIN_SCROLLWIDGET_NAME),0)
-            MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
-            MAGIC_sync_scroll.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME)
-            return
         
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
