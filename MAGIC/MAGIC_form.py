@@ -44,7 +44,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
     functions for PluginForm object functionality.
     """
-    def __init__(self, title:str):
+    def __init__(self, title):
         super().__init__()
         
         # non pyqt attrs
@@ -133,7 +133,6 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         """
         #personalizing QT items, in order of appearance (order is set by layout though)
         self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
-
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
 
         self.pushbutton = QtWidgets.QPushButton("request files")
