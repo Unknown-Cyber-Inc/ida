@@ -30,6 +30,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         # show widget on creation of new form
         self.Show()
 
+        # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
+        ida_kernwin.set_dock_pos(self.title,"",ida_kernwin.DP_RIGHT)
+        # A 'QSplitter' is created which can handle the default creation size
+        # Through testing I have found out which widget this is relative to self
+        self.parent.parent().parent().setSizes([800,1])
+
     def OnCreate(self, form):
         """
         Called when the widget is created.
