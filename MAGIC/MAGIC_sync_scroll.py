@@ -32,8 +32,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
         # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
         ida_kernwin.set_dock_pos(self.title,"",ida_kernwin.DP_RIGHT)
-        # A 'QSplitter' is created which can handle the default creation size
-        # Through testing I have found out which widget this is relative to self
+        """
+        A 'QSplitter' is created which can handle the default creation size.
+        Through testing I have found out which widget this is relative to self.
+        It is handled by IDA and doesn't have a simple reference.
+        The number here is a relative size ratio between two widgets (between the scroll widget and the widgets to the left)
+        """
         self.parent.parent().parent().setSizes([800,1])
 
     def OnCreate(self, form):
