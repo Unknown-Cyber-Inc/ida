@@ -44,15 +44,14 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
     functions for PluginForm object functionality.
     """
-    def __init__(self, title):
+    def __init__(self, title, magic_api_client):
         super().__init__()
         
         # non pyqt attrs
         self.title: str = title 
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
-        self.ctm = cythereal_magic.ApiClient()
-        self.ctmfiles = cythereal_magic.FilesApi(self.ctm) 
+        self.ctmfiles = cythereal_magic.FilesApi(magic_api_client) 
 
         self.parent: QtWidgets.QWidget # overarching pyqt widget of this form
 
