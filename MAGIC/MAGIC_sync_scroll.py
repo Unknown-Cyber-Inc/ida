@@ -48,6 +48,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.parent = self.FormToPyQtWidget(form)
 
         self.load_scroll_view()
+
+        # strictly for testing
+        for i in range(1000):
+            self.textbrowser.append("Line " + str(i) + ": ")
      
     def OnClose(self, form):
         """
@@ -116,4 +120,4 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     functions for connecting pyqt signals
     """
     def pushbutton_click(self):
-        pass   
+        pass    
