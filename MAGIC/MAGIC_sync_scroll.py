@@ -16,6 +16,13 @@ import cythereal_magic
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
+class PluginScrHooks(ida_kernwin.UI_Hooks):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def screen_ea_changed(self, ea, prev_ea):
+        print(hex(ea))
+
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
@@ -40,6 +47,9 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         """
         self.parent.parent().parent().setSizes([800,1])
 
+        self.hooks = PluginScrHooks()
+        self.hooks.hook()
+
     def OnCreate(self, form):
         """
         Called when the widget is created.
@@ -57,6 +67,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         """
         Called when the widget is closed.
         """
+        self.hooks.unhook()
         return
 
     def Show(self):
