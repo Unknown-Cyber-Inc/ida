@@ -34,6 +34,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     def __init__(self, title, magic_api_client):
         super().__init__()
         self.title:str = title
+        self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
+        self.hooks = PluginScrHooks()
+        self.hooks.hook()
+
         # show widget on creation of new form
         self.Show()
 
@@ -46,9 +50,6 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         The number here is a relative size ratio between two widgets (between the scroll widget and the widgets to the left)
         """
         self.parent.parent().parent().setSizes([800,1])
-
-        self.hooks = PluginScrHooks()
-        self.hooks.hook()
 
     def OnCreate(self, form):
         """
@@ -131,4 +132,6 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     functions for connecting pyqt signals
     """
     def pushbutton_click(self):
-        pass    
+        # request file from website with the above columns of info
+        ctmr = self.ctmfiles.list_files()
+        self.textbrowser.append()    
