@@ -31,7 +31,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     functions for PluginForm object functionality.
     """
-    def __init__(self, title):
+    def __init__(self, title, magic_api_client):
         super().__init__()
         self.title:str = title
         # show widget on creation of new form
