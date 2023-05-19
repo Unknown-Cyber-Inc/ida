@@ -33,8 +33,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     def __init__(self, title, magic_api_client):
         super().__init__()
+        self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.title:str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
+
         self.hooks = PluginScrHooks()
         self.hooks.hook()
 
@@ -133,5 +135,5 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     def pushbutton_click(self):
         # request file from website with the above columns of info
-        ctmr = self.ctmfiles.list_files()
-        self.textbrowser.append()    
+        ctmr = self.ctmfiles.list_file_procedures(self.sha256)
+        self.textbrowser.append(str(ctmr))    
