@@ -136,4 +136,9 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     def pushbutton_click(self):
         # request file from website with the above columns of info
         ctmr = self.ctmfiles.list_file_procedures(self.sha256)
+
+        resources = ctmr['resources']
+        testResource = resources[0]["example_blockEAs"][0]["startEA"]
+        ida_kernwin.jumpto(ida_kernwin.str2ea(testResource))
+        
         self.textbrowser.append(str(ctmr))    
