@@ -113,7 +113,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
-        layout.addWidget(self.proc_table)
+        layout.addWidget(self.proc_tree)
         layout.addWidget(self.textbrowser)
 
         # set main widget's layout based on the above items
@@ -130,18 +130,33 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.pushbutton = QtWidgets.QPushButton("request files")
         self.pushbutton.setCheckable(False)
 
-        self.proc_table = QtWidgets.QTreeView()
+        self.proc_tree = QtWidgets.QTreeView()
+        self.proc_tree.setHeaderHidden(True)
+        self.proc_tree.setModel(Qt.QStandardItemModel())
+        self.populate_proc_table() # populate qtreeview with processes
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
 
         #connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click) 
-
+    
     def populate_proc_table(self):
-        pass
-        # en1 = ProcTableItemModel("test1")
-        # en2 = ProcTableItemModel("test2")
+        rootNode = self.proc_tree.model().invisibleRootItem()
+
+        en1 = ProcTableItemModel("test1")
+        en1_1 = ProcTableItemModel("test1_1")
+        en1_2 = ProcTableItemModel("test1_2")
+        en1_2_1 = ProcTableItemModel("test1_2_1")
+        en1_2_2 = ProcTableItemModel("test1_2_2")
+        en1_2_3 = ProcTableItemModel("test1_2_3")
+        en2 = ProcTableItemModel("test2")
+        en2_1 = ProcTableItemModel("test2_1")
+
+        en1_2.appendRows([en1_2_1,en1_2_2,en1_2_3])
+        en1.appendRows([en1_1,en1_2])
+        en2.appendRow(en2_1)
+        rootNode.appendRows([en1,en2])
 
     """
     functions for connecting pyqt signals
@@ -156,7 +171,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             testResource = resources[0]["example_blockEAs"][0]["startEA"] # example, grab ea
             ida_kernwin.jumpto(ida_kernwin.str2ea(testResource)) # conver to ea object and jump
 
-            self.populate_proc_table() # populate qtreeview with processes
+            
 
             self.textbrowser.append('Resources gathered successfully.')
         except:
