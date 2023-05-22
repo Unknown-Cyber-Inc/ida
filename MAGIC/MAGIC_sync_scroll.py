@@ -122,7 +122,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
 
         self.pushbutton = QtWidgets.QPushButton("request files")
-        self.pushbutton.setCheckable(True)
+        self.pushbutton.setCheckable(False)
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)

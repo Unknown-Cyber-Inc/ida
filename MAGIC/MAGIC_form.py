@@ -135,7 +135,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
 
         self.pushbutton = QtWidgets.QPushButton("request files")
-        self.pushbutton.setCheckable(True)
+        self.pushbutton.setCheckable(False)
 
         self.tab_tables = QtWidgets.QTabWidget() # create overarching tab widget
         self.init_and_populate_files_analysis_tab() # help create items in analysis tab, add to tab widget 
