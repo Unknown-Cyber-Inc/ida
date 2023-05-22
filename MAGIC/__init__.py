@@ -112,8 +112,8 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
     
         # in development mode, close and reopen the widget every time the shortcut is hit
         if PLUGIN_DEVELOP and PLUGIN_DEVELOP_RECREATE_WIDGETS:
-            close_widget(find_widget(PLUGIN_NAME,PLUGIN_API_CLIENT),0)
-            close_widget(find_widget(PLUGIN_SCROLLWIDGET_NAME,PLUGIN_API_CLIENT),0)
+            close_widget(find_widget(PLUGIN_NAME),0)
+            close_widget(find_widget(PLUGIN_SCROLLWIDGET_NAME),0)
         
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
