@@ -134,11 +134,18 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     functions for connecting pyqt signals
     """
     def pushbutton_click(self):
-        # request file from website with the above columns of info
-        ctmr = self.ctmfiles.list_file_procedures(self.sha256)
+        self.textbrowser.clear()
 
-        resources = ctmr['resources']
-        testResource = resources[0]["example_blockEAs"][0]["startEA"]
-        ida_kernwin.jumpto(ida_kernwin.str2ea(testResource))
-        
-        self.textbrowser.append(str(ctmr))    
+        try:
+            ctmr = self.ctmfiles.list_file_procedures(self.sha256)
+
+            resources = ctmr['resources']
+            testResource = resources[0]["example_blockEAs"][0]["startEA"]
+            ida_kernwin.jumpto(ida_kernwin.str2ea(testResource))
+
+            self.textbrowser.append('Resources gathered successfully.')
+        except:
+            self.textbrowser.append('No resources could be gathered.')
+            if PLUGIN_DEBUG: 
+                import traceback
+                self.textbrowser.append(traceback.format_exc())    
