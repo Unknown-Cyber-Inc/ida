@@ -6,8 +6,8 @@ testing out how certain functions can be synced.
 """
 
 # IDA and UI imports
-import ida_nalt, ida_kernwin, ida_lines
-from PyQt5 import QtWidgets, QtGui
+import ida_nalt, ida_kernwin
+from PyQt5 import QtWidgets, Qt, QtGui 
 
 #cythereal magic for calling API
 import cythereal_magic
@@ -22,6 +22,11 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
 
     def screen_ea_changed(self, ea, prev_ea):
         print(hex(ea))
+
+class ProcTableItemModel(Qt.QStandardItem):
+    def __init__(self,txt=''):
+        super().__init__()
+        self.setText(txt)
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
@@ -108,6 +113,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
+        layout.addWidget(self.proc_table)
         layout.addWidget(self.textbrowser)
 
         # set main widget's layout based on the above items
@@ -124,11 +130,18 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.pushbutton = QtWidgets.QPushButton("request files")
         self.pushbutton.setCheckable(False)
 
+        self.proc_table = QtWidgets.QTreeView()
+
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
 
         #connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click) 
+
+    def populate_proc_table(self):
+        pass
+        # en1 = ProcTableItemModel("test1")
+        # en2 = ProcTableItemModel("test2")
 
     """
     functions for connecting pyqt signals
@@ -137,11 +150,13 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.textbrowser.clear()
 
         try:
-            ctmr = self.ctmfiles.list_file_procedures(self.sha256)
+            ctmr = self.ctmfiles.list_file_procedures(self.sha256) # request resources
 
-            resources = ctmr['resources']
-            testResource = resources[0]["example_blockEAs"][0]["startEA"]
-            ida_kernwin.jumpto(ida_kernwin.str2ea(testResource))
+            resources = ctmr['resources'] # get 'resources' from the returned
+            testResource = resources[0]["example_blockEAs"][0]["startEA"] # example, grab ea
+            ida_kernwin.jumpto(ida_kernwin.str2ea(testResource)) # conver to ea object and jump
+
+            self.populate_proc_table() # populate qtreeview with processes
 
             self.textbrowser.append('Resources gathered successfully.')
         except:
