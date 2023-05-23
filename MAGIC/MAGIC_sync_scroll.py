@@ -23,10 +23,25 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
     def screen_ea_changed(self, ea, prev_ea):
         print(hex(ea))
 
-class ProcTableItemModel(Qt.QStandardItem):
+class ProcTableItemModelSubitem(Qt.QStandardItem):
+    """Item below a TableItemModel
+
+    May be grouped more logically with 'delegates'!
+    """
     def __init__(self,txt=''):
         super().__init__()
         self.setText(txt)
+        self.setEditable(False)
+
+class ProcTableItemModel(Qt.QStandardItem):
+    def __init__(self,procInfo):
+        super().__init__()
+        print(procInfo)
+        self.setText(procInfo['hard_hash'])
+        self.setEditable(False)
+        self.appendRows([
+            ProcTableItemModelSubitem()
+        ])
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
@@ -133,7 +148,6 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree = QtWidgets.QTreeView()
         self.proc_tree.setHeaderHidden(True)
         self.proc_tree.setModel(Qt.QStandardItemModel())
-        self.populate_proc_table() # populate qtreeview with processes
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
@@ -141,22 +155,18 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         #connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click) 
     
-    def populate_proc_table(self):
+    def populate_proc_table(self, resources):
+        """ populates the procedures table with recieved procedures
+        
+        @param resources: dict
+        May also be responsible for providing IDA with dict in form of {"startEA":"procHash"}.
+        This is so we can jump to that EA when we reach that item in IDA window
+        Note: is there any difference in performance from many appendRow and one appendRows?
+        """
         rootNode = self.proc_tree.model().invisibleRootItem()
 
-        en1 = ProcTableItemModel("test1")
-        en1_1 = ProcTableItemModel("test1_1")
-        en1_2 = ProcTableItemModel("test1_2")
-        en1_2_1 = ProcTableItemModel("test1_2_1")
-        en1_2_2 = ProcTableItemModel("test1_2_2")
-        en1_2_3 = ProcTableItemModel("test1_2_3")
-        en2 = ProcTableItemModel("test2")
-        en2_1 = ProcTableItemModel("test2_1")
-
-        en1_2.appendRows([en1_2_1,en1_2_2,en1_2_3])
-        en1.appendRows([en1_1,en1_2])
-        en2.appendRow(en2_1)
-        rootNode.appendRows([en1,en2])
+        for resource in resources:
+            rootNode.appendRow(ProcTableItemModel(resource))
 
     """
     functions for connecting pyqt signals
@@ -165,13 +175,15 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.textbrowser.clear()
 
         try:
-            ctmr = self.ctmfiles.list_file_procedures(self.sha256) # request resources
+            ctmr = self.ctmfiles.list_file_procedures(self.sha256,page_size=1,read_mask="*") # request resources
 
             resources = ctmr['resources'] # get 'resources' from the returned
-            testResource = resources[0]["example_blockEAs"][0]["startEA"] # example, grab ea
-            ida_kernwin.jumpto(ida_kernwin.str2ea(testResource)) # conver to ea object and jump
+            # print(resources)
+            # these were just for testing the IDA jump feature
+            # testResource = resources[0]["example_blockEAs"][0]["startEA"] # example, grab ea
+            # ida_kernwin.jumpto(ida_kernwin.str2ea(testResource)) # conver to ea object and jump
 
-            
+            self.populate_proc_table(resources) # populate qtreeview with processes
 
             self.textbrowser.append('Resources gathered successfully.')
         except:
