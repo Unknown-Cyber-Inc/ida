@@ -23,25 +23,55 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
     def screen_ea_changed(self, ea, prev_ea):
         print(hex(ea))
 
-class ProcTableItemModelSubitem(Qt.QStandardItem):
+class ProcTableItemModel(Qt.QStandardItem):
+    def __init__(self,procInfo):
+        super().__init__()
+        self.setText(procInfo['hard_hash'])
+        self.setEditable(False)
+        
+        # more specific entries
+        signatureAddrNode = ProcTableSubItem("signature (address)")
+        for i,signature in enumerate(procInfo["example_blockEAs"]):
+            indexNode = ProcTableSubItem("block " + str(i+1) +":")
+            indexNode.appendRows([ProcTableSubItem("start EA: "+signature['startEA']),
+                                  ProcTableSubItem("end EA: "+signature['endEA'])
+            ])
+            signatureAddrNode.appendRow(indexNode)
+
+        signatureNode = ProcTableSubItem("signature (byte)")
+        if procInfo["signature"]:
+            for i,signature in enumerate(procInfo["signature"]):
+                indexNode = ProcTableSubItem("block " + str(i+1) +":")
+                indexNode.appendRows([ProcTableSubItem(byte) for byte in signature])
+                signatureNode.appendRow(indexNode)
+
+        signatureAssemblyNode = ProcTableSubItem("signature (assembly)")
+        for i,signature in enumerate(procInfo["example_procedure"]):
+            indexNode = ProcTableSubItem("block " + str(i+1) +":")
+            indexNode.appendRows([ProcTableSubItem(byte) for byte in signature])
+            signatureAssemblyNode.appendRow(indexNode)
+
+        # headers
+        self.appendRows([
+            ProcTableSubItem("occurrances: "+str(procInfo['occurrence_counts'])),
+            ProcTableSubItem("library: "+str(procInfo['is_library'])),
+            ProcTableSubItem("signatures: "+str(procInfo['signature_count'])),
+            ProcTableSubItem("total blocks: "+str(procInfo['block_counts'])),
+            ProcTableSubItem("total instructions: "+str(procInfo['instr_counts'])),
+            ProcTableSubItem("total bytes: "+str(procInfo['byte_counts'])),
+        ])
+
+        self.appendRows([signatureAddrNode,signatureNode,signatureAssemblyNode])
+
+class ProcTableSubItem(Qt.QStandardItem):
     """Item below a TableItemModel
 
     May be grouped more logically with 'delegates'!
     """
-    def __init__(self,txt=''):
+    def __init__(self,entry:str):
         super().__init__()
-        self.setText(txt)
-        self.setEditable(False)
-
-class ProcTableItemModel(Qt.QStandardItem):
-    def __init__(self,procInfo):
-        super().__init__()
-        print(procInfo)
-        self.setText(procInfo['hard_hash'])
-        self.setEditable(False)
-        self.appendRows([
-            ProcTableItemModelSubitem()
-        ])
+        self.setText(entry) 
+        self.setEditable(False)           
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
@@ -71,7 +101,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         It is handled by IDA and doesn't have a simple reference.
         The number here is a relative size ratio between two widgets (between the scroll widget and the widgets to the left)
         """
-        self.parent.parent().parent().setSizes([800,1])
+        self.parent.parent().parent().setSizes([700,1])
 
     def OnCreate(self, form):
         """
@@ -173,9 +203,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     def pushbutton_click(self):
         self.textbrowser.clear()
+        self.proc_tree.model().clear()
 
         try:
-            ctmr = self.ctmfiles.list_file_procedures(self.sha256,page_size=1,read_mask="*") # request resources
+            ctmr = self.ctmfiles.list_file_procedures(self.sha256,read_mask="*") # request resources
 
             resources = ctmr['resources'] # get 'resources' from the returned
             # print(resources)
