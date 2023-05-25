@@ -33,8 +33,8 @@ class ProcTableItemModel(Qt.QStandardItem):
         signatureAddrNode = ProcTableSubItem("signature (address)")
         for i,signature in enumerate(procInfo["example_blockEAs"]):
             indexNode = ProcTableSubItem("block " + str(i+1) +":")
-            indexNode.appendRows([ProcTableSubItem("start EA: "+signature['startEA']),
-                                  ProcTableSubItem("end EA: "+signature['endEA'])
+            indexNode.appendRows([ProcTableHexAddrItem("start EA: ",signature['startEA']),
+                                  ProcTableHexAddrItem("end EA: ",signature['endEA'])
             ])
             signatureAddrNode.appendRow(indexNode)
 
@@ -72,6 +72,15 @@ class ProcTableSubItem(Qt.QStandardItem):
         super().__init__()
         self.setText(entry) 
         self.setEditable(False)           
+
+class ProcTableHexAddrItem(ProcTableSubItem):
+    """Item below a TableItemModel
+
+    May be grouped more logically with 'delegates'!
+    """
+    def __init__(self,entry:str,hexAddr:str):
+        super().__init__(entry+hexAddr)
+        self.idaAddrHex = ida_kernwin.str2ea(hexAddr)
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
