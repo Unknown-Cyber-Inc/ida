@@ -74,13 +74,13 @@ class ProcTableSubItem(Qt.QStandardItem):
         self.setEditable(False)           
 
 class ProcTableHexAddrItem(ProcTableSubItem):
-    """Item below a TableItemModel
+    """Item below a TableItemModel. Contains IDA hex item as 'ea' attr.
 
     May be grouped more logically with 'delegates'!
     """
     def __init__(self,entry:str,hexAddr:str):
         super().__init__(entry+hexAddr)
-        self.idaAddrHex = ida_kernwin.str2ea(hexAddr)
+        self.ea = ida_kernwin.str2ea(hexAddr)
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
@@ -181,12 +181,13 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
 
-        self.pushbutton = QtWidgets.QPushButton("request files")
+        self.pushbutton = QtWidgets.QPushButton("request procedures")
         self.pushbutton.setCheckable(False)
 
         self.proc_tree = QtWidgets.QTreeView()
         self.proc_tree.setHeaderHidden(True)
         self.proc_tree.setModel(Qt.QStandardItemModel())
+        self.proc_tree.doubleClicked.connect(self.proc_tree_jump_to_hex) # let widget handle doubleclicks
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
@@ -210,6 +211,15 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     functions for connecting pyqt signals
     """
+    def proc_tree_jump_to_hex(self,index):
+        """ If double-clicked item is a hex item in tree view, jump IDA to that position. 
+        
+        see ProcTableHexAddrItem for "ea" attr
+        """
+        item = self.proc_tree.selectedIndexes()[0]
+        if hasattr(item.model().itemFromIndex(index),"ea"):
+            ida_kernwin.jumpto(item.model().itemFromIndex(index).ea)
+
     def pushbutton_click(self):
         self.textbrowser.clear()
         self.proc_tree.model().clear()
@@ -218,11 +228,6 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             ctmr = self.ctmfiles.list_file_procedures(self.sha256,read_mask="*") # request resources
 
             resources = ctmr['resources'] # get 'resources' from the returned
-            # print(resources)
-            # these were just for testing the IDA jump feature
-            # testResource = resources[0]["example_blockEAs"][0]["startEA"] # example, grab ea
-            # ida_kernwin.jumpto(ida_kernwin.str2ea(testResource)) # conver to ea object and jump
-
             self.populate_proc_table(resources) # populate qtreeview with processes
 
             self.textbrowser.append('Resources gathered successfully.')
@@ -230,4 +235,4 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             self.textbrowser.append('No resources could be gathered.')
             if PLUGIN_DEBUG: 
                 import traceback
-                self.textbrowser.append(traceback.format_exc())    
+                self.textbrowser.append(traceback.format_exc())
