@@ -32,24 +32,24 @@ class ProcTableItemModel(Qt.QStandardItem):
         # more specific entries
         signatureAddrNode = ProcTableSubItem("signature (address)")
         for i,signature in enumerate(procInfo["example_blockEAs"]):
-            indexNode = ProcTableSubItem("block " + str(i+1) +":")
-            indexNode.appendRows([ProcTableHexAddrItem("start EA: ",signature['startEA']),
+            signatureAddrNode.appendRow(ProcTableSubItem("      block " + str(i+1) +":"))
+            signatureAddrNode.appendRow(ProcTableSubItem("============"))
+            signatureAddrNode.appendRows([ProcTableHexAddrItem("start EA: ",signature['startEA']),
                                   ProcTableHexAddrItem("end EA: ",signature['endEA'])
             ])
-            signatureAddrNode.appendRow(indexNode)
 
         signatureNode = ProcTableSubItem("signature (byte)")
         if procInfo["signature"]:
             for i,signature in enumerate(procInfo["signature"]):
-                indexNode = ProcTableSubItem("block " + str(i+1) +":")
-                indexNode.appendRows([ProcTableSubItem(byte) for byte in signature])
-                signatureNode.appendRow(indexNode)
+                signatureNode.appendRow(ProcTableSubItem("      block " + str(i+1) +":"))
+                signatureNode.appendRow(ProcTableSubItem("============"))
+                signatureNode.appendRows([ProcTableSubItem(byte) for byte in signature])
 
         signatureAssemblyNode = ProcTableSubItem("signature (assembly)")
         for i,signature in enumerate(procInfo["example_procedure"]):
-            indexNode = ProcTableSubItem("block " + str(i+1) +":")
-            indexNode.appendRows([ProcTableSubItem(byte) for byte in signature])
-            signatureAssemblyNode.appendRow(indexNode)
+            signatureAssemblyNode.appendRow(ProcTableSubItem("      block " + str(i+1) +":"))
+            signatureAssemblyNode.appendRow(ProcTableSubItem("============"))
+            signatureAssemblyNode.appendRows([ProcTableSubItem(byte) for byte in signature])
 
         # headers
         self.appendRows([
