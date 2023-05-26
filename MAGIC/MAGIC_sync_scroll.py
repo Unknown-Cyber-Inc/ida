@@ -25,24 +25,31 @@ class ProcTableItemModel(Qt.QStandardItem):
         # more specific entries
         signatureAddrNode = ProcTableSubItem("signature (address)")
         for i,signature in enumerate(procInfo["example_blockEAs"]):
-            signatureAddrNode.appendRow(ProcTableSubItem("      block " + str(i+1) +":"))
-            signatureAddrNode.appendRow(ProcTableSubItem("============"))
+            signatureAddrNode.appendRow(ProcTableSubItem(""))
+            signatureAddrNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
+            signatureAddrNode.appendRow(ProcTableSubItem("=================="))
+            # signatureAddrNode.appendRow(ProcTableSubItem(""))
             signatureAddrNode.appendRows([ProcTableHexAddrItem("start EA: ",signature['startEA']),
                                   ProcTableHexAddrItem("end EA: ",signature['endEA'])
             ])
+        signatureAddrNode.appendRow(ProcTableSubItem(""))
 
         signatureNode = ProcTableSubItem("signature (byte)")
         if procInfo["signature"]:
             for i,signature in enumerate(procInfo["signature"]):
-                signatureNode.appendRow(ProcTableSubItem("      block " + str(i+1) +":"))
-                signatureNode.appendRow(ProcTableSubItem("============"))
+                signatureNode.appendRow(ProcTableSubItem(""))
+                signatureNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
+                signatureNode.appendRow(ProcTableSubItem("=================="))
                 signatureNode.appendRows([ProcTableSubItem(byte) for byte in signature])
+            signatureNode.appendRow(ProcTableSubItem(""))
 
         signatureAssemblyNode = ProcTableSubItem("signature (assembly)")
         for i,signature in enumerate(procInfo["example_procedure"]):
-            signatureAssemblyNode.appendRow(ProcTableSubItem("      block " + str(i+1) +":"))
-            signatureAssemblyNode.appendRow(ProcTableSubItem("============"))
+            signatureAssemblyNode.appendRow(ProcTableSubItem(""))
+            signatureAssemblyNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
+            signatureAssemblyNode.appendRow(ProcTableSubItem("=================="))
             signatureAssemblyNode.appendRows([ProcTableSubItem(byte) for byte in signature])
+        signatureAssemblyNode.appendRow(ProcTableSubItem(""))
 
         # headers
         self.appendRows([
@@ -87,7 +94,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
         def screen_ea_changed(self, ea, prev_ea):
             # iterate through treeview until we reach the hex items
-            # replace this for loop by adding all hex nodes to an array or map PLEASE!
+            # replace this for loop by adding all hex obj nodes to an array or map PLEASE!
             for row in range(self.proc_tree.model().rowCount()):
                 child = self.proc_tree.model().invisibleRootItem().child(row,0)
                 for proc_id_row in range(child.rowCount()):
@@ -96,7 +103,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                         checkIfHex = child_subitem.child(proc_subitem_row,0)
                         if(type(checkIfHex)==ProcTableHexAddrItem):
                             if(ea == checkIfHex.ea):
-                                print(ea)
+                                # self.proc_tree.expandRecursively(checkIfHex.index())
+                                # 3 is an enum telling the widget to open with the item in the center
+                                self.proc_tree.collapseAll()
+                                self.proc_tree.scrollTo(checkIfHex.index(),3)
 
     """
     functions for PluginForm object functionality.
