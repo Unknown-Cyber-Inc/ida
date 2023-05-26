@@ -16,13 +16,6 @@ import cythereal_magic
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-class PluginScrHooks(ida_kernwin.UI_Hooks):
-    def __init__(self, *args):
-        super().__init__(*args)
-
-    def screen_ea_changed(self, ea, prev_ea):
-        print(hex(ea))
-
 class ProcTableItemModel(Qt.QStandardItem):
     def __init__(self,procInfo):
         super().__init__()
@@ -86,6 +79,24 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
     """
+    class PluginScrHooks(ida_kernwin.UI_Hooks):
+        def __init__(self, proc_tree, *args):
+            super().__init__(*args)
+            # needs to be able to access the process_treeview once generated
+            self.proc_tree = proc_tree
+
+        def screen_ea_changed(self, ea, prev_ea):
+            # iterate through treeview until we reach the hex items
+            # replace this for loop by adding all hex nodes to an array or map PLEASE!
+            for row in range(self.proc_tree.model().rowCount()):
+                child = self.proc_tree.model().invisibleRootItem().child(row,0)
+                for proc_id_row in range(child.rowCount()):
+                    child_subitem = child.child(proc_id_row,0)
+                    for proc_subitem_row in range(child_subitem.rowCount()):
+                        checkIfHex = child_subitem.child(proc_subitem_row,0)
+                        if(type(checkIfHex)==ProcTableHexAddrItem):
+                            if(ea == checkIfHex.ea):
+                                print(ea)
 
     """
     functions for PluginForm object functionality.
@@ -96,11 +107,11 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.title:str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
 
-        self.hooks = PluginScrHooks()
-        self.hooks.hook()
-
         # show widget on creation of new form
         self.Show()
+
+        self.hooks = self.PluginScrHooks(self.proc_tree)
+        self.hooks.hook()
 
         # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
         ida_kernwin.set_dock_pos(self.title,"",ida_kernwin.DP_RIGHT)
@@ -203,10 +214,9 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         This is so we can jump to that EA when we reach that item in IDA window
         Note: is there any difference in performance from many appendRow and one appendRows?
         """
-        rootNode = self.proc_tree.model().invisibleRootItem()
 
         for resource in resources:
-            rootNode.appendRow(ProcTableItemModel(resource))
+            self.proc_tree.model().appendRow(ProcTableItemModel(resource))
 
     """
     functions for connecting pyqt signals
