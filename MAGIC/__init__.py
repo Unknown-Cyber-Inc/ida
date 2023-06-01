@@ -16,13 +16,31 @@ load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.env'))
 import ida_idaapi
 from ida_kernwin import find_widget,is_idaq,close_widget
 
+#cythereal magic for calling API
+import cythereal_magic
 # other MAGIC imports
 from MAGIC import MAGIC_form
 from MAGIC import MAGIC_sync_scroll
 from MAGIC import MAGIC_hooks
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
+PLUGIN_DEVELOP_RECREATE_WIDGETS = True if os.getenv("PLUGIN_DEVELOP_RECREATE_WIDGETS") == "True" else False
+PLUGIN_DEVELOP_LOCAL_API = True if os.getenv("PLUGIN_DEVELOP_LOCAL_API") == "True" else False
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
+
+#create local API client to be used by plugin
+# if .env says to use unknowncyber at localhost, then replace the default host and key value
+if PLUGIN_DEVELOP and PLUGIN_DEVELOP_LOCAL_API:
+    os.environ["MAGIC_API_HOST"] = os.getenv("MAGIC_API_HOST_LOCAL")
+    os.environ["MAGIC_API_KEY"] = os.getenv("MAGIC_API_KEY_LOCAL")
+    apiconfig = cythereal_magic.Configuration()
+    # apiconfig.verify_ssl works but prints warnings. if you have a local instance it will contain dev.crt anyway.
+    apiconfig.ssl_ca_cert = os.getenv("PLUGIN_DEVELOP_LOCAL_CERT_PATH")
+    plugin_api_client = cythereal_magic.ApiClient(configuration=apiconfig)
+else:
+    # create default client for interacting with cythereal magic website
+    plugin_api_client = cythereal_magic.ApiClient()
+PLUGIN_API_CLIENT = plugin_api_client
 
 #ida synchronized scroll widget constants
 PLUGIN_SCROLLWIDGET_NAME = 'MAGIC Procedures'
@@ -93,18 +111,15 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         """
     
         # in development mode, close and reopen the widget every time the shortcut is hit
-        if PLUGIN_DEVELOP:
+        if PLUGIN_DEVELOP and PLUGIN_DEVELOP_RECREATE_WIDGETS:
             close_widget(find_widget(PLUGIN_NAME),0)
             close_widget(find_widget(PLUGIN_SCROLLWIDGET_NAME),0)
-            MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
-            MAGIC_sync_scroll.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME)
-            return
         
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
-            self.form = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME)
+            self.form = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME,PLUGIN_API_CLIENT)
         if find_widget(PLUGIN_SCROLLWIDGET_NAME) is None:    
-            self.syncscroll = MAGIC_sync_scroll.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME)
+            self.syncscroll = MAGIC_sync_scroll.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME,PLUGIN_API_CLIENT)
 
     def term(self):
         """

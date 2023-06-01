@@ -1,14 +1,13 @@
 """
-Main pluginform object at the highest level. 
+Main scroll widget at the highest level. 
 
-This is the scaffolding of the form object which will be displayed to the viewer.
-Contains ida_kernwin.PluginForm and also ida_kernwin.Choose.
-Will likely be broken into components as the insides of the form grow.
+This is the scaffolding of a simplecustviewer_t for the purpose of 
+testing out how certain functions can be synced.
 """
 
 # IDA and UI imports
 import ida_nalt, ida_kernwin
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, Qt, QtGui 
 
 #cythereal magic for calling API
 import cythereal_magic
@@ -17,65 +16,122 @@ import cythereal_magic
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-class ScrTableView(QtWidgets.QTableWidget):
-    def __init__(self, data, *args):
-        QtWidgets.QTableWidget.__init__(self, *args)
-        self.data = data
-        self.setData()
-        self.resizeColumnsToContents()
-        self.resizeRowsToContents()
- 
-    def setData(self): 
-        horHeaders = []
-        for n, key in enumerate(sorted(self.data.keys())):
-            horHeaders.append(key)
-            for m, item in enumerate(self.data[key]):
-                newitem = QtWidgets.QTableWidgetItem(item)
-                self.setItem(m, n, newitem)
-        self.setHorizontalHeaderLabels(horHeaders)
+class ProcTableItemModel(Qt.QStandardItem):
+    def __init__(self,procInfo):
+        super().__init__()
+        self.setText(procInfo['hard_hash'])
+        self.setEditable(False)
+        
+        # more specific entries
+        signatureAddrNode = ProcTableSubItem("signature (address)")
+        for i,signature in enumerate(procInfo["example_blockEAs"]):
+            signatureAddrNode.appendRow(ProcTableSubItem(""))
+            signatureAddrNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
+            signatureAddrNode.appendRow(ProcTableSubItem("=================="))
+            # signatureAddrNode.appendRow(ProcTableSubItem(""))
+            signatureAddrNode.appendRows([ProcTableHexAddrItem("start EA: ",signature['startEA']),
+                                  ProcTableHexAddrItem("end EA: ",signature['endEA'])
+            ])
+        signatureAddrNode.appendRow(ProcTableSubItem(""))
+
+        signatureNode = ProcTableSubItem("signature (byte)")
+        if procInfo["signature"]:
+            for i,signature in enumerate(procInfo["signature"]):
+                signatureNode.appendRow(ProcTableSubItem(""))
+                signatureNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
+                signatureNode.appendRow(ProcTableSubItem("=================="))
+                signatureNode.appendRows([ProcTableSubItem(byte) for byte in signature])
+            signatureNode.appendRow(ProcTableSubItem(""))
+
+        signatureAssemblyNode = ProcTableSubItem("signature (assembly)")
+        for i,signature in enumerate(procInfo["example_procedure"]):
+            signatureAssemblyNode.appendRow(ProcTableSubItem(""))
+            signatureAssemblyNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
+            signatureAssemblyNode.appendRow(ProcTableSubItem("=================="))
+            signatureAssemblyNode.appendRows([ProcTableSubItem(byte) for byte in signature])
+        signatureAssemblyNode.appendRow(ProcTableSubItem(""))
+
+        # headers
+        self.appendRows([
+            ProcTableSubItem("occurrances: "+str(procInfo['occurrence_counts'])),
+            ProcTableSubItem("library: "+str(procInfo['is_library'])),
+            ProcTableSubItem("signatures: "+str(procInfo['signature_count'])),
+            ProcTableSubItem("total blocks: "+str(procInfo['block_counts'])),
+            ProcTableSubItem("total instructions: "+str(procInfo['instr_counts'])),
+            ProcTableSubItem("total bytes: "+str(procInfo['byte_counts'])),
+        ])
+
+        self.appendRows([signatureAddrNode,signatureNode,signatureAssemblyNode])
+
+class ProcTableSubItem(Qt.QStandardItem):
+    """Item below a TableItemModel
+
+    May be grouped more logically with 'delegates'!
+    """
+    def __init__(self,entry:str):
+        super().__init__()
+        self.setText(entry) 
+        self.setEditable(False)           
+
+class ProcTableHexAddrItem(ProcTableSubItem):
+    """Item below a TableItemModel. Contains IDA hex item as 'ea' attr.
+
+    May be grouped more logically with 'delegates'!
+    """
+    def __init__(self,entry:str,hexAddr:str):
+        super().__init__(entry+hexAddr)
+        self.ea = ida_kernwin.str2ea(hexAddr)
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
-    Highest level of the plugin UI object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
-
-    Populate_pluginform_with_pyqt_widgets.py code was used to create the basics of the plugin.
+    Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
     """
+    class PluginScrHooks(ida_kernwin.UI_Hooks):
+        def __init__(self, proc_tree, *args):
+            super().__init__(*args)
+            # needs to be able to access the process_treeview once generated
+            self.proc_tree = proc_tree
+
+        def screen_ea_changed(self, ea, prev_ea):
+            # iterate through treeview until we reach the hex items
+            # replace this for loop by adding all hex obj nodes to an array or map PLEASE!
+            for row in range(self.proc_tree.model().rowCount()):
+                child = self.proc_tree.model().invisibleRootItem().child(row,0)
+                for proc_id_row in range(child.rowCount()):
+                    child_subitem = child.child(proc_id_row,0)
+                    for proc_subitem_row in range(child_subitem.rowCount()):
+                        checkIfHex = child_subitem.child(proc_subitem_row,0)
+                        if(type(checkIfHex)==ProcTableHexAddrItem):
+                            if(ea == checkIfHex.ea):
+                                # self.proc_tree.expandRecursively(checkIfHex.index())
+                                # 3 is an enum telling the widget to open with the item in the center
+                                self.proc_tree.collapseAll()
+                                self.proc_tree.scrollTo(checkIfHex.index(),3)
 
     """
     functions for PluginForm object functionality.
     """
-    def __init__(self, title:str):
+    def __init__(self, title, magic_api_client):
         super().__init__()
-        
-        # non pyqt attrs
-        self.title: str = title 
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
-        self.md5 = ida_nalt.retrieve_input_file_md5().hex()
-        self.ctm = cythereal_magic.ApiClient()
-        self.ctmfiles = cythereal_magic.FilesApi(self.ctm) 
-
-        self.parent: QtWidgets.QWidget # overarching pyqt widget of this form
-
-        # main pyqt widgets used
-        self.t1: QtWidgets.QLabel
-        self.t2: QtWidgets.QLabel
-        self.pushbutton: QtWidgets.QPushButton
-        self.tab_tables: QtWidgets.QTabWidget
-        self.textbrowser: QtWidgets.QTextEdit
-
-        # pyqt widgets in tab_tables
-        # analysis tab
-        self.files_analysis_tab: QtWidgets.QWidget
-        self.files_analysis_tab_table: QtWidgets.QTableWidget
+        self.title:str = title
+        self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
 
         # show widget on creation of new form
-        self.Show()      
+        self.Show()
+
+        self.hooks = self.PluginScrHooks(self.proc_tree)
+        self.hooks.hook()
 
         # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
         ida_kernwin.set_dock_pos(self.title,"",ida_kernwin.DP_RIGHT)
-        # A 'QSplitter' is created which can handle the default creation size
-        # Through testing I have found out which widget this is relative to self
-        self.parent.parent().parent().setSizes([800,1])     
+        """
+        A 'QSplitter' is created which can handle the default creation size.
+        Through testing I have found out which widget this is relative to self.
+        It is handled by IDA and doesn't have a simple reference.
+        The number here is a relative size ratio between two widgets (between the scroll widget and the widgets to the left)
+        """
+        self.parent.parent().parent().setSizes([700,1])
 
     def OnCreate(self, form):
         """
@@ -84,12 +140,17 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
 
-        self.load_files_view()
+        self.load_scroll_view()
+
+        # strictly for testing
+        for i in range(1000):
+            self.textbrowser.append("Line " + str(i) + ": ")
      
     def OnClose(self, form):
         """
         Called when the widget is closed.
         """
+        self.hooks.unhook()
         return
 
     def Show(self):
@@ -98,24 +159,25 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             self.title,
             options=(
             # for some reason the options appear to only work once after resetting desktop in IDA
-            ida_kernwin.PluginForm.WOPN_TAB
-            | ida_kernwin.PluginForm.WOPN_RESTORE
-            | ida_kernwin.PluginForm.WCLS_CLOSE_LATER
-            | ida_kernwin.PluginForm.WCLS_SAVE
+            ida_kernwin.PluginForm.WOPN_DP_SZHINT
+            # | ida_kernwin.PluginForm.WOPN_RESTORE
+            # | ida_kernwin.PluginForm.WCLS_CLOSE_LATER
+            # | ida_kernwin.PluginForm.WCLS_SAVE
             ),
         )
+
     
     """
     functions for building and displaying pyqt.
     """
-    def load_files_view(self):
+    def load_scroll_view(self):
         """
         Create form items then populate page with them.
         """
-        self.init_files_view()
-        self.populate_files_view()
+        self.init_scroll_view()
+        self.populate_scroll_view()
 
-    def populate_files_view(self):
+    def populate_scroll_view(self):
         """
         After individual form items are initialized, populate the form with them.
         """
@@ -126,68 +188,67 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         layout.addWidget(self.t1)
         layout.addWidget(self.t2)
         layout.addWidget(self.pushbutton)
-        layout.addWidget(self.tab_tables)
+        layout.addWidget(self.proc_tree)
         layout.addWidget(self.textbrowser)
 
         # set main widget's layout based on the above items
         self.parent.setLayout(layout)
 
-    def init_files_view(self):
+    def init_scroll_view(self):
         """
         Initialize individual items which will be added to the form.
         """
         #personalizing QT items, in order of appearance (order is set by layout though)
         self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
-
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
 
-        self.pushbutton = QtWidgets.QPushButton("request files")
-        self.pushbutton.setCheckable(True)
+        self.pushbutton = QtWidgets.QPushButton("request procedures")
+        self.pushbutton.setCheckable(False)
 
-        self.tab_tables = QtWidgets.QTabWidget() # create overarching tab widget
-        self.init_and_populate_files_analysis_tab() # help create items in analysis tab, add to tab widget 
+        self.proc_tree = QtWidgets.QTreeView()
+        self.proc_tree.setHeaderHidden(True)
+        self.proc_tree.setModel(Qt.QStandardItemModel())
+        self.proc_tree.doubleClicked.connect(self.proc_tree_jump_to_hex) # let widget handle doubleclicks
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
 
         #connecting events to items if necessary, in order of appearance
-        self.pushbutton.clicked.connect(self.pushbutton_click)
-
-    def init_and_populate_files_analysis_tab(self):
+        self.pushbutton.clicked.connect(self.pushbutton_click) 
+    
+    def populate_proc_table(self, resources):
+        """ populates the procedures table with recieved procedures
+        
+        @param resources: dict
+        May also be responsible for providing IDA with dict in form of {"startEA":"procHash"}.
+        This is so we can jump to that EA when we reach that item in IDA window
+        Note: is there any difference in performance from many appendRow and one appendRows?
         """
-        Helper, initialize and populate items in analysis tab widget
-        """
-        # create empty widget and add it as a tab to tab widget
-        self.files_analysis_tab = QtWidgets.QWidget()
-        self.tab_tables.addTab(self.files_analysis_tab,"Analysis")
 
-        # create the objects that will be placed in the analysis tab widget
-        self.files_analysis_tab_table = QtWidgets.QTableWidget()
-        self.files_analysis_tab_testbutton = QtWidgets.QPushButton("test")
-
-        # ---------------------------------------------------------------------------
-        # populate this tab similar to populate_files_view
-        # it's less confusing if individual tab population is not in its own function
-        self.files_analysis_tab.layout = QtWidgets.QVBoxLayout()
-
-        self.files_analysis_tab.layout.addWidget(self.files_analysis_tab_table)
-        self.files_analysis_tab.layout.addWidget(self.files_analysis_tab_testbutton)
-
-        self.files_analysis_tab.setLayout(self.files_analysis_tab.layout)
+        for resource in resources:
+            self.proc_tree.model().appendRow(ProcTableItemModel(resource))
 
     """
     functions for connecting pyqt signals
     """
-    def pushbutton_click(self):
+    def proc_tree_jump_to_hex(self,index):
+        """ If double-clicked item is a hex item in tree view, jump IDA to that position. 
+        
+        see ProcTableHexAddrItem for "ea" attr
         """
-        User clicks "get resources" button, call cythereal API and populate tables.
+        item = self.proc_tree.selectedIndexes()[0]
+        if hasattr(item.model().itemFromIndex(index),"ea"):
+            ida_kernwin.jumpto(item.model().itemFromIndex(index).ea)
 
-        Provide information through textbox
-        """
+    def pushbutton_click(self):
         self.textbrowser.clear()
+        self.proc_tree.model().clear()
 
         try:
-            self.get_and_populate_tables()
+            ctmr = self.ctmfiles.list_file_procedures(self.sha256,read_mask="*") # request resources
+
+            resources = ctmr['resources'] # get 'resources' from the returned
+            self.populate_proc_table(resources) # populate qtreeview with processes
 
             self.textbrowser.append('Resources gathered successfully.')
         except:
@@ -195,72 +256,3 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             if PLUGIN_DEBUG: 
                 import traceback
                 self.textbrowser.append(traceback.format_exc())
-
-    def get_and_populate_tables(self):
-        """
-        calls GET /files and populates the different tables
-
-        Also there must be some way to populate without setting every single row. This might be through some custom table class.
-        """
-        #setting up column names
-        identifier = ["sha256"]
-        analysis_tab_columns = ["filenames","filetype"]
-        inputfile_highlight_color = QtGui.QColor(255,232,255)
-
-        # request file from website with the above columns of info
-        ctmr = self.ctmfiles.list_files(read_mask=','.join(identifier + analysis_tab_columns))
-
-        # set row and col of table based on returned data sizes
-        self.files_analysis_tab_table.setRowCount(len(ctmr['resources']))
-        # number of columns = number of analysis_tab_columns + identifier entry (1)
-        self.files_analysis_tab_table.setColumnCount(len(analysis_tab_columns)+1)
-        
-        # label the column based on returned labels
-        self.files_analysis_tab_table.setHorizontalHeaderLabels(identifier + analysis_tab_columns)   
-        # hide the row headers
-        self.files_analysis_tab_table.verticalHeader().setVisible(False)  
-
-        # this is almost certainly not the most effecient way
-        # loop through every single value and add it to the table cell by cell
-        for row,resource in enumerate(ctmr['resources']):
-            # makae sure first column is always identifier
-            self.files_analysis_tab_table.setItem(row, 0, QtWidgets.QTableWidgetItem(resource[identifier[0]]))
-
-            #for this row check if the hash of input file matches the hash of the file in this row and change cell bg color
-            current_is_infile = False
-            if resource[identifier[0]] == self.sha256:
-                self.files_analysis_tab_table.item(row,0).setBackground(inputfile_highlight_color)
-                self.files_analysis_tab_table.selectRow(row)
-                current_is_infile = True
-            
-            self.populate_analysis_table_row(resource,row,analysis_tab_columns,current_is_infile,inputfile_highlight_color)
-
-        # resize first column (assuming sha256) to show entire entry
-        self.files_analysis_tab_table.resizeColumnToContents(0)
-        #stretch the final column to the end of the widget
-        self.files_analysis_tab_table.horizontalHeader().setStretchLastSection(True)
-
-    def populate_analysis_table_row(self,resource,row,analysis_tab_columns,current_is_infile,inputfile_highlight_color):
-        """
-        When looping through returned resources, call this func to populate a row of the table held in the "analysis" tab.
-
-        Needed this function to reduce clutter. Each column in each tab may require specific handling before it can be displayed.
-        @param self: overarching MAGICPluginFormClass
-        @param resource: a single file object returned when calling GET /files
-        @param row: row index
-        @param analysis_tab_columns: column names/resource keys as specified at the top of get_and_populate_tables
-        @param current_is_infile: boolean on whether or not the current resource is also the input file
-        @param inputfile_highlight_color: the QtGui.QColor object defining the color to highlight the infile with
-        """
-        # check all keys which belong to columns specified by analysis table tab
-        # note first col (0) is always identifier. hence why we use col+1
-        for col,key in enumerate(analysis_tab_columns):
-            # if key requires special handling:
-            if key == "filenames":
-                self.files_analysis_tab_table.setItem(row, col+1, QtWidgets.QTableWidgetItem(','.join(resource[key])))
-            else: # returned item is string, add to table cell as normal
-                self.files_analysis_tab_table.setItem(row, col+1, QtWidgets.QTableWidgetItem(resource[key]))
-
-            # current hash is infile, change cell background color so user can identify it easily
-            if current_is_infile:
-                self.files_analysis_tab_table.item(row,col+1).setBackground(inputfile_highlight_color)

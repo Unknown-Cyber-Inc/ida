@@ -44,15 +44,14 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
     functions for PluginForm object functionality.
     """
-    def __init__(self, title:str):
+    def __init__(self, title, magic_api_client):
         super().__init__()
         
         # non pyqt attrs
         self.title: str = title 
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
-        self.ctm = cythereal_magic.ApiClient()
-        self.ctmfiles = cythereal_magic.FilesApi(self.ctm) 
+        self.ctmfiles = cythereal_magic.FilesApi(magic_api_client) 
 
         self.parent: QtWidgets.QWidget # overarching pyqt widget of this form
 
@@ -133,11 +132,10 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         """
         #personalizing QT items, in order of appearance (order is set by layout though)
         self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
-
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
 
         self.pushbutton = QtWidgets.QPushButton("request files")
-        self.pushbutton.setCheckable(True)
+        self.pushbutton.setCheckable(False)
 
         self.tab_tables = QtWidgets.QTabWidget() # create overarching tab widget
         self.init_and_populate_files_analysis_tab() # help create items in analysis tab, add to tab widget 
