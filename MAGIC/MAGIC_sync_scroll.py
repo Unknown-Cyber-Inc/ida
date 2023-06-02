@@ -83,6 +83,18 @@ class ProcTableHexAddrItem(ProcTableSubItem):
         super().__init__(entry+hexAddr)
         self.ea = ida_kernwin.str2ea(hexAddr)
 
+"""=========================================================================="""
+class ProcRootNode(Qt.QStandardItem):
+    """Node representing the generated hash item
+
+    """
+    def __init__(self,hard_hash,start_ea,end_ea):
+        super().__init__()
+        self.setText(hard_hash)
+        self.eas = [ida_kernwin.str2ea(start_ea),ida_kernwin.str2ea(end_ea)]
+        self.isPopulated = False
+        self.setEditable(False)
+
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
@@ -95,7 +107,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
         def screen_ea_changed(self, ea, prev_ea):
             # iterate through treeview until we reach the hex items
-            # replace this for loop by adding all hex obj nodes to an array or map PLEASE!
+            # PLEASE replace this for loop by adding all hex obj nodes to an array or map!
             for row in range(self.proc_tree.model().rowCount()):
                 child = self.proc_tree.model().invisibleRootItem().child(row,0)
                 for proc_id_row in range(child.rowCount()):
@@ -117,6 +129,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.title:str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
+        self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
 
         # show widget on creation of new form
         self.Show()
@@ -228,6 +241,18 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         for resource in resources:
             self.proc_tree.model().appendRow(ProcTableItemModel(resource))
 
+    def populate_proc_tablev2(self, procedureInfo):
+        """ populates the procedures table with recieved procedures
+        
+        @param resources: dict
+        May also be responsible for providing IDA with dict in form of {"startEA":"procHash"}.
+        This is so we can jump to that EA when we reach that item in IDA window
+        Note: is there any difference in performance from many appendRow and one appendRows?
+        """
+
+        for proc in procedureInfo:
+            self.proc_tree.model().appendRow(ProcRootNode(proc['hard_hash'],proc['example_startEA'],proc['example_endEA']))
+
     """
     functions for connecting pyqt signals
     """
@@ -248,6 +273,9 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             ctmr = self.ctmfiles.list_file_procedures(self.sha256,read_mask="*") # request resources
 
             resources = ctmr['resources'] # get 'resources' from the returned
+
+            self.populate_proc_tablev2(resources)
+
             self.populate_proc_table(resources) # populate qtreeview with processes
 
             self.textbrowser.append('Resources gathered successfully.')
