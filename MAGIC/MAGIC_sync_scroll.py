@@ -15,6 +15,7 @@ import cythereal_magic
 # load_dotenv sources the below environment variables from .env
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
+PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
 class ProcTableItemModel(Qt.QStandardItem):
     def __init__(self,procInfo):
@@ -131,7 +132,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         It is handled by IDA and doesn't have a simple reference.
         The number here is a relative size ratio between two widgets (between the scroll widget and the widgets to the left)
         """
-        self.parent.parent().parent().setSizes([700,1])
+        self.parent.parent().parent().setSizes([600,1])
+
+        if PLUGIN_DEVELOP:
+            self.pushbutton_click()
 
     def OnCreate(self, form):
         """
@@ -141,10 +145,6 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.parent = self.FormToPyQtWidget(form)
 
         self.load_scroll_view()
-
-        # strictly for testing
-        for i in range(1000):
-            self.textbrowser.append("Line " + str(i) + ": ")
      
     def OnClose(self, form):
         """
