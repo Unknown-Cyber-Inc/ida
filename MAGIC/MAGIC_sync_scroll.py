@@ -25,7 +25,6 @@ class ProcRootNode(Qt.QStandardItem):
         super().__init__()
         self.setText(node_name)
         self.eas = [ida_kernwin.str2ea(start_ea),ida_kernwin.str2ea(end_ea)]
-        self.isPopulated = False
         self.setEditable(False)
 
 class ProcHeaderItem(Qt.QStandardItem):
@@ -43,6 +42,7 @@ class ProcFilesNode(Qt.QStandardItem):
     def __init__(self,fileInfo):
         super().__init__()
         self.setText("files")
+        self.isPopulated = False
         self.setEditable(False)
 
 class PluginScrHooks(ida_kernwin.UI_Hooks):
@@ -66,8 +66,7 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
                     self.proc_tree.expand(procedureQIndexItem)
                 # 3 is an enum telling the widget to open with the item in the center
                 self.proc_tree.scrollTo(procedureQIndexItem,3) # jump to and center it
-                self.proc_tree.expandRecursively(procedureQIndexItem) # expand contents (can omit if necessary)
-                self.proc_tree.setCurrentIndex(procedureQIndexItem) # highlight and select it
+                
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
