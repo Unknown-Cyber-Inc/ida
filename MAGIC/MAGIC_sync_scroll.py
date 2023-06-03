@@ -17,80 +17,13 @@ import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-class ProcTableItemModel(Qt.QStandardItem):
-    def __init__(self,procInfo):
-        super().__init__()
-        self.setText(procInfo['hard_hash'])
-        self.setEditable(False)
-        
-        # more specific entries
-        signatureAddrNode = ProcTableSubItem("signature (address)")
-        for i,signature in enumerate(procInfo["example_blockEAs"]):
-            signatureAddrNode.appendRow(ProcTableSubItem(""))
-            signatureAddrNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
-            signatureAddrNode.appendRow(ProcTableSubItem("=================="))
-            # signatureAddrNode.appendRow(ProcTableSubItem(""))
-            signatureAddrNode.appendRows([ProcTableHexAddrItem("start EA: ",signature['startEA']),
-                                  ProcTableHexAddrItem("end EA: ",signature['endEA'])
-            ])
-        signatureAddrNode.appendRow(ProcTableSubItem(""))
-
-        signatureNode = ProcTableSubItem("signature (byte)")
-        if procInfo["signature"]:
-            for i,signature in enumerate(procInfo["signature"]):
-                signatureNode.appendRow(ProcTableSubItem(""))
-                signatureNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
-                signatureNode.appendRow(ProcTableSubItem("=================="))
-                signatureNode.appendRows([ProcTableSubItem(byte) for byte in signature])
-            signatureNode.appendRow(ProcTableSubItem(""))
-
-        signatureAssemblyNode = ProcTableSubItem("signature (assembly)")
-        for i,signature in enumerate(procInfo["example_procedure"]):
-            signatureAssemblyNode.appendRow(ProcTableSubItem(""))
-            signatureAssemblyNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
-            signatureAssemblyNode.appendRow(ProcTableSubItem("=================="))
-            signatureAssemblyNode.appendRows([ProcTableSubItem(byte) for byte in signature])
-        signatureAssemblyNode.appendRow(ProcTableSubItem(""))
-
-        # headers
-        self.appendRows([
-            ProcTableSubItem("occurrances: "+str(procInfo['occurrence_counts'])),
-            ProcTableSubItem("library: "+str(procInfo['is_library'])),
-            ProcTableSubItem("signatures: "+str(procInfo['signature_count'])),
-            ProcTableSubItem("total blocks: "+str(procInfo['block_counts'])),
-            ProcTableSubItem("total instructions: "+str(procInfo['instr_counts'])),
-            ProcTableSubItem("total bytes: "+str(procInfo['byte_counts'])),
-        ])
-
-        self.appendRows([signatureAddrNode,signatureNode,signatureAssemblyNode])
-
-class ProcTableSubItem(Qt.QStandardItem):
-    """Item below a TableItemModel
-
-    May be grouped more logically with 'delegates'!
-    """
-    def __init__(self,entry:str):
-        super().__init__()
-        self.setText(entry) 
-        self.setEditable(False)           
-
-class ProcTableHexAddrItem(ProcTableSubItem):
-    """Item below a TableItemModel. Contains IDA hex item as 'ea' attr.
-
-    May be grouped more logically with 'delegates'!
-    """
-    def __init__(self,entry:str,hexAddr:str):
-        super().__init__(entry+hexAddr)
-        self.ea = ida_kernwin.str2ea(hexAddr)
-
-"""=========================================================================="""
 class ProcRootNode(Qt.QStandardItem):
     """Node representing the generated hash item
 
     """
-    def __init__(self,hard_hash,start_ea,end_ea):
+    def __init__(self,node_name,start_ea,end_ea):
         super().__init__()
-        self.setText(hard_hash)
+        self.setText(node_name)
         self.eas = [ida_kernwin.str2ea(start_ea),ida_kernwin.str2ea(end_ea)]
         self.isPopulated = False
         self.setEditable(False)
@@ -129,12 +62,13 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.title:str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
-        self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
+        self.procedureEADict = {} # dict solution to jump from IDA ea to plugin procedure
 
         # show widget on creation of new form
         self.Show()
 
-        self.hooks = self.PluginScrHooks(self.proc_tree)
+        # hook into the IDA code
+        self.hooks = self.PluginScrHooks(self.proc_tree,self.procedureEADict)
         self.hooks.hook()
 
         # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
@@ -228,20 +162,8 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
         #connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click) 
-    
-    def populate_proc_table(self, resources):
-        """ populates the procedures table with recieved procedures
-        
-        @param resources: dict
-        May also be responsible for providing IDA with dict in form of {"startEA":"procHash"}.
-        This is so we can jump to that EA when we reach that item in IDA window
-        Note: is there any difference in performance from many appendRow and one appendRows?
-        """
 
-        for resource in resources:
-            self.proc_tree.model().appendRow(ProcTableItemModel(resource))
-
-    def populate_proc_tablev2(self, procedureInfo):
+    def populate_proc_table(self, procedureInfo):
         """ populates the procedures table with recieved procedures
         
         @param resources: dict
@@ -251,7 +173,14 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         """
 
         for proc in procedureInfo:
-            self.proc_tree.model().appendRow(ProcRootNode(proc['hard_hash'],proc['example_startEA'],proc['example_endEA']))
+            proc_id = proc['example_procedure_id']
+            start_ea = proc['example_startEA']
+            end_ea = proc['example_endEA']
+
+            procrootnode = ProcRootNode(proc_id,start_ea,end_ea)
+            self.procedureEADict[int(start_ea,16)] = procrootnode # add node to dict to avoid looping
+
+            self.proc_tree.model().appendRow(procrootnode) # add root node to tree
 
     """
     functions for connecting pyqt signals
@@ -262,21 +191,19 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         see ProcTableHexAddrItem for "ea" attr
         """
         item = self.proc_tree.selectedIndexes()[0]
-        if hasattr(item.model().itemFromIndex(index),"ea"):
-            ida_kernwin.jumpto(item.model().itemFromIndex(index).ea)
+        if type(item) is ProcRootNode:
+            ida_kernwin.jumpto(item.model().itemFromIndex(index).eas[0])
 
     def pushbutton_click(self):
         self.textbrowser.clear()
         self.proc_tree.model().clear()
 
         try:
-            ctmr = self.ctmfiles.list_file_procedures(self.sha256,read_mask="*") # request resources
+            ctmr = self.ctmfiles.list_file_procedures(self.sha256) # request resources
 
             resources = ctmr['resources'] # get 'resources' from the returned
 
-            self.populate_proc_tablev2(resources)
-
-            self.populate_proc_table(resources) # populate qtreeview with processes
+            self.populate_proc_table(resources)
 
             self.textbrowser.append('Resources gathered successfully.')
         except:
