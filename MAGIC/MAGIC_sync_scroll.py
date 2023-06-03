@@ -18,7 +18,7 @@ PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
 class ProcRootNode(Qt.QStandardItem):
-    """Node representing the generated hash item
+    """Node representing the root of a single procedure
 
     """
     def __init__(self,node_name,start_ea,end_ea):
@@ -28,11 +28,24 @@ class ProcRootNode(Qt.QStandardItem):
         self.isPopulated = False
         self.setEditable(False)
 
-class MAGICPluginScrClass(ida_kernwin.PluginForm):
+class ProcHeaderItem(Qt.QStandardItem):
+    """Node representing fields of produes calls which take form of str:str
+
     """
-    Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
+    def __init__(self,key,value):
+        super().__init__()
+        self.setText(key + ":\t" + value)
+        self.setEditable(False)
+
+class ProcFilesNode(Qt.QStandardItem):
+    """Node representing the root of the "files" category. Contains subnodes representing individual files
     """
-    class PluginScrHooks(ida_kernwin.UI_Hooks):
+    def __init__(self,fileInfo):
+        super().__init__()
+        self.setText("files")
+        self.setEditable(False)
+
+class PluginScrHooks(ida_kernwin.UI_Hooks):
         """Hooks necessary for the functionality of this form
         
         Connect to IDA's screen_ea_changed hook
@@ -53,6 +66,11 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                 self.proc_tree.expandRecursively(procedureQIndexItem) # expand contents (can omit if necessary)
                 self.proc_tree.setCurrentIndex(procedureQIndexItem) # highlight and select it
 
+class MAGICPluginScrClass(ida_kernwin.PluginForm):
+    """
+    Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
+    """
+
     """
     functions for PluginForm object functionality.
     """
@@ -67,7 +85,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.Show()
 
         # hook into the IDA code
-        self.hooks = self.PluginScrHooks(self.proc_tree,self.procedureEADict)
+        self.hooks = PluginScrHooks(self.proc_tree,self.procedureEADict)
         self.hooks.hook()
 
         # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
@@ -172,12 +190,16 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         """
 
         for proc in procedureInfo:
-            proc_id = proc['example_procedure_id']
             start_ea = proc['example_startEA']
-            end_ea = proc['example_endEA']
 
-            procrootnode = ProcRootNode(proc_id,start_ea,end_ea)
-            self.procedureEADict[int(start_ea,16)] = procrootnode # add node to dict to avoid looping
+            procrootnode = ProcRootNode(proc['example_procedure_id'],start_ea,proc['example_endEA'])
+            self.procedureEADict[int(start_ea,16)] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
+
+            procrootnode.appendRows([
+                ProcHeaderItem("Occurrences",str(proc["occurrence_counts"])),
+                ProcHeaderItem("Library",str(proc["is_library"])),
+                ProcHeaderItem("Group Type",proc["status"]),
+            ])
 
             self.proc_tree.model().appendRow(procrootnode) # add root node to tree
 
