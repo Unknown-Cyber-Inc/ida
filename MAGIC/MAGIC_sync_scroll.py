@@ -61,6 +61,9 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
             eaKey = int(eaKey,16)
             if eaKey in self.procedureEADict:
                 procedureQIndexItem = self.procedureEADict[eaKey].index()
+                self.proc_tree.setCurrentIndex(procedureQIndexItem) # highlight and select it
+                if not self.proc_tree.isExpanded(procedureQIndexItem): # do not expand before checking if expanded, see proc_tree_jump_to_hex for info
+                    self.proc_tree.expand(procedureQIndexItem)
                 # 3 is an enum telling the widget to open with the item in the center
                 self.proc_tree.scrollTo(procedureQIndexItem,3) # jump to and center it
                 self.proc_tree.expandRecursively(procedureQIndexItem) # expand contents (can omit if necessary)
@@ -173,6 +176,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree.setHeaderHidden(True)
         self.proc_tree.setModel(Qt.QStandardItemModel())
         self.proc_tree.doubleClicked.connect(self.proc_tree_jump_to_hex) # let widget handle doubleclicks
+        self.proc_tree.expanded.connect(self.populate_proc_files) # handle certain expand events
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
@@ -183,9 +187,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     def populate_proc_table(self, procedureInfo):
         """ populates the procedures table with recieved procedures
         
-        @param resources: dict
-        May also be responsible for providing IDA with dict in form of {"startEA":"procHash"}.
-        This is so we can jump to that EA when we reach that item in IDA window
+        @param resources: dict containing procedures return request
         Note: is there any difference in performance from many appendRow and one appendRows?
         """
 
@@ -211,10 +213,18 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         
         see ProcTableHexAddrItem for "ea" attr
         """
-
         item = self.proc_tree.model().itemFromIndex(index)
         if type(item) is ProcRootNode:
-            ida_kernwin.jumpto(item.model().itemFromIndex(index).eas[0])
+            if self.procedureEADict[item.eas[0]]:
+                # this jump will note the ea and try to expand even though we doubleclicked
+                # therefore, set as expanded and check this expression in the hook feature
+                self.proc_tree.setExpanded(index,True)
+                ida_kernwin.jumpto(item.eas[0])
+                self.proc_tree.setExpanded(index,False)
+
+    def populate_proc_files(self,index):
+        return
+        print(index)
 
     def pushbutton_click(self):
         self.textbrowser.clear()
