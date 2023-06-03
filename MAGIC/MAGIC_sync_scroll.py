@@ -39,11 +39,13 @@ class ProcHeaderItem(Qt.QStandardItem):
 class ProcFilesNode(Qt.QStandardItem):
     """Node representing the root of the "files" category. Contains subnodes representing individual files
     """
-    def __init__(self,fileInfo):
+    def __init__(self):
         super().__init__()
         self.setText("files")
         self.isPopulated = False
         self.setEditable(False)
+        # empty item to be deleted when populated
+        self.appendRow(Qt.QStandardItem()) # expand button will not show unless it has at least one child
 
 class PluginScrHooks(ida_kernwin.UI_Hooks):
         """Hooks necessary for the functionality of this form
@@ -175,7 +177,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree.setHeaderHidden(True)
         self.proc_tree.setModel(Qt.QStandardItemModel())
         self.proc_tree.doubleClicked.connect(self.proc_tree_jump_to_hex) # let widget handle doubleclicks
-        self.proc_tree.expanded.connect(self.populate_proc_files) # handle certain expand events
+        self.proc_tree.expanded.connect(self.onTreeExpand) # handle certain expand events
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
@@ -202,7 +204,22 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                 ProcHeaderItem("Group Type",proc["status"]),
             ])
 
+            procrootnode.appendRow(ProcFilesNode())
+
             self.proc_tree.model().appendRow(procrootnode) # add root node to tree
+    
+    def populate_proc_files(self, filesRootNode:ProcFilesNode):
+        if not filesRootNode.isPopulated:
+            print(self.ctmfiles.list_file_procedures(self.sha256)['resources'])
+            filesRootNode.removeRows(0,1) # remove the empty init child
+            filesRootNode.appendRows([
+                ProcHeaderItem("hash1","file1"),
+                ProcHeaderItem("hash2","file2"),
+                ProcHeaderItem("hash3","file3"),
+            ])
+            filesRootNode.isPopulated = True
+        else:
+            print("already populated")
 
     """
     functions for connecting pyqt signals
@@ -222,10 +239,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                     ida_kernwin.jumpto(item.eas[0])
                     self.proc_tree.setExpanded(index,False)
 
-    def populate_proc_files(self,index):
+    def onTreeExpand(self,index):
         item = self.proc_tree.model().itemFromIndex(index)
         if type(item) is ProcFilesNode:
-            print(index)
+            self.populate_proc_files(item)
 
     def pushbutton_click(self):
         self.textbrowser.clear()
