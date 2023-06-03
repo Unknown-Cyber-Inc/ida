@@ -217,13 +217,15 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             if self.procedureEADict[item.eas[0]]:
                 # this jump will note the ea and try to expand even though we doubleclicked
                 # therefore, set as expanded and check this expression in the hook feature
-                self.proc_tree.setExpanded(index,True)
-                ida_kernwin.jumpto(item.eas[0])
-                self.proc_tree.setExpanded(index,False)
+                if not self.proc_tree.isExpanded(index):
+                    self.proc_tree.setExpanded(index,True)
+                    ida_kernwin.jumpto(item.eas[0])
+                    self.proc_tree.setExpanded(index,False)
 
     def populate_proc_files(self,index):
-        return
-        print(index)
+        item = self.proc_tree.model().itemFromIndex(index)
+        if type(item) is ProcFilesNode:
+            print(index)
 
     def pushbutton_click(self):
         self.textbrowser.clear()
