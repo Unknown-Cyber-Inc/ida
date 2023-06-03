@@ -33,26 +33,25 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
     """
     class PluginScrHooks(ida_kernwin.UI_Hooks):
-        def __init__(self, proc_tree, *args):
+        """Hooks necessary for the functionality of this form
+        
+        Connect to IDA's screen_ea_changed hook
+        """
+        def __init__(self, proc_tree, procedureEADict, *args):
             super().__init__(*args)
             # needs to be able to access the process_treeview once generated
             self.proc_tree = proc_tree
+            self.procedureEADict = procedureEADict
 
         def screen_ea_changed(self, ea, prev_ea):
-            # iterate through treeview until we reach the hex items
-            # PLEASE replace this for loop by adding all hex obj nodes to an array or map!
-            for row in range(self.proc_tree.model().rowCount()):
-                child = self.proc_tree.model().invisibleRootItem().child(row,0)
-                for proc_id_row in range(child.rowCount()):
-                    child_subitem = child.child(proc_id_row,0)
-                    for proc_subitem_row in range(child_subitem.rowCount()):
-                        checkIfHex = child_subitem.child(proc_subitem_row,0)
-                        if(type(checkIfHex)==ProcTableHexAddrItem):
-                            if(ea == checkIfHex.ea):
-                                # self.proc_tree.expandRecursively(checkIfHex.index())
-                                # 3 is an enum telling the widget to open with the item in the center
-                                self.proc_tree.collapseAll()
-                                self.proc_tree.scrollTo(checkIfHex.index(),3)
+            eaKey = ida_kernwin.ea2str(ea).split(":")[1]
+            eaKey = int(eaKey,16)
+            if eaKey in self.procedureEADict:
+                procedureQIndexItem = self.procedureEADict[eaKey].index()
+                # 3 is an enum telling the widget to open with the item in the center
+                self.proc_tree.scrollTo(procedureQIndexItem,3) # jump to and center it
+                self.proc_tree.expandRecursively(procedureQIndexItem) # expand contents (can omit if necessary)
+                self.proc_tree.setCurrentIndex(procedureQIndexItem) # highlight and select it
 
     """
     functions for PluginForm object functionality.
@@ -190,7 +189,8 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         
         see ProcTableHexAddrItem for "ea" attr
         """
-        item = self.proc_tree.selectedIndexes()[0]
+
+        item = self.proc_tree.model().itemFromIndex(index)
         if type(item) is ProcRootNode:
             ida_kernwin.jumpto(item.model().itemFromIndex(index).eas[0])
 
