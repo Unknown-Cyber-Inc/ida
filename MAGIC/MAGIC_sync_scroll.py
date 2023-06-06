@@ -42,6 +42,22 @@ class ProcHeaderItem(Qt.QStandardItem):
         self.setText(key + ":\t" + value)
         self.setEditable(False)
 
+class ProcNotesNode(Qt.QStandardItem):
+    def __init__(self,hard_hash):
+        super().__init__()
+        self.setText("notes")
+        self.setEditable(False)
+        # empty item to be deleted when populated
+        self.appendRow(Qt.QStandardItem()) # expand button will not show unless it has at least one child
+
+class ProcTagsNode(Qt.QStandardItem):
+    def __init__(self,hard_hash):
+        super().__init__()
+        self.setText("tags")
+        self.setEditable(False)
+        # empty item to be deleted when populated
+        self.appendRow(Qt.QStandardItem()) # expand button will not show unless it has at least one child
+
 class ProcFilesNode(Qt.QStandardItem):
     """Node representing the root of the "files" category. Contains subnodes representing individual files
     """
@@ -210,6 +226,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
         for proc in procedureInfo:
             start_ea = proc['example_startEA']
+            hard_hash = proc['hard_hash']
             
             procrootnode = ProcRootNode(proc['example_procedure_id'],start_ea,proc['example_endEA'])
             self.procedureEADict[int(start_ea,16)] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
@@ -220,7 +237,11 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                 ProcHeaderItem("Group Type",proc["status"]),
             ])
 
-            procrootnode.appendRow(ProcFilesNode(proc['hard_hash']))
+            procrootnode.appendRows([
+                ProcNotesNode(hard_hash),
+                ProcTagsNode(hard_hash),
+                ProcFilesNode(hard_hash),
+            ])
 
             self.proc_tree.model().appendRow(procrootnode) # add root node to tree
     
@@ -238,7 +259,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                 file = file['file']
                 sha1 = file['sha1']
                 filename = sha1
-                if filename:
+                if file['filenames'] and file['filenames'][0]:
                     filename = file['filenames'][0]
                 filesRootNode.appendRow(ProcFileNode(filename,sha1))
                 
