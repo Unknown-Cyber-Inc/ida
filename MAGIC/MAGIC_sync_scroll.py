@@ -27,6 +27,12 @@ class ProcRootNode(Qt.QStandardItem):
         self.eas = [ida_kernwin.str2ea(start_ea),ida_kernwin.str2ea(end_ea)]
         self.setEditable(False)
 
+class ProcSimpleTextNode(Qt.QStandardItem):
+    def __init__(self,text):
+        super().__init__()
+        self.setText(text)
+        self.setEditable(False)
+
 class ProcHeaderItem(Qt.QStandardItem):
     """Node representing fields of produes calls which take form of str:str
 
@@ -39,13 +45,22 @@ class ProcHeaderItem(Qt.QStandardItem):
 class ProcFilesNode(Qt.QStandardItem):
     """Node representing the root of the "files" category. Contains subnodes representing individual files
     """
-    def __init__(self):
+    def __init__(self,hard_hash):
         super().__init__()
         self.setText("files")
+        self.hard_hash = hard_hash
         self.isPopulated = False
         self.setEditable(False)
         # empty item to be deleted when populated
         self.appendRow(Qt.QStandardItem()) # expand button will not show unless it has at least one child
+
+class ProcFileNode(Qt.QStandardItem):
+    """Node representing the root of the "files" category. Contains subnodes representing individual files
+    """
+    def __init__(self,filename:str,sha1:str):
+        super().__init__()
+        self.setText(filename)
+        self.setEditable(False)
 
 class PluginScrHooks(ida_kernwin.UI_Hooks):
         """Hooks necessary for the functionality of this form
@@ -83,6 +98,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.title:str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
+        self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
         self.procedureEADict = {} # dict solution to jump from IDA ea to plugin procedure
 
         # show widget on creation of new form
@@ -194,32 +210,39 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
         for proc in procedureInfo:
             start_ea = proc['example_startEA']
-
+            
             procrootnode = ProcRootNode(proc['example_procedure_id'],start_ea,proc['example_endEA'])
             self.procedureEADict[int(start_ea,16)] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
-
+            
             procrootnode.appendRows([
                 ProcHeaderItem("Occurrences",str(proc["occurrence_counts"])),
                 ProcHeaderItem("Library",str(proc["is_library"])),
                 ProcHeaderItem("Group Type",proc["status"]),
             ])
 
-            procrootnode.appendRow(ProcFilesNode())
+            procrootnode.appendRow(ProcFilesNode(proc['hard_hash']))
 
             self.proc_tree.model().appendRow(procrootnode) # add root node to tree
     
     def populate_proc_files(self, filesRootNode:ProcFilesNode):
         if not filesRootNode.isPopulated:
-            print(self.ctmfiles.list_file_procedures(self.sha256)['resources'])
+            
+            read_mask='file.sha1,file.filenames'
+            expand_mask='file'
+            # order_by='sha1'
+            ctmr = self.ctmprocs.list_procedure_files(filesRootNode.hard_hash,read_mask=read_mask,expand_mask=expand_mask)['resources']
+            
             filesRootNode.removeRows(0,1) # remove the empty init child
-            filesRootNode.appendRows([
-                ProcHeaderItem("hash1","file1"),
-                ProcHeaderItem("hash2","file2"),
-                ProcHeaderItem("hash3","file3"),
-            ])
+            
+            for file in ctmr:
+                file = file['file']
+                sha1 = file['sha1']
+                filename = sha1
+                if filename:
+                    filename = file['filenames'][0]
+                filesRootNode.appendRow(ProcFileNode(filename,sha1))
+                
             filesRootNode.isPopulated = True
-        else:
-            print("already populated")
 
     """
     functions for connecting pyqt signals
@@ -249,11 +272,11 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree.model().clear()
 
         try:
-            ctmr = self.ctmfiles.list_file_procedures(self.sha256) # request resources
+            # explicitly stating readmask to not request extraneous info
+            # read_mask = 'example_startEA, example_procedure_id, example_endEA, occurrence_counts, is_library, status, hard_hash'
+            ctmr = self.ctmfiles.list_file_procedures(self.sha256)['resources'] # get 'resources' from the returned
 
-            resources = ctmr['resources'] # get 'resources' from the returned
-
-            self.populate_proc_table(resources)
+            self.populate_proc_table(ctmr)
 
             self.textbrowser.append('Resources gathered successfully.')
         except:
