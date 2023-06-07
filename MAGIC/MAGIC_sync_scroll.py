@@ -26,10 +26,10 @@ class ProcRootNode(ProcTableItem):
     """Node representing the root of a single procedure
 
     """
-    def __init__(self,node_name,start_ea):
+    def __init__(self,node_name,start_ea:int):
         super().__init__()
         self.setText(node_name)
-        self.start_ea = ida_kernwin.str2ea(start_ea)
+        self.start_ea = start_ea
 
 class ProcSimpleTextNode(ProcTableItem):
     def __init__(self,text=''):
@@ -102,6 +102,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     def __init__(self, title, magic_api_client):
         super().__init__()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
+        self.baseRVA = ida_nalt.get_imagebase()
         self.title:str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
         self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
@@ -215,11 +216,11 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         """
 
         for proc in procedureInfo:
-            start_ea = proc['example_startEA']
+            start_ea = ida_kernwin.str2ea(proc['example_startEA']) + ida_nalt.get_imagebase()
             hard_hash = proc['hard_hash']
             
             procrootnode = ProcRootNode(proc['example_procedure_id'],start_ea)
-            self.procedureEADict[int(start_ea,16)] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
+            self.procedureEADict[start_ea] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
             
             procrootnode.appendRows([
                 ProcHeaderItem("Occurrences",str(proc["occurrence_counts"])),
