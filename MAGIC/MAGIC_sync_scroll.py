@@ -21,10 +21,10 @@ class ProcRootNode(Qt.QStandardItem):
     """Node representing the root of a single procedure
 
     """
-    def __init__(self,node_name,start_ea,end_ea):
+    def __init__(self,node_name,start_ea):
         super().__init__()
         self.setText(node_name)
-        self.eas = [ida_kernwin.str2ea(start_ea),ida_kernwin.str2ea(end_ea)]
+        self.start_ea = ida_kernwin.str2ea(start_ea)
         self.setEditable(False)
 
 class ProcSimpleTextNode(Qt.QStandardItem):
@@ -228,7 +228,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             start_ea = proc['example_startEA']
             hard_hash = proc['hard_hash']
             
-            procrootnode = ProcRootNode(proc['example_procedure_id'],start_ea,proc['example_endEA'])
+            procrootnode = ProcRootNode(proc['example_procedure_id'],start_ea)
             self.procedureEADict[int(start_ea,16)] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
             
             procrootnode.appendRows([
@@ -284,12 +284,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         """
         item = self.proc_tree.model().itemFromIndex(index)
         if type(item) is ProcRootNode:
-            if self.procedureEADict[item.eas[0]]:
+            if self.procedureEADict[item.start_ea]:
                 # this jump will note the ea and try to expand even though we doubleclicked
                 # therefore, set as expanded and check this expression in the hook feature
                 if not self.proc_tree.isExpanded(index):
                     self.proc_tree.setExpanded(index,True)
-                    ida_kernwin.jumpto(item.eas[0])
+                    ida_kernwin.jumpto(item.start_ea)
                     self.proc_tree.setExpanded(index,False)
 
     def onTreeExpand(self,index):
