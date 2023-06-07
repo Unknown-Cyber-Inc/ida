@@ -247,9 +247,8 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     
     def populate_proc_files(self, filesRootNode:ProcFilesNode):
         if not filesRootNode.isPopulated:
-            read_mask=''
+            read_mask='sha1,sha256,filenames'
             expand_mask='files'
-            # order_by='sha1'
 
             try: 
                 ctmr = self.ctmprocs.list_procedure_files(filesRootNode.hard_hash,read_mask=read_mask,expand_mask=expand_mask)['resources']
@@ -265,12 +264,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             filesRootNode.removeRows(0,1) # remove the empty init child
 
             for file in ctmr: # start adding file information
-                file = file['file']
-                sha1 = file['sha1']
-                filename = sha1
-                if file['filenames'] and file['filenames'][0]:
-                    filename = file['filenames'][0]
-                filesRootNode.appendRow(ProcFileNode(filename,sha1))
+                if file['sha256'] != self.sha256: # don't display current file, that's implicit
+                    sha1 = file['sha1']
+                    filename = sha1
+                    if file['filenames']:
+                        filename = file['filenames'][0]
+                    filesRootNode.appendRow(ProcFileNode(filename,sha1))
                 
             filesRootNode.isPopulated = True
 
