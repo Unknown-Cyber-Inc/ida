@@ -259,7 +259,11 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                     filename = sha1
                     if file['filenames']:
                         filename = file['filenames'][0]
-                    filesRootNode.appendRow(ProcFileNode(filename,sha1))
+
+                    fileNode = ProcSimpleTextNode(filename) # build a fileNode
+                    fileNode.appendRow(ProcSimpleTextNode(sha1))
+
+                    filesRootNode.appendRow(fileNode)
                 
             filesRootNode.isPopulated = True
 
