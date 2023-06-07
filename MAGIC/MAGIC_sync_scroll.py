@@ -17,7 +17,12 @@ import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-class ProcRootNode(Qt.QStandardItem):
+class ProcTableItem(Qt.QStandardItem):
+    def __init__(self):
+        super().__init__()
+        self.setEditable(False)
+
+class ProcRootNode(ProcTableItem):
     """Node representing the root of a single procedure
 
     """
@@ -25,40 +30,34 @@ class ProcRootNode(Qt.QStandardItem):
         super().__init__()
         self.setText(node_name)
         self.start_ea = ida_kernwin.str2ea(start_ea)
-        self.setEditable(False)
 
-class ProcSimpleTextNode(Qt.QStandardItem):
-    def __init__(self,text):
+class ProcSimpleTextNode(ProcTableItem):
+    def __init__(self,text=''):
         super().__init__()
         self.setText(text)
-        self.setEditable(False)
 
-class ProcHeaderItem(Qt.QStandardItem):
+class ProcHeaderItem(ProcSimpleTextNode):
     """Node representing fields of produes calls which take form of str:str
 
     """
     def __init__(self,key,value):
-        super().__init__()
-        self.setText(key + ":\t" + value)
-        self.setEditable(False)
+        super().__init__(key + ":\t" + value)
 
-class ProcNotesNode(Qt.QStandardItem):
+class ProcNotesNode(ProcTableItem):
     def __init__(self,hard_hash):
         super().__init__()
         self.setText("notes")
-        self.setEditable(False)
         # empty item to be deleted when populated
-        self.appendRow(Qt.QStandardItem()) # expand button will not show unless it has at least one child
+        self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
-class ProcTagsNode(Qt.QStandardItem):
+class ProcTagsNode(ProcTableItem):
     def __init__(self,hard_hash):
         super().__init__()
         self.setText("tags")
-        self.setEditable(False)
         # empty item to be deleted when populated
-        self.appendRow(Qt.QStandardItem()) # expand button will not show unless it has at least one child
+        self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
-class ProcFilesNode(Qt.QStandardItem):
+class ProcFilesNode(ProcTableItem):
     """Node representing the root of the "files" category. Contains subnodes representing individual files
     """
     def __init__(self,hard_hash):
@@ -66,17 +65,8 @@ class ProcFilesNode(Qt.QStandardItem):
         self.setText("files")
         self.hard_hash = hard_hash
         self.isPopulated = False
-        self.setEditable(False)
         # empty item to be deleted when populated
-        self.appendRow(Qt.QStandardItem()) # expand button will not show unless it has at least one child
-
-class ProcFileNode(Qt.QStandardItem):
-    """Node representing the root of the "files" category. Contains subnodes representing individual files
-    """
-    def __init__(self,filename:str,sha1:str):
-        super().__init__()
-        self.setText(filename)
-        self.setEditable(False)
+        self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
 class PluginScrHooks(ida_kernwin.UI_Hooks):
         """Hooks necessary for the functionality of this form
@@ -233,7 +223,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             
             procrootnode.appendRows([
                 ProcHeaderItem("Occurrences",str(proc["occurrence_counts"])),
-                ProcHeaderItem("Library",str(proc["is_library"])),
+                ProcHeaderItem("Library","\t"+str(proc["is_library"])), # tab is ignored for boolean for some reason
                 ProcHeaderItem("Group Type",proc["status"]),
             ])
 
