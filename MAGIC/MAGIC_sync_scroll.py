@@ -247,15 +247,24 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     
     def populate_proc_files(self, filesRootNode:ProcFilesNode):
         if not filesRootNode.isPopulated:
-            
-            read_mask='file.sha1,file.filenames'
-            expand_mask='file'
+            read_mask=''
+            expand_mask='files'
             # order_by='sha1'
-            ctmr = self.ctmprocs.list_procedure_files(filesRootNode.hard_hash,read_mask=read_mask,expand_mask=expand_mask)['resources']
-            
+
+            try: 
+                ctmr = self.ctmprocs.list_procedure_files(filesRootNode.hard_hash,read_mask=read_mask,expand_mask=expand_mask)['resources']
+            except:
+                self.textbrowser.append('No files could be gathered from selected procedure.')
+                if PLUGIN_DEBUG: 
+                    import traceback
+                    self.textbrowser.append(traceback.format_exc())
+                return None # exit if this call fails so user can retry (this func always returns None anyway)
+            else:
+                self.textbrowser.append('Files gathered from selected procedure successfully.')
+
             filesRootNode.removeRows(0,1) # remove the empty init child
-            
-            for file in ctmr:
+
+            for file in ctmr: # start adding file information
                 file = file['file']
                 sha1 = file['sha1']
                 filename = sha1
@@ -292,16 +301,16 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.textbrowser.clear()
         self.proc_tree.model().clear()
 
+        # explicitly stating readmask to not request extraneous info
+        # read_mask = 'example_startEA, example_procedure_id, example_endEA, occurrence_counts, is_library, status, hard_hash'
+
         try:
-            # explicitly stating readmask to not request extraneous info
-            # read_mask = 'example_startEA, example_procedure_id, example_endEA, occurrence_counts, is_library, status, hard_hash'
-            ctmr = self.ctmfiles.list_file_procedures(self.sha256)['resources'] # get 'resources' from the returned
-
-            self.populate_proc_table(ctmr)
-
-            self.textbrowser.append('Resources gathered successfully.')
+            ctmr = self.ctmfiles.list_file_procedures(self.sha256)['resources'] # get 'resources' from the returned    
         except:
-            self.textbrowser.append('No resources could be gathered.')
+            self.textbrowser.append('No procedures could be gathered.')
             if PLUGIN_DEBUG: 
                 import traceback
                 self.textbrowser.append(traceback.format_exc())
+        else:
+            self.textbrowser.append('Procedures gathered successfully.')
+            self.populate_proc_table(ctmr) # on a successful call, populate table
