@@ -296,10 +296,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree.model().clear()
 
         # explicitly stating readmask to not request extraneous info
-        # read_mask = 'example_startEA, example_procedure_id, example_endEA, occurrence_counts, is_library, status, hard_hash'
+        # procedures_read_mask = 'example_startEA, example_procedure_id, example_endEA, occurrence_counts, is_library, status, hard_hash'
+        genomics_read_mask = ''
 
         try:
-            ctmr = self.ctmfiles.list_file_procedures(self.sha256)['resources'] # get 'resources' from the returned    
+            ctmpr = self.ctmfiles.list_file_procedures(self.sha256)['resources'] # get 'resources' from the returned
+            # ctmgr = self.ctmfiles.list_file_genomics(self.sha256)['resources']
         except:
             self.textbrowser.append('No procedures could be gathered.')
             if PLUGIN_DEBUG: 
@@ -307,4 +309,4 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                 self.textbrowser.append(traceback.format_exc())
         else:
             self.textbrowser.append('Procedures gathered successfully.')
-            self.populate_proc_table(ctmr) # on a successful call, populate table
+            self.populate_proc_table(ctmpr) # on a successful call, populate table
