@@ -191,11 +191,12 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         #setting up column names
         identifier = ["sha256"]
         analysis_tab_columns = ["filenames","filetype"]
+        page_size=0
         inputfile_highlight_color = QtGui.QColor(255,232,255)
 
         try:
             # request file from website with the above columns of info
-            ctmr = self.ctmfiles.list_files(read_mask=','.join(identifier + analysis_tab_columns))
+            ctmr = self.ctmfiles.list_files(read_mask=','.join(identifier + analysis_tab_columns),page_size=page_size)
         except:
             self.textbrowser.append('No files could be gathered.')
             if PLUGIN_DEBUG: 

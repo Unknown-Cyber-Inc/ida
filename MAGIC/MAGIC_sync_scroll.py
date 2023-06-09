@@ -240,9 +240,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         if not filesRootNode.isPopulated:
             read_mask='sha1,sha256,filenames'
             expand_mask='files'
+            page_size=0
 
             try: 
-                ctmr = self.ctmprocs.list_procedure_files(filesRootNode.hard_hash,read_mask=read_mask,expand_mask=expand_mask)['resources']
+                ctmr = self.ctmprocs.list_procedure_files(filesRootNode.hard_hash,read_mask=read_mask,expand_mask=expand_mask,page_size=page_size)['resources']
             except:
                 self.textbrowser.append('No files could be gathered from selected procedure.')
                 if PLUGIN_DEBUG: 
@@ -297,11 +298,13 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
         # explicitly stating readmask to not request extraneous info
         # procedures_read_mask = 'example_startEA, example_procedure_id, example_endEA, occurrence_counts, is_library, status, hard_hash'
-        genomics_read_mask = ''
+        genomics_read_mask = 'startEA,is_library,status'
+        page_size=0
+        order_by='start_ea'
 
         try:
-            ctmpr = self.ctmfiles.list_file_procedures(self.sha256)['resources'] # get 'resources' from the returned
-            # ctmgr = self.ctmfiles.list_file_genomics(self.sha256)['resources']
+            ctmr = self.ctmfiles.list_file_genomics(self.sha256,read_mask=genomics_read_mask,order_by=order_by,page_size=page_size)#['resources'] # get 'resources' from the returned
+            print(ctmr)
         except:
             self.textbrowser.append('No procedures could be gathered.')
             if PLUGIN_DEBUG: 
@@ -309,4 +312,4 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                 self.textbrowser.append(traceback.format_exc())
         else:
             self.textbrowser.append('Procedures gathered successfully.')
-            self.populate_proc_table(ctmpr) # on a successful call, populate table
+            self.populate_proc_table(ctmr) # on a successful call, populate table
