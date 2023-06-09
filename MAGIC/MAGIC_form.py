@@ -191,7 +191,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         #setting up column names
         identifier = ["sha256"]
         analysis_tab_columns = ["filenames","filetype"]
-        page_size=0
+        page_size=0 # ignore default page size
         inputfile_highlight_color = QtGui.QColor(255,232,255)
 
         try:

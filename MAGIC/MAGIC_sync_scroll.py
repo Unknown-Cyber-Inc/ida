@@ -214,16 +214,17 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         @param resources: dict containing procedures return request
         Note: is there any difference in performance from many appendRow and one appendRows?
         """
+        procedures = procedureInfo['procedures']
 
-        for proc in procedureInfo:
-            start_ea = ida_kernwin.str2ea(proc['example_startEA']) + ida_nalt.get_imagebase()
+        for proc in procedures:
+            start_ea = ida_kernwin.str2ea(proc['startEA']) + int(procedureInfo['image_base'],16)
             hard_hash = proc['hard_hash']
             
-            procrootnode = ProcRootNode(proc['example_procedure_id'],start_ea)
+            procrootnode = ProcRootNode(proc['startEA'],start_ea)
             self.procedureEADict[start_ea] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
-            
+
             procrootnode.appendRows([
-                ProcHeaderItem("Occurrences",str(proc["occurrence_counts"])),
+                ProcHeaderItem("Occurrences",str(proc["occurrence_count"])),
                 ProcHeaderItem("Library","\t"+str(proc["is_library"])), # tab is ignored for boolean for some reason
                 ProcHeaderItem("Group Type",proc["status"]),
             ])
@@ -297,14 +298,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree.model().clear()
 
         # explicitly stating readmask to not request extraneous info
-        # procedures_read_mask = 'example_startEA, example_procedure_id, example_endEA, occurrence_counts, is_library, status, hard_hash'
-        genomics_read_mask = 'startEA,is_library,status'
+        genomics_read_mask = 'startEA,is_library,status,hard_hash,occurrence_count'
         page_size=0
         order_by='start_ea'
 
         try:
-            ctmr = self.ctmfiles.list_file_genomics(self.sha256,read_mask=genomics_read_mask,order_by=order_by,page_size=page_size)#['resources'] # get 'resources' from the returned
-            print(ctmr)
+            ctmr = self.ctmfiles.list_file_genomics(self.sha256,read_mask=genomics_read_mask,order_by=order_by,page_size=page_size)['resources'] # get 'resources' from the returned
         except:
             self.textbrowser.append('No procedures could be gathered.')
             if PLUGIN_DEBUG: 
