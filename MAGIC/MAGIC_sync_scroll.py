@@ -43,17 +43,23 @@ class ProcHeaderItem(ProcSimpleTextNode):
     def __init__(self,key,value):
         super().__init__(key + ":\t" + value)
 
+class ProcListItem(ProcSimpleTextNode):
+    def __init__(self,name,list):
+        super().__init__(name)
+        for item in list:
+            self.appendRow(ProcSimpleTextNode(item))
+
 class ProcNotesNode(ProcTableItem):
     def __init__(self,hard_hash):
         super().__init__()
-        self.setText("notes")
+        self.setText("Notes")
         # empty item to be deleted when populated
         self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
 class ProcTagsNode(ProcTableItem):
     def __init__(self,hard_hash):
         super().__init__()
-        self.setText("tags")
+        self.setText("Tags")
         # empty item to be deleted when populated
         self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
@@ -62,7 +68,7 @@ class ProcFilesNode(ProcTableItem):
     """
     def __init__(self,hard_hash):
         super().__init__()
-        self.setText("files")
+        self.setText("Files")
         self.hard_hash = hard_hash
         self.isPopulated = False
         # empty item to be deleted when populated
@@ -219,6 +225,8 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         for proc in procedures:
             start_ea = ida_kernwin.str2ea(proc['startEA']) + int(procedureInfo['image_base'],16)
             hard_hash = proc['hard_hash']
+            strings = proc['strings']
+            apiCalls = proc['api_calls']
             
             procrootnode = ProcRootNode(proc['startEA'],start_ea)
             self.procedureEADict[start_ea] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
@@ -228,6 +236,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                 ProcHeaderItem("Library","\t"+str(proc["is_library"])), # tab is ignored for boolean for some reason
                 ProcHeaderItem("Group Type",proc["status"]),
             ])
+
+            if strings:
+                procrootnode.appendRow(ProcListItem("Strings",strings))
+
+            if apiCalls:
+                procrootnode.appendRow(ProcListItem("API Calls",apiCalls))
 
             procrootnode.appendRows([
                 ProcNotesNode(hard_hash),
@@ -298,7 +312,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree.model().clear()
 
         # explicitly stating readmask to not request extraneous info
-        genomics_read_mask = 'startEA,is_library,status,hard_hash,occurrence_count'
+        genomics_read_mask = 'startEA,is_library,status,hard_hash,occurrence_count,strings,api_calls'
         page_size=0
         order_by='start_ea'
 
