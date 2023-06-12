@@ -53,6 +53,8 @@ class ProcNotesNode(ProcTableItem):
     def __init__(self,hard_hash):
         super().__init__()
         self.setText("Notes")
+        self.hard_hash = hard_hash
+        self.isPopulated = False
         # empty item to be deleted when populated
         self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
@@ -60,6 +62,8 @@ class ProcTagsNode(ProcTableItem):
     def __init__(self,hard_hash):
         super().__init__()
         self.setText("Tags")
+        self.hard_hash = hard_hash
+        self.isPopulated = False
         # empty item to be deleted when populated
         self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
@@ -284,6 +288,20 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
                 
             filesRootNode.isPopulated = True
 
+    def populate_proc_notes(self, notesRootNode:ProcNotesNode):
+        if not notesRootNode.isPopulated:
+
+            notesRootNode.removeRows(0,1) # remove the empty init child
+
+            notesRootNode.isPopulated = True
+
+    def populate_proc_tags(self, tagsRootNode:ProcTagsNode):
+        if not tagsRootNode.isPopulated:
+
+            tagsRootNode.removeRows(0,1) # remove the empty init child
+
+            tagsRootNode.isPopulated = True
+
     """
     functions for connecting pyqt signals
     """
@@ -304,8 +322,14 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
     def onTreeExpand(self,index):
         item = self.proc_tree.model().itemFromIndex(index)
-        if type(item) is ProcFilesNode:
+        itemType = type(item)
+
+        if itemType is ProcFilesNode:
             self.populate_proc_files(item)
+        elif itemType is ProcNotesNode:
+            self.populate_proc_notes(item)
+        elif itemType is ProcTagsNode:
+            self.populate_proc_tags(item)
 
     def pushbutton_click(self):
         self.textbrowser.clear()
