@@ -236,7 +236,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             self.procedureEADict[start_ea] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
 
             procrootnode.appendRows([
-                ProcHeaderItem("Occurrences",str(proc["occurrence_count"])),
+                ProcHeaderItem("Group Occurrences",str(proc["occurrence_count"])),
                 ProcHeaderItem("Library","\t"+str(proc["is_library"])), # tab is ignored for boolean for some reason
                 ProcHeaderItem("Group Type",proc["status"]),
             ])
@@ -290,6 +290,22 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
 
     def populate_proc_notes(self, notesRootNode:ProcNotesNode):
         if not notesRootNode.isPopulated:
+            expand_mask='notes'
+
+            try: 
+                ctmr = self.ctmprocs.list_procedure_notes(notesRootNode.hard_hash,expand_mask=expand_mask)['resources']
+            except:
+                self.textbrowser.append('No notes could be gathered from selected procedure.')
+                if PLUGIN_DEBUG: 
+                    import traceback
+                    self.textbrowser.append(traceback.format_exc())
+                return None # exit if this call fails so user can retry (this func always returns None anyway)
+            else:
+                self.textbrowser.append('Notes gathered from selected procedure successfully.')
+
+            for note in ctmr: # start adding note information
+
+                notesRootNode.appendRow(ProcSimpleTextNode(note['note'])) # display note
 
             notesRootNode.removeRows(0,1) # remove the empty init child
 
