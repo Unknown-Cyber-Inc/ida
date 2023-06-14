@@ -179,15 +179,8 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         """
         self.textbrowser.clear()
 
-        try:
-            self.get_and_populate_tables()
+        self.get_and_populate_tables()
 
-            self.textbrowser.append('Resources gathered successfully.')
-        except:
-            self.textbrowser.append('No resources could be gathered.')
-            if PLUGIN_DEBUG: 
-                import traceback
-                self.textbrowser.append(traceback.format_exc())
 
     def get_and_populate_tables(self):
         """
@@ -198,10 +191,20 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         #setting up column names
         identifier = ["sha256"]
         analysis_tab_columns = ["filenames","filetype"]
+        page_size=0 # ignore default page size
         inputfile_highlight_color = QtGui.QColor(255,232,255)
 
-        # request file from website with the above columns of info
-        ctmr = self.ctmfiles.list_files(read_mask=','.join(identifier + analysis_tab_columns))
+        try:
+            # request file from website with the above columns of info
+            ctmr = self.ctmfiles.list_files(read_mask=','.join(identifier + analysis_tab_columns),page_size=page_size)
+        except:
+            self.textbrowser.append('No files could be gathered.')
+            if PLUGIN_DEBUG: 
+                import traceback
+                self.textbrowser.append(traceback.format_exc())
+            return None # don't continue populating on failed call, exit (this func always returns None anyway)
+        else:
+            self.textbrowser.append('Files gathered successfully.')
 
         # set row and col of table based on returned data sizes
         self.files_analysis_tab_table.setRowCount(len(ctmr['resources']))

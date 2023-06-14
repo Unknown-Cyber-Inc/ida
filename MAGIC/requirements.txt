@@ -1,2 +1,2 @@
 python-dotenv==0.21.1
-cythereal_magic==0.0.14
+cythereal_magic==0.0.19

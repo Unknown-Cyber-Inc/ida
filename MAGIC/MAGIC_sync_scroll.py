@@ -15,98 +15,96 @@ import cythereal_magic
 # load_dotenv sources the below environment variables from .env
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
+PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-class ProcTableItemModel(Qt.QStandardItem):
-    def __init__(self,procInfo):
+class ProcTableItem(Qt.QStandardItem):
+    def __init__(self):
         super().__init__()
-        self.setText(procInfo['hard_hash'])
         self.setEditable(False)
-        
-        # more specific entries
-        signatureAddrNode = ProcTableSubItem("signature (address)")
-        for i,signature in enumerate(procInfo["example_blockEAs"]):
-            signatureAddrNode.appendRow(ProcTableSubItem(""))
-            signatureAddrNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
-            signatureAddrNode.appendRow(ProcTableSubItem("=================="))
-            # signatureAddrNode.appendRow(ProcTableSubItem(""))
-            signatureAddrNode.appendRows([ProcTableHexAddrItem("start EA: ",signature['startEA']),
-                                  ProcTableHexAddrItem("end EA: ",signature['endEA'])
-            ])
-        signatureAddrNode.appendRow(ProcTableSubItem(""))
 
-        signatureNode = ProcTableSubItem("signature (byte)")
-        if procInfo["signature"]:
-            for i,signature in enumerate(procInfo["signature"]):
-                signatureNode.appendRow(ProcTableSubItem(""))
-                signatureNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
-                signatureNode.appendRow(ProcTableSubItem("=================="))
-                signatureNode.appendRows([ProcTableSubItem(byte) for byte in signature])
-            signatureNode.appendRow(ProcTableSubItem(""))
+class ProcRootNode(ProcTableItem):
+    """Node representing the root of a single procedure
 
-        signatureAssemblyNode = ProcTableSubItem("signature (assembly)")
-        for i,signature in enumerate(procInfo["example_procedure"]):
-            signatureAssemblyNode.appendRow(ProcTableSubItem(""))
-            signatureAssemblyNode.appendRow(ProcTableSubItem("             block " + str(i+1) +":"))
-            signatureAssemblyNode.appendRow(ProcTableSubItem("=================="))
-            signatureAssemblyNode.appendRows([ProcTableSubItem(byte) for byte in signature])
-        signatureAssemblyNode.appendRow(ProcTableSubItem(""))
-
-        # headers
-        self.appendRows([
-            ProcTableSubItem("occurrances: "+str(procInfo['occurrence_counts'])),
-            ProcTableSubItem("library: "+str(procInfo['is_library'])),
-            ProcTableSubItem("signatures: "+str(procInfo['signature_count'])),
-            ProcTableSubItem("total blocks: "+str(procInfo['block_counts'])),
-            ProcTableSubItem("total instructions: "+str(procInfo['instr_counts'])),
-            ProcTableSubItem("total bytes: "+str(procInfo['byte_counts'])),
-        ])
-
-        self.appendRows([signatureAddrNode,signatureNode,signatureAssemblyNode])
-
-class ProcTableSubItem(Qt.QStandardItem):
-    """Item below a TableItemModel
-
-    May be grouped more logically with 'delegates'!
     """
-    def __init__(self,entry:str):
+    def __init__(self,node_name,start_ea:int):
         super().__init__()
-        self.setText(entry) 
-        self.setEditable(False)           
+        self.setText(node_name)
+        self.start_ea = start_ea
 
-class ProcTableHexAddrItem(ProcTableSubItem):
-    """Item below a TableItemModel. Contains IDA hex item as 'ea' attr.
+class ProcSimpleTextNode(ProcTableItem):
+    def __init__(self,text=''):
+        super().__init__()
+        self.setText(text)
 
-    May be grouped more logically with 'delegates'!
+class ProcHeaderItem(ProcSimpleTextNode):
+    """Node representing fields of produes calls which take form of str:str
+
     """
-    def __init__(self,entry:str,hexAddr:str):
-        super().__init__(entry+hexAddr)
-        self.ea = ida_kernwin.str2ea(hexAddr)
+    def __init__(self,key,value):
+        super().__init__(key + ":\t" + value)
+
+class ProcListItem(ProcSimpleTextNode):
+    def __init__(self,name,list):
+        super().__init__(name)
+        for item in list:
+            self.appendRow(ProcSimpleTextNode(item))
+
+class ProcNotesNode(ProcTableItem):
+    def __init__(self,hard_hash):
+        super().__init__()
+        self.setText("Notes")
+        self.hard_hash = hard_hash
+        self.isPopulated = False
+        # empty item to be deleted when populated
+        self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
+
+class ProcTagsNode(ProcTableItem):
+    def __init__(self,hard_hash):
+        super().__init__()
+        self.setText("Tags")
+        self.hard_hash = hard_hash
+        self.isPopulated = False
+        # empty item to be deleted when populated
+        self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
+
+class ProcFilesNode(ProcTableItem):
+    """Node representing the root of the "files" category. Contains subnodes representing individual files
+    """
+    def __init__(self,hard_hash):
+        super().__init__()
+        self.setText("Files")
+        self.hard_hash = hard_hash
+        self.isPopulated = False
+        # empty item to be deleted when populated
+        self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
+
+class PluginScrHooks(ida_kernwin.UI_Hooks):
+        """Hooks necessary for the functionality of this form
+        
+        Connect to IDA's screen_ea_changed hook
+        """
+        def __init__(self, proc_tree, procedureEADict, *args):
+            super().__init__(*args)
+            # needs to be able to access the process_treeview once generated
+            self.proc_tree = proc_tree
+            self.procedureEADict = procedureEADict
+
+        def screen_ea_changed(self, ea, prev_ea):
+            eaKey = ida_kernwin.ea2str(ea).split(":")[1]
+            eaKey = int(eaKey,16)
+            if eaKey in self.procedureEADict:
+                procedureQIndexItem = self.procedureEADict[eaKey].index()
+                self.proc_tree.setCurrentIndex(procedureQIndexItem) # highlight and select it
+                if not self.proc_tree.isExpanded(procedureQIndexItem): # do not expand before checking if expanded, see proc_tree_jump_to_hex for info
+                    self.proc_tree.expand(procedureQIndexItem)
+                # 3 is an enum telling the widget to open with the item in the center
+                self.proc_tree.scrollTo(procedureQIndexItem,3) # jump to and center it
+                
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
     """
-    class PluginScrHooks(ida_kernwin.UI_Hooks):
-        def __init__(self, proc_tree, *args):
-            super().__init__(*args)
-            # needs to be able to access the process_treeview once generated
-            self.proc_tree = proc_tree
-
-        def screen_ea_changed(self, ea, prev_ea):
-            # iterate through treeview until we reach the hex items
-            # replace this for loop by adding all hex obj nodes to an array or map PLEASE!
-            for row in range(self.proc_tree.model().rowCount()):
-                child = self.proc_tree.model().invisibleRootItem().child(row,0)
-                for proc_id_row in range(child.rowCount()):
-                    child_subitem = child.child(proc_id_row,0)
-                    for proc_subitem_row in range(child_subitem.rowCount()):
-                        checkIfHex = child_subitem.child(proc_subitem_row,0)
-                        if(type(checkIfHex)==ProcTableHexAddrItem):
-                            if(ea == checkIfHex.ea):
-                                # self.proc_tree.expandRecursively(checkIfHex.index())
-                                # 3 is an enum telling the widget to open with the item in the center
-                                self.proc_tree.collapseAll()
-                                self.proc_tree.scrollTo(checkIfHex.index(),3)
 
     """
     functions for PluginForm object functionality.
@@ -114,13 +112,17 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     def __init__(self, title, magic_api_client):
         super().__init__()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
+        self.baseRVA = ida_nalt.get_imagebase()
         self.title:str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
+        self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
+        self.procedureEADict = {} # dict solution to jump from IDA ea to plugin procedure
 
         # show widget on creation of new form
         self.Show()
 
-        self.hooks = self.PluginScrHooks(self.proc_tree)
+        # hook into the IDA code
+        self.hooks = PluginScrHooks(self.proc_tree,self.procedureEADict)
         self.hooks.hook()
 
         # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
@@ -131,7 +133,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         It is handled by IDA and doesn't have a simple reference.
         The number here is a relative size ratio between two widgets (between the scroll widget and the widgets to the left)
         """
-        self.parent.parent().parent().setSizes([700,1])
+        self.parent.parent().parent().setSizes([600,1])
+
+        if PLUGIN_DEVELOP:
+            self.pushbutton_click()
 
     def OnCreate(self, form):
         """
@@ -141,10 +146,6 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.parent = self.FormToPyQtWidget(form)
 
         self.load_scroll_view()
-
-        # strictly for testing
-        for i in range(1000):
-            self.textbrowser.append("Line " + str(i) + ": ")
      
     def OnClose(self, form):
         """
@@ -209,24 +210,113 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree.setHeaderHidden(True)
         self.proc_tree.setModel(Qt.QStandardItemModel())
         self.proc_tree.doubleClicked.connect(self.proc_tree_jump_to_hex) # let widget handle doubleclicks
+        self.proc_tree.expanded.connect(self.onTreeExpand) # handle certain expand events
 
         self.textbrowser = QtWidgets.QTextEdit()
         self.textbrowser.setReadOnly(True)
 
         #connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click) 
-    
-    def populate_proc_table(self, resources):
+
+    def populate_proc_table(self, procedureInfo):
         """ populates the procedures table with recieved procedures
         
-        @param resources: dict
-        May also be responsible for providing IDA with dict in form of {"startEA":"procHash"}.
-        This is so we can jump to that EA when we reach that item in IDA window
+        @param resources: dict containing procedures return request
         Note: is there any difference in performance from many appendRow and one appendRows?
         """
+        procedures = procedureInfo['procedures']
 
-        for resource in resources:
-            self.proc_tree.model().appendRow(ProcTableItemModel(resource))
+        for proc in procedures:
+            start_ea = ida_kernwin.str2ea(proc['startEA']) + int(procedureInfo['image_base'],16)
+            hard_hash = proc['hard_hash']
+            strings = proc['strings']
+            apiCalls = proc['api_calls']
+            
+            procrootnode = ProcRootNode(proc['startEA'],start_ea)
+            self.procedureEADict[start_ea] = procrootnode # add node to dict to avoid looping through all objects in PluginScrHooks
+
+            procrootnode.appendRows([
+                ProcHeaderItem("Group Occurrences",str(proc["occurrence_count"])),
+                ProcHeaderItem("Library","\t"+str(proc["is_library"])), # tab is ignored for boolean for some reason
+                ProcHeaderItem("Group Type",proc["status"]),
+            ])
+
+            if strings:
+                procrootnode.appendRow(ProcListItem("Strings",strings))
+
+            if apiCalls:
+                procrootnode.appendRow(ProcListItem("API Calls",apiCalls))
+
+            procrootnode.appendRows([
+                ProcNotesNode(hard_hash),
+                ProcTagsNode(hard_hash),
+                ProcFilesNode(hard_hash),
+            ])
+
+            self.proc_tree.model().appendRow(procrootnode) # add root node to tree
+    
+    def populate_proc_files(self, filesRootNode:ProcFilesNode):
+        if not filesRootNode.isPopulated:
+            read_mask='sha1,sha256,filenames'
+            expand_mask='files'
+            page_size=0
+
+            try: 
+                ctmr = self.ctmprocs.list_procedure_files(filesRootNode.hard_hash,read_mask=read_mask,expand_mask=expand_mask,page_size=page_size)['resources']
+            except:
+                self.textbrowser.append('No files could be gathered from selected procedure.')
+                if PLUGIN_DEBUG: 
+                    import traceback
+                    self.textbrowser.append(traceback.format_exc())
+                return None # exit if this call fails so user can retry (this func always returns None anyway)
+            else:
+                self.textbrowser.append('Files gathered from selected procedure successfully.')
+
+            filesRootNode.removeRows(0,1) # remove the empty init child
+
+            for file in ctmr: # start adding file information
+                if file['sha256'] != self.sha256: # don't display current file, that's implicit
+                    sha1 = file['sha1']
+                    filename = sha1
+                    if file['filenames']:
+                        filename = file['filenames'][0]
+
+                    fileNode = ProcSimpleTextNode(filename) # build a fileNode
+                    fileNode.appendRow(ProcSimpleTextNode(sha1))
+
+                    filesRootNode.appendRow(fileNode)
+                
+            filesRootNode.isPopulated = True
+
+    def populate_proc_notes(self, notesRootNode:ProcNotesNode):
+        if not notesRootNode.isPopulated:
+            expand_mask='notes'
+
+            try: 
+                ctmr = self.ctmprocs.list_procedure_notes(notesRootNode.hard_hash,expand_mask=expand_mask)['resources']
+            except:
+                self.textbrowser.append('No notes could be gathered from selected procedure.')
+                if PLUGIN_DEBUG: 
+                    import traceback
+                    self.textbrowser.append(traceback.format_exc())
+                return None # exit if this call fails so user can retry (this func always returns None anyway)
+            else:
+                self.textbrowser.append('Notes gathered from selected procedure successfully.')
+
+            for note in ctmr: # start adding note information
+
+                notesRootNode.appendRow(ProcSimpleTextNode(note['note'])) # display note
+
+            notesRootNode.removeRows(0,1) # remove the empty init child
+
+            notesRootNode.isPopulated = True
+
+    def populate_proc_tags(self, tagsRootNode:ProcTagsNode):
+        if not tagsRootNode.isPopulated:
+
+            tagsRootNode.removeRows(0,1) # remove the empty init child
+
+            tagsRootNode.isPopulated = True
 
     """
     functions for connecting pyqt signals
@@ -236,23 +326,43 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         
         see ProcTableHexAddrItem for "ea" attr
         """
-        item = self.proc_tree.selectedIndexes()[0]
-        if hasattr(item.model().itemFromIndex(index),"ea"):
-            ida_kernwin.jumpto(item.model().itemFromIndex(index).ea)
+        item = self.proc_tree.model().itemFromIndex(index)
+        if type(item) is ProcRootNode:
+            if self.procedureEADict[item.start_ea]:
+                # this jump will note the ea and try to expand even though we doubleclicked
+                # therefore, set as expanded and check this expression in the hook feature
+                if not self.proc_tree.isExpanded(index):
+                    self.proc_tree.setExpanded(index,True)
+                    ida_kernwin.jumpto(item.start_ea)
+                    self.proc_tree.setExpanded(index,False)
+
+    def onTreeExpand(self,index):
+        item = self.proc_tree.model().itemFromIndex(index)
+        itemType = type(item)
+
+        if itemType is ProcFilesNode:
+            self.populate_proc_files(item)
+        elif itemType is ProcNotesNode:
+            self.populate_proc_notes(item)
+        elif itemType is ProcTagsNode:
+            self.populate_proc_tags(item)
 
     def pushbutton_click(self):
         self.textbrowser.clear()
         self.proc_tree.model().clear()
 
+        # explicitly stating readmask to not request extraneous info
+        genomics_read_mask = 'start_ea,is_library,status,procedure_hash,occurrence_count,strings,api_calls'
+        page_size=0
+        order_by='start_ea'
+
         try:
-            ctmr = self.ctmfiles.list_file_procedures(self.sha256,read_mask="*") # request resources
-
-            resources = ctmr['resources'] # get 'resources' from the returned
-            self.populate_proc_table(resources) # populate qtreeview with processes
-
-            self.textbrowser.append('Resources gathered successfully.')
+            ctmr = self.ctmfiles.list_file_genomics(self.sha256,read_mask=genomics_read_mask,order_by=order_by,page_size=page_size)['resources'] # get 'resources' from the returned
         except:
-            self.textbrowser.append('No resources could be gathered.')
+            self.textbrowser.append('No procedures could be gathered.')
             if PLUGIN_DEBUG: 
                 import traceback
                 self.textbrowser.append(traceback.format_exc())
+        else:
+            self.textbrowser.append('Procedures gathered successfully.')
+            self.populate_proc_table(ctmr) # on a successful call, populate table
