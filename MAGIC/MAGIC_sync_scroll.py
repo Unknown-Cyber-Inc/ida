@@ -352,7 +352,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
         self.proc_tree.model().clear()
 
         # explicitly stating readmask to not request extraneous info
-        genomics_read_mask = 'startEA,is_library,status,hard_hash,occurrence_count,strings,api_calls'
+        genomics_read_mask = 'start_ea,is_library,status,procedure_hash,occurrence_count,strings,api_calls'
         page_size=0
         order_by='start_ea'
 
