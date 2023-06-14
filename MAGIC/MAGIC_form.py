@@ -17,23 +17,6 @@ import cythereal_magic
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-class TableView(QtWidgets.QTableWidget):
-    def __init__(self, data, *args):
-        QtWidgets.QTableWidget.__init__(self, *args)
-        self.data = data
-        self.setData()
-        self.resizeColumnsToContents()
-        self.resizeRowsToContents()
- 
-    def setData(self): 
-        horHeaders = []
-        for n, key in enumerate(sorted(self.data.keys())):
-            horHeaders.append(key)
-            for m, item in enumerate(self.data[key]):
-                newitem = QtWidgets.QTableWidgetItem(item)
-                self.setItem(m, n, newitem)
-        self.setHorizontalHeaderLabels(horHeaders)
-
 class MAGICPluginFormClass(ida_kernwin.PluginForm):
     """
     Highest level of the plugin UI object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
@@ -45,6 +28,11 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
     functions for PluginForm object functionality.
     """
     def __init__(self, title, magic_api_client):
+        """Initialializes the form object
+
+        Additionally, sets a few member variables necessary to the function of the plugin.
+        A few are variables which are determined by IDA.
+        """
         super().__init__()
         
         # non pyqt attrs
@@ -86,6 +74,9 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
         return
 
     def Show(self):
+        """
+        Take created widget object and display it on IDA's GUI
+        """
         #show with intrinsic title, specific options
         return super().Show(
             self.title,
