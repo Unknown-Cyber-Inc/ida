@@ -5,7 +5,19 @@ Plugin for interfacing Cythereal MAGIC with IDA — Interactive Disassembler
 After performing the installation instructions, the plugin should load automatically in IDA. Access it through the menus at the top **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
 
 ## Features
-- **`PLACEHOLDER`**
+- Widget which gathers procedure information from UnknownCyber on the user's currently opened file
+- Displays important and relevant information for reverse engineering purposes such as:
+    * strings
+    * api calls
+    * if the procedure is tagged as a library procedure
+    * if the procedure is tagged as a clone, variant, or related
+    * ocurrences of the procedure in the UnknownCyber database
+    * notes associated with the procedure, procedure group, and all files containing this procedure
+    * tags associated with the procedure, procedure group, and all files containing this procedure
+    * list of files which contain similar procedures
+- Doubleclicking a procedure in the widget jumps IDA to the effective address associated with the procedure
+- Scrolling through IDA will open the associated procedures automatically in the widget
+- Minimal version of UnkownCyber site within IDA
 
 ## Built and Verified for
 This does not mean it won't work for other versions, but there are no guarantees yet. This should be able to work with Windows installations as long as it's kept in mind that this guide is currently written for Linux.
@@ -16,11 +28,10 @@ This does not mean it won't work for other versions, but there are no guarantees
 - Ubuntu 22.04.2 LTS
 
 ## Prerequisites
-There are few prerequisites, the `requirements.txt` is addressed in the next section.
 
-- DEVELOPERS: it is recommended to use a python virtual environment. 
-- Install IDApro — This should automatically include IDAPython (python API for IDA, which we rely on). [Setting this up with IDA requires a little configuration](#development-setup).
-- Install python requirements. (Developers, do this in your virtual environment if you chose to use one).
+- DEVELOPERS: it is recommended to use a python virtual environment and install requirements on that instead. [Setting this up with IDA requires some configuration](#development-setup).
+- Install IDApro — This should automatically include IDAPython (python API for IDA, which we rely on).
+- Install python requirements. (Developers, do this in your virtual environment if you chose to use one). <a name="python-requirements"></a>
     * Open terminal and navigate to the MAGIC folder
     * Run `pip install -r requirements.txt`
     * If this doesn't work, replace `pip` with `pip3`
@@ -28,26 +39,31 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
 
 ## Installation
 - Move the `MAGIC` directory and `MAGIC_plugin_entry.py` to your IDA plugin directory. In my case `/opt/ida/plugins`. These can also be installed to `$HOME/.idapro/plugins` [as per this link](https://hex-rays.com/blog/igors-tip-of-the-week-33-idas-user-directory-idausr/)
-- Copy the contents of `.env.example` to a file called `.env` and place it in the `idapro/plugins` directory
-    * If you are not a developer, you should only need to change `MAGIC_API_ENDPOINT` to hyperlink to MAGIC API's main entrypoint and `MAGIC_API_KEY` to your MAGIC API key
-    * In case you are a developer, read the [environment variables](#environment-variables) section and change them accordingly
+- Copy the contents of `.env.example` to a file called `.env`
+    * If you are not a developer, you should only need to change `MAGIC_API_KEY` to your MAGIC API key
+    * If are a developer, read the [environment variables](#environment-variables) section and change them accordingly
+- That's all. Info about the plugins files can be found [here](#files-section). Open a binary with IDA and run the plugin with **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
+
+---
 
 ## Development Setup <a name="development-setup"></a>
-- Create a virtual environment and note the bin path `yourvenv/bin/`
+- Create a virtual environment and note its path `yourvenv/bin/`
 - Run `source yourvenv/bin/activate` to launch the virtual environment
-    * Note that required dependancies should be installed within the virtual environment
-    * When working with IDA, this is usually the only reason to manually launch the virtual environment
-- With the virtual environment active, run `pip install -r requirements.txt`
-    * To ensure that IDA is running off of the correct environment, install a simple python library which is not included in the default python installation ["art"](https://pypi.org/project/art/) into your target environment
-    * If you can import and run the library through IDA's CLI for python, then IDA is using the correct environment
-- You can type `deactivate` in the terminal to exit the virtual environment at this step
+    * This is when you install the [python requirements](#python-requirements).
+        * To ensure that IDA is running off of the correct environment, install a simple python library which is not included in the default python installation ["art"](https://pypi.org/project/art/) into your target environment
+        * If you can import and run the above library through IDA's CLI for python, then IDA is using the correct environment
+- You can type `deactivate` in the terminal to exit the virtual environment
 - In `idapro/python/examples/core` there is a script `idapythonrc.py`
-    * Append the code in the following block to `idapythonrc.py`
+    * Copy the `idapythonrc.py` script inside `~/.idapro/`
+        * Placing it here means IDA will run this code directly after core initialization
+    * Append the code in the following block to `~/.idapro/idapythonrc.py`
         * This will execute a script activating the virtual environment that IDA will use
+        * `path/to/your/virtual/environment` refers to your virtual environment path above its `bin` directory
         
-        contents to add to `idapythonrc.py`:
+        contents to add to `idapythonrc.py`:  
         
-        ---
+        <p></p>
+        
         ```python
         import os
         virtualenv_path = "path/to/your/virtual/environment"
@@ -64,20 +80,19 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
             exec(f.read(), dict(__file__=activate_this_path))
 
         activate_virtualenv(os.path.join(idaapi.get_user_idadir(), virtualenv_path))
-        ```
+        ```  
         
-        ---
+        <p></p>
         
-    * Move this script inside `~/.idapro/`
-        * Placing it here means IDA will run this code directly after core initialization
-        
-- This code requires a script in the virtual environment bin that is deprecated in later versions of `python -m venv` 
-    * Create a file in `yourvenv/bin` called `activate_this.py`
+- The above code requires a script in the virtual environment bin that is deprecated in later versions of `python -m venv` 
+    * Create a file in `path/to/your/virtual/environment/bin` called `activate_this.py`
     * Appending the code in the following block essentially tells the running application (IDA in this case) to prepend the virtual environment to its PATH, thereby prioritizing that python environment
+        * As a note, the line `site_packages = os.path.join(base, 'lib', 'python%s' % sys.version[:3], 'site-packages')` may fail in certain python versions since it is looking for only the third character in, say, `3.7.9`
         
-        contents of `activate_this.py`:
+        contents of `activate_this.py`:  
         
-        ---
+        <p></p>
+        
         ```python
         """By using execfile(this_file, dict(__file__=this_file)) you will
         activate this virtualenv environment.
@@ -110,17 +125,22 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
                 new_sys_path.append(item)
                 sys.path.remove(item)
         sys.path[:0] = new_sys_path
-        ```
+        ```  
         
-        ---
-        
-## Files
-### Requirements.txt
+        <p></p>
+
+---
+
+## Setup Files <a name="files-section"></a>  
+Files specifically related to setup/development/installation. All except the `README.md` are located in the `MAGIC` directory.
+### `requirements.txt`  
+Python requirements
 - python-dotenv, package which will load variables from files into environment
 - cythereal_magic, unknowncyber's python library which handles API requests
 
-### Environment Variables <a name="environment-variables"></a>
-#### MAGIC related
+### `.env.example` <a name="environment-variables"></a>  
+Environment variables sourced in the plugin by the python-dotenv python library. You're supposed to copy the contents to a file called `.env` for the variables to be sourced.
+#### MAGIC related environment variables
 - MAGIC_API_HOST — str, main endpoint for sending requests to MAGIC
 - MAGIC_API_KEY — str, API key for connecting with MAGIC's API
 #### DEV/DEBUG vars
@@ -130,4 +150,18 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
 - PLUGIN_DEVELOP_LOCAL_API — bool, "True" allows the plugin to redirect requests to local instance of unknowncyber
 - MAGIC_API_HOST_LOCAL — str, main endpoint for sending requests to local instance of MAGIC
 - MAGIC_API_KEY_LOCAL — str, API key for connecting with local instance of MAGIC's API
-- PLUGIN_DEVELOP_LOCAL_CERT_PATH — str, path to dev.crt cert file. running an environment on localhost may create cert validation errors when using cythereal_magic python package. this will point those requests to the right directory. 
+- PLUGIN_DEVELOP_LOCAL_CERT_PATH — str, path to dev.crt cert file. running an environment on localhost may create cert validation errors when using cythereal_magic python package. this will point those requests to the right directory.
+
+### `README.md`  
+Setup instructions and plugin notes
+
+## Plugin Files  
+Files related to the functionality of the IDA plugin. All except the `MAGIC_plugin_entry.py` are located in the `MAGIC` directory.
+### `MAGIC_plugin_entry.py`  
+Contains code which is required by IDA that returns a required IDA class representing the plugin.
+### `MAGIC_form.py`  
+Contains the code for the plugin form which is just planned to be a minimal version of unknowncyber (for displaying and navigating information related to all files, etc.)
+### `MAGIC_hooks.py`  
+Contains global hooks required by this plugin.
+### `MAGIC_sync_scroll.py`  
+Contains code for the plugin form which is meant to act as an interface between the average IDA user's workflow and unknowncyber's procedure information.
