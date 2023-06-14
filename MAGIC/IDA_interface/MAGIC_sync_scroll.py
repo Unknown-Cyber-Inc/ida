@@ -9,8 +9,9 @@ testing out how certain functions can be synced.
 import ida_nalt, ida_kernwin
 from PyQt5 import QtWidgets, Qt, QtGui 
 
-#cythereal magic for calling API
+#cythereal magic for calling API and related modules
 import cythereal_magic
+from ..MAGIC_hooks import PluginScrHooks
 
 # load_dotenv sources the below environment variables from .env
 import os
@@ -98,30 +99,7 @@ class ProcFilesNode(ProcTableItem):
         self.hard_hash = hard_hash
         self.isPopulated = False
         # empty item to be deleted when populated
-        self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
-
-class PluginScrHooks(ida_kernwin.UI_Hooks):
-        """Hooks necessary for the functionality of this form
-        
-        Connect to IDA's screen_ea_changed hook
-        """
-        def __init__(self, proc_tree, procedureEADict, *args):
-            super().__init__(*args)
-            # needs to be able to access the process_treeview once generated
-            self.proc_tree = proc_tree
-            self.procedureEADict = procedureEADict
-
-        def screen_ea_changed(self, ea, prev_ea):
-            eaKey = ida_kernwin.ea2str(ea).split(":")[1]
-            eaKey = int(eaKey,16)
-            if eaKey in self.procedureEADict:
-                procedureQIndexItem = self.procedureEADict[eaKey].index()
-                self.proc_tree.setCurrentIndex(procedureQIndexItem) # highlight and select it
-                if not self.proc_tree.isExpanded(procedureQIndexItem): # do not expand before checking if expanded, see proc_tree_jump_to_hex for info
-                    self.proc_tree.expand(procedureQIndexItem)
-                # 3 is an enum telling the widget to open with the item in the center
-                self.proc_tree.scrollTo(procedureQIndexItem,3) # jump to and center it
-                
+        self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child                
 
 class MAGICPluginScrClass(ida_kernwin.PluginForm):
     """
