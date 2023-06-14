@@ -19,7 +19,7 @@ from ida_kernwin import find_widget,is_idaq,close_widget
 #cythereal magic for calling API
 import cythereal_magic
 # other MAGIC imports
-from MAGIC import MAGIC_form
+from MAGIC.web_interface import MAGIC_form
 from MAGIC import MAGIC_sync_scroll
 from MAGIC import MAGIC_hooks
 
@@ -91,7 +91,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
             print("MAGIC running mode DEBUG")
         if PLUGIN_DEVELOP: 
             print("MAGIC running mode DEVELOP")
-            ida_idaapi.require("MAGIC.MAGIC_form") # reloads the module so we can make changes without restarting IDA
+            ida_idaapi.require("MAGIC.web_interface.MAGIC_form") # reloads the module so we can make changes without restarting IDA
             ida_idaapi.require("MAGIC.MAGIC_sync_scroll")
             ida_idaapi.require("MAGIC.MAGIC_hooks")
             return ida_idaapi.PLUGIN_OK

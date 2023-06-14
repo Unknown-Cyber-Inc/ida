@@ -8,6 +8,8 @@
 !MAGIC_plugin_entry.py
 !MAGIC
 !MAGIC/*
+!MAGIC/web_interface/*
+!MAGIC/IDA_interface/*
 
 # definitely ignore this
 .env
