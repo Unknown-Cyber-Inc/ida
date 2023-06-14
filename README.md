@@ -10,28 +10,27 @@ After performing the installation instructions, the plugin should load automatic
 ## Built and Verified for
 This does not mean it won't work for other versions, but there are no guarantees yet. This should be able to work with Windows installations as long as it's kept in mind that this guide is currently written for Linux.
 
-- IDA Pro 8.2 (64-bit)
+- IDA Pro 8.2.230124 (64-bit) GUI version
 - IDAPython 64-bit v7.4.0
-- Python 3.6.9
-- Ubuntu 18.04.6 LTS
+- Python 3.7.16
+- Ubuntu 22.04.2 LTS
 
 ## Prerequisites
 There are few prerequisites, the `requirements.txt` is addressed in the next section.
 
-- Install IDApro — This should automatically include IDAPython
+- DEVELOPERS: it is recommended to use a python virtual environment. 
+- Install IDApro — This should automatically include IDAPython (python API for IDA, which we rely on). [Setting this up with IDA requires a little configuration](#development-setup).
+- Install python requirements. (Developers, do this in your virtual environment if you chose to use one).
+    * Open terminal and navigate to the MAGIC folder
+    * Run `pip install -r requirements.txt`
+    * If this doesn't work, replace `pip` with `pip3`
+    * IDA can potentially point to multiple versions of python. Make sure IDA's version has these packages installed.
 
 ## Installation
-- Move the plugin script `MAGIC_widget.py` to `idapro/plugins`
+- Move the `MAGIC` directory and `MAGIC_plugin_entry.py` to your IDA plugin directory. In my case `/opt/ida/plugins`. These can also be installed to `$HOME/.idapro/plugins` [as per this link](https://hex-rays.com/blog/igors-tip-of-the-week-33-idas-user-directory-idausr/)
 - Copy the contents of `.env.example` to a file called `.env` and place it in the `idapro/plugins` directory
     * If you are not a developer, you should only need to change `MAGIC_API_ENDPOINT` to hyperlink to MAGIC API's main entrypoint and `MAGIC_API_KEY` to your MAGIC API key
     * In case you are a developer, read the [environment variables](#environment-variables) section and change them accordingly
-- For developers it is recommended to use a virtual environment for consistency
-    * This requires extra configuration, *you should ignore the rest of this section and skip to [Development Setup](#development-setup)*
-    * Otherwise, you can ignore the development section
-- Install requirements using `pip install -r requirements.txt` on the version of python used by IDA
-    * This should be the default installed version, but make sure in case issues come up
-    * To do this, install a simple python library which is not included in the default python installation ["art"](https://pypi.org/project/art/) into your target environment
-    * If you can import and run the library through IDA's CLI for python, then IDA is using the correct environment
 
 ## Development Setup <a name="development-setup"></a>
 - Create a virtual environment and note the bin path `yourvenv/bin/`
@@ -114,12 +113,21 @@ There are few prerequisites, the `requirements.txt` is addressed in the next sec
         ```
         
         ---
+        
+## Files
+### Requirements.txt
+- python-dotenv, package which will load variables from files into environment
+- cythereal_magic, unknowncyber's python library which handles API requests
 
-## Environment Variables <a name="environment-variables"></a>
-### MAGIC related
-- MAGIC_API_ENDPOINT — str, main endpoint for sending requests to MAGIC
-- MAGIC_API_CERT_PATH — str, in case requests to magic's API is unauthorized by python's requests library, we can provide the path to one of their certs
+### Environment Variables <a name="environment-variables"></a>
+#### MAGIC related
+- MAGIC_API_HOST — str, main endpoint for sending requests to MAGIC
 - MAGIC_API_KEY — str, API key for connecting with MAGIC's API
-
-### state vars
-- PLUGIN_DEVELOP — boolean, "True" allows the plugin to be tweaked for easier time with development. For example, in the plugin code this tells IDA to unload the plugin from memory as soon as it is finished running. This means we don't have to continually restart IDA to test plugin changes.
+#### DEV/DEBUG vars
+- PLUGIN_DEVELOP — bool, "True" allows the plugin to be tweaked for easier time with development. For example, in the plugin code this tells IDA to unload the plugin from memory as soon as it is finished running. This means we don't have to continually restart IDA to test plugin changes.
+- PLUGIN_DEVELOP_RECREATE_WIDGETS — bool, "True" Tells the plugin to delete and reload plugin widgets on hotkey press
+- PLUGIN_DEBUG — bool, "True" lets the plugin print stack traces on errors and some extra information
+- PLUGIN_DEVELOP_LOCAL_API — bool, "True" allows the plugin to redirect requests to local instance of unknowncyber
+- MAGIC_API_HOST_LOCAL — str, main endpoint for sending requests to local instance of MAGIC
+- MAGIC_API_KEY_LOCAL — str, API key for connecting with local instance of MAGIC's API
+- PLUGIN_DEVELOP_LOCAL_CERT_PATH — str, path to dev.crt cert file. running an environment on localhost may create cert validation errors when using cythereal_magic python package. this will point those requests to the right directory. 
