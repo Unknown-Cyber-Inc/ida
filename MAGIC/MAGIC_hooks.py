@@ -3,7 +3,7 @@ Will contain IDA UI hooks for the MAGIC plugin.
 """
 
 import ida_kernwin
-from MAGIC.web_interface import MAGIC_form
+from MAGIC.unknowncyber_interface import MAGIC_form
 
 def register_autoinst_hooks(PLUGIN_NAME):
     """
