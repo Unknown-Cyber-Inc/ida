@@ -31,9 +31,10 @@ def register_autoinst_hooks(PLUGIN_NAME):
     hooks.hook()
 
 class PluginScrHooks(ida_kernwin.UI_Hooks):
-        """Hooks necessary for the functionality of this form
+        """Hooks necessary for the functionality of the procedure widget form (IDA_interface)
         
-        Connect to IDA's screen_ea_changed hook
+        Connect to IDA's screen_ea_changed hook. In a way, "notifies" the plugin when user clicks on or scrolls to different addresses in IDA.
+        Since this class is for use by IDA_interface only, "self" refers to type MAGICPluginScrClass.
         """
         def __init__(self, proc_tree, procedureEADict, *args):
             super().__init__(*args)
