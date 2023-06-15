@@ -12,12 +12,13 @@ from PyQt5 import QtWidgets, QtGui
 
 #cythereal magic for calling API
 import cythereal_magic
+from ._filesTable import * # contains classes related to different types of nodes in the tree, + methods for scrclass related to tree
 
 # load_dotenv sources the below environment variables from .env
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
-class MAGICPluginFormClass(ida_kernwin.PluginForm):
+class MAGICPluginFormClass(ida_kernwin.PluginForm,_filesTable._MAGICFormClassMethods):
     """
     Highest level of the plugin UI object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
 
@@ -88,8 +89,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm):
             | ida_kernwin.PluginForm.WCLS_SAVE
             ),
         )
-
-    
+ 
     """
     functions for building and displaying pyqt.
     """
