@@ -20,7 +20,7 @@ from ida_kernwin import find_widget,is_idaq,close_widget
 import cythereal_magic
 # other MAGIC imports
 from MAGIC.unknowncyber_interface import MAGIC_form
-from MAGIC.IDA_interface import MAGIC_sync_scroll
+from MAGIC import IDA_interface
 from MAGIC import MAGIC_hooks
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
@@ -92,7 +92,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         if PLUGIN_DEVELOP: 
             print("MAGIC running mode DEVELOP")
             ida_idaapi.require("MAGIC.unknowncyber_interface.MAGIC_form") # reloads the module so we can make changes without restarting IDA
-            ida_idaapi.require("MAGIC.IDA_interface.MAGIC_sync_scroll")
+            ida_idaapi.require("MAGIC.IDA_interface")
             ida_idaapi.require("MAGIC.MAGIC_hooks")
             return ida_idaapi.PLUGIN_OK
         
@@ -119,7 +119,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         if find_widget(PLUGIN_NAME) is None:
             self.form = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME,PLUGIN_API_CLIENT)
         if find_widget(PLUGIN_SCROLLWIDGET_NAME) is None:    
-            self.syncscroll = MAGIC_sync_scroll.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME,PLUGIN_API_CLIENT)
+            self.syncscroll = IDA_interface.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME,PLUGIN_API_CLIENT)
 
     def term(self):
         """
