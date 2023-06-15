@@ -1,8 +1,12 @@
 # ignore everything to hide the many IDA plugins files
 *
 
-# include related project folders
+# include readme and setup resources
 !README.md
+!requirements.txt
+!.env.example
+!imgs
+!imgs/*
 
 # we want to track the actual plugin entry file and folder
 !MAGIC_plugin_entry.py
