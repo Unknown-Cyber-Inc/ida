@@ -1,20 +1,4 @@
-# ignore everything to hide the many IDA plugins files
-*
-
-# include readme and setup resources
-!README.md
-!requirements.txt
-!.env.example
-!imgs
-!imgs/*
-
-# we want to track the actual plugin entry file and folder
-!MAGIC_plugin_entry.py
-!MAGIC
-!MAGIC/*
-!MAGIC/unknowncyber_interface/*
-!MAGIC/IDA_interface/*
-
-# definitely ignore this
-.env
-ignore
+*.env
+ida*
+.python-version
+proccache64.lst
