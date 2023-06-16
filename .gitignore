@@ -1,4 +1,10 @@
+# may contain sensitive info
 *.env
+
+# ida files in $HOME/.idapro
 ida*
-.python-version
 proccache64.lst
+
+# python files
+.python-version
+*__pycache__
