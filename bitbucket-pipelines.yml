@@ -1,0 +1,20 @@
+# Guides at https://confluence.atlassian.com/x/x4UWN
+---
+image: python:3.7-slim
+definitions:
+  steps:
+    - step: &Lint
+        name: Lint the codebase
+        max-time: 10
+        caches:
+          - pip
+        script:
+          - pip install -e .[DEV]
+          - python -m pylama .
+
+pipelines:
+  default:
+    - step: *Lint
+  custom:
+    Lint:
+      - step: *Lint
