@@ -24,6 +24,8 @@ RUN set -x \
 
 COPY --chown=unknowncyber idasetup/ida.run /tmp/idasetup/ida.run
 
+COPY --chown=unknowncyber plugins /home/unknowncyber/.idapro/plugins
+
 COPY --chown=unknowncyber setup.cfg pyproject.toml .
 RUN set -x \
     && mkdir -m 777 plugins \
