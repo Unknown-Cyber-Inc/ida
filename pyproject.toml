@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+target-version = ['py37']
+line-length = 79
+
+[tool.pylama]
+format = "pylint"
+skip = "*/.env.example/*"
+linters = "pylint,pycodestyle,mccabe"
+ignore = "C901"
+
+[[tool.pylama.files]]
+path = "pylama:*/__init__.py"
+ignore = "W0611,E402"
