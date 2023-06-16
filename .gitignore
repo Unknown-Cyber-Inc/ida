@@ -3,6 +3,7 @@
 
 # ida files in $HOME/.idapro
 ida*
+idasetup
 !idamagic
 proccache64.lst
 

@@ -26,6 +26,10 @@ format:="'%4s"+gold+"%-20s"+reset+"%s\\n' ''"
 
 # Commands {{{
 
+# Builds a new ida docker image
+build +V:
+    docker-buildx build --build-arg IDA_KEYLESS=$ida_keyless --build-arg IDA_PASSWORD=$ida_pass -t unknowncyber/ida:{{V}} -f docker/Dockerfile .
+
 # Cleans out the old docker images that are no longer in use
 clean:
     @docker system prune
