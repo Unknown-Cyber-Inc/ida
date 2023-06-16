@@ -8,10 +8,10 @@ This is widget object which displays all procedure information of the current fi
 import ida_nalt, ida_kernwin
 from PyQt5 import QtWidgets, Qt, QtGui 
 
-#cythereal magic for calling API and related modules
+#cythereal magic for calling API, subnodes containing important member classes and methods
 import cythereal_magic
 from MAGIC.MAGIC_hooks import PluginScrHooks
-from ._procTree import * # contains classes related to different types of nodes in the tree, + methods for scrclass related to tree
+from . import _procTree # contains classes related to different types of nodes in the tree, + methods for scrclass related to tree
 
 # load_dotenv sources the below environment variables from .env
 import os

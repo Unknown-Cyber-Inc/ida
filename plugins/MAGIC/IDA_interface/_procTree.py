@@ -96,10 +96,10 @@ class ProcFilesNode(ProcTableItem):
         # empty item to be deleted when populated
         self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
-"""
-Methods in the MAGICPluginScrClass related to populating the procedure tree
-"""
 class _ScrClassMethods:
+    """
+    Methods in the MAGICPluginScrClass related to populating the procedure tree
+    """
 
     """
     functions for building and displaying pyqt.
