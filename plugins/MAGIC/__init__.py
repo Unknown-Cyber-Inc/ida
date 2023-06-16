@@ -99,7 +99,8 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         # check if our widget is registered with IDA
         # if found, display it
         # if not found, register it
-        self.form = MAGIC_hooks.register_autoinst_hooks(PLUGIN_NAME)
+        self.form = MAGIC_hooks.register_autoinst_hooks(PLUGIN_NAME,PLUGIN_API_CLIENT,unknowncyber_interface.MAGICPluginFormClass)
+        self.syncscroll = MAGIC_hooks.register_autoinst_hooks(PLUGIN_SCROLLWIDGET_NAME,PLUGIN_API_CLIENT,IDA_interface.MAGICPluginScrClass)
 
         return ida_idaapi.PLUGIN_KEEP
 

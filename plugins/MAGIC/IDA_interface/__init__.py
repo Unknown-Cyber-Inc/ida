@@ -26,9 +26,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm,_procTree._ScrClassMethods):
     """
     functions for PluginForm object functionality.
     """
-    def __init__(self, title, magic_api_client):
+    def __init__(self, title, magic_api_client, autoinst=False):
         """Initialializes the form object
 
+        @param title: string, name of the widget
+        @param magic_api_client: object, the api client for cythereal_magic to send requests to unknowncyber
+        @param autoinst: bool, Tells the widget if this is being launched by the auto instantiation hooks. This is because some UI elements may not be loaded in this case, which may cause issues.
         Additionally, sets a few member variables necessary to the function of the plugin.
         A few are variables which are determined by IDA.
         """
@@ -44,7 +47,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm,_procTree._ScrClassMethods):
         self.Show()
 
         # hook into the IDA code
-        self.hooks = PluginScrHooks(self.proc_tree,self.procedureEADict)
+        self.hooks = PluginScrHooks(self.proc_tree,self.procedureEADict,self.parent)
         self.hooks.hook()
 
         # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
@@ -55,7 +58,8 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm,_procTree._ScrClassMethods):
         It is handled by IDA and doesn't have a simple reference.
         The number here is a relative size ratio between two widgets (between the scroll widget and the widgets to the left)
         """
-        self.parent.parent().parent().setSizes([600,1])
+        if not autoinst:
+            self.parent.parent().parent().setSizes([600,1])
 
         if PLUGIN_DEVELOP:
             self.pushbutton_click()
