@@ -11,6 +11,14 @@ definitions:
         script:
           - pip install -e .[DEV]
           - python -m pylama .
+    - step: &Flake
+        name: Lint the codebase with flake8
+        max-time: 10
+        caches:
+          - pip
+        script:
+          - pip install -e .[DEV]
+          - python -m flak8 --docstring-convention numpy .
 
 pipelines:
   default:
@@ -18,3 +26,5 @@ pipelines:
   custom:
     Lint:
       - step: *Lint
+    Flake:
+      - step: *Flake
