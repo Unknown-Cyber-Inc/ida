@@ -23,6 +23,7 @@ class ProcTableItem(Qt.QStandardItem):
 
     Contains default features for all table items based on QStandardItem class.
     """
+
     def __init__(self):
         super().__init__()
         self.setEditable(False)
@@ -33,6 +34,7 @@ class ProcRootNode(ProcTableItem):
 
     Has information related to its start_ea for jumping to the procedure in IDA's view.
     """
+
     def __init__(self, node_name, start_ea: int):
         super().__init__()
         self.setText(node_name)
@@ -40,9 +42,9 @@ class ProcRootNode(ProcTableItem):
 
 
 class ProcSimpleTextNode(ProcTableItem):
-    """Node which contains only simple text information
-    """
-    def __init__(self, text=''):
+    """Node which contains only simple text information"""
+
+    def __init__(self, text=""):
         super().__init__()
         self.setText(text)
 
@@ -52,6 +54,7 @@ class ProcHeaderItem(ProcSimpleTextNode):
 
     For example, dictionary key values will be printed as "key: value"
     """
+
     def __init__(self, key, value):
         super().__init__(key + ":\t" + value)
 
@@ -61,6 +64,7 @@ class ProcListItem(ProcSimpleTextNode):
 
     For example, dictionary key values will be printed as "key: value"
     """
+
     def __init__(self, name, rows):
         super().__init__(name)
         for item in rows:
@@ -72,6 +76,7 @@ class ProcNotesNode(ProcTableItem):
 
     Contains subnodes representing individual notes.
     """
+
     def __init__(self, hard_hash):
         super().__init__()
         self.setText("Notes")
@@ -87,6 +92,7 @@ class ProcTagsNode(ProcTableItem):
 
     Contains subnodes representing individual tags.
     """
+
     def __init__(self, hard_hash):
         super().__init__()
         self.setText("Tags")
@@ -102,6 +108,7 @@ class ProcFilesNode(ProcTableItem):
 
     Contains subnodes representing individual files.
     """
+
     def __init__(self, hard_hash):
         super().__init__()
         self.setText("Files")
@@ -120,30 +127,37 @@ class _ScrClassMethods:
     """
     functions for building and displaying pyqt.
     """
+
     def populate_proc_table(self, procedureInfo):
-        """ populates the procedures table with recieved procedures
+        """populates the procedures table with recieved procedures
 
         @param resources: dict containing procedures return request
         Note: is there any difference in performance from many appendRow and one appendRows?
         """
-        procedures = procedureInfo['procedures']
+        procedures = procedureInfo["procedures"]
 
         for proc in procedures:
-            start_ea = ida_kernwin.str2ea(proc['startEA']) + int(procedureInfo['image_base'], 16)
-            hard_hash = proc['hard_hash']
-            strings = proc['strings']
-            apiCalls = proc['api_calls']
+            start_ea = ida_kernwin.str2ea(proc["startEA"]) + int(
+                procedureInfo["image_base"], 16
+            )
+            hard_hash = proc["hard_hash"]
+            strings = proc["strings"]
+            apiCalls = proc["api_calls"]
 
-            procrootnode = ProcRootNode(proc['startEA'], start_ea)
+            procrootnode = ProcRootNode(proc["startEA"], start_ea)
             # add node to dict to avoid looping through all objects in PluginScrHooks
             self.procedureEADict[start_ea] = procrootnode
 
-            procrootnode.appendRows([
-                ProcHeaderItem("Group Occurrences", str(proc["occurrence_count"])),
-                # tab is ignored for boolean for some reason
-                ProcHeaderItem("Library", "\t" + str(proc["is_library"])),
-                ProcHeaderItem("Group Type", proc["status"]),
-            ])
+            procrootnode.appendRows(
+                [
+                    ProcHeaderItem(
+                        "Group Occurrences", str(proc["occurrence_count"])
+                    ),
+                    # tab is ignored for boolean for some reason
+                    ProcHeaderItem("Library", "\t" + str(proc["is_library"])),
+                    ProcHeaderItem("Group Type", proc["status"]),
+                ]
+            )
 
             if strings:
                 procrootnode.appendRow(ProcListItem("Strings", strings))
@@ -151,17 +165,19 @@ class _ScrClassMethods:
             if apiCalls:
                 procrootnode.appendRow(ProcListItem("API Calls", apiCalls))
 
-            procrootnode.appendRows([
-                ProcNotesNode(hard_hash),
-                ProcTagsNode(hard_hash),
-                ProcFilesNode(hard_hash),
-            ])
+            procrootnode.appendRows(
+                [
+                    ProcNotesNode(hard_hash),
+                    ProcTagsNode(hard_hash),
+                    ProcFilesNode(hard_hash),
+                ]
+            )
 
             # add root node to tree
             self.proc_tree.model().appendRow(procrootnode)
 
     def populate_proc_files(self, filesRootNode: ProcFilesNode):
-        """ populates a selected procedure's 'files' node with recieved files
+        """populates a selected procedure's 'files' node with recieved files
 
         PARAMETERS
         ----------
@@ -170,8 +186,8 @@ class _ScrClassMethods:
         """
 
         if not filesRootNode.isPopulated:
-            read_mask = 'sha1,sha256,filenames'
-            expand_mask = 'files'
+            read_mask = "sha1,sha256,filenames"
+            expand_mask = "files"
             page_size = 0
 
             try:
@@ -179,23 +195,29 @@ class _ScrClassMethods:
                     filesRootNode.hard_hash,
                     read_mask=read_mask,
                     expand_mask=expand_mask,
-                    page_size=page_size
-                )['resources']
+                    page_size=page_size,
+                )["resources"]
             except ApiException as e:
                 logger.debug(traceback.format_exc())
-                self.textbrowser.append('No files could be gathered from selected procedure.')
+                self.textbrowser.append(
+                    "No files could be gathered from selected procedure."
+                )
                 for error in json.loads(e.body).get("errors"):
-                    logger.info(error['reason'])
-                    self.textbrowser.append(f"{error['reason']}: {error['message']}")
+                    logger.info(error["reason"])
+                    self.textbrowser.append(
+                        f"{error['reason']}: {error['message']}"
+                    )
             except Exception as e:
                 logger.debug(traceback.format_exc())
-                self.textbrowser.append('Unknown Error occurred')
+                self.textbrowser.append("Unknown Error occurred")
                 self.textbrowser.append(f"<{e.__class__}>: {str(e)}")
                 # exit if this call fails so user can retry
                 # (this func always returns None anyway)
                 return None
             else:
-                self.textbrowser.append('Files gathered from selected procedure successfully.')
+                self.textbrowser.append(
+                    "Files gathered from selected procedure successfully."
+                )
 
             # remove the empty init child
             filesRootNode.removeRows(0, 1)
@@ -203,11 +225,11 @@ class _ScrClassMethods:
             # start adding file information
             for file in ctmr:
                 # don't display current file, that's implicit
-                if file['sha256'] != self.sha256:
-                    sha1 = file['sha1']
+                if file["sha256"] != self.sha256:
+                    sha1 = file["sha1"]
                     filename = sha1
-                    if file['filenames']:
-                        filename = file['filenames'][0]
+                    if file["filenames"]:
+                        filename = file["filenames"][0]
 
                     # build a fileNode
                     fileNode = ProcSimpleTextNode(filename)
@@ -218,7 +240,7 @@ class _ScrClassMethods:
             filesRootNode.isPopulated = True
 
     def populate_proc_notes(self, notesRootNode: ProcNotesNode):
-        """ populates a selected procedure's 'notes' node with recieved notes
+        """populates a selected procedure's 'notes' node with recieved notes
 
         PARAMETERS
         ----------
@@ -226,34 +248,38 @@ class _ScrClassMethods:
             Represents the procedure node which is to be populated with notes.
         """
         if not notesRootNode.isPopulated:
-            expand_mask = 'notes'
+            expand_mask = "notes"
 
             try:
                 ctmr = self.ctmprocs.list_procedure_notes(
-                    notesRootNode.hard_hash,
-                    expand_mask=expand_mask
-                )['resources']
+                    notesRootNode.hard_hash, expand_mask=expand_mask
+                )["resources"]
             except ApiException as e:
                 logger.debug(traceback.format_exc())
-                self.textbrowser.append('No notes could be gathered from selected procedure.')
+                self.textbrowser.append(
+                    "No notes could be gathered from selected procedure."
+                )
                 for error in json.loads(e.body).get("errors"):
-                    logger.info(error['reason'])
-                    self.textbrowser.append(f"{error['reason']}: {error['message']}")
+                    logger.info(error["reason"])
+                    self.textbrowser.append(
+                        f"{error['reason']}: {error['message']}"
+                    )
             except Exception as e:
                 logger.debug(traceback.format_exc())
-                self.textbrowser.append('Unknown Error occurred')
+                self.textbrowser.append("Unknown Error occurred")
                 self.textbrowser.append(f"<{e.__class__}>: {str(e)}")
                 # exit if this call fails so user can retry
                 # (this func always returns None anyway)
                 return None
             else:
-                self.textbrowser.append('Notes gathered from selected procedure successfully.')
+                self.textbrowser.append(
+                    "Notes gathered from selected procedure successfully."
+                )
 
             # start adding note information
             for note in ctmr:
-
                 # display note
-                notesRootNode.appendRow(ProcSimpleTextNode(note['note']))
+                notesRootNode.appendRow(ProcSimpleTextNode(note["note"]))
 
             # remove the empty init child
             notesRootNode.removeRows(0, 1)
@@ -261,7 +287,7 @@ class _ScrClassMethods:
             notesRootNode.isPopulated = True
 
     def populate_proc_tags(self, tagsRootNode: ProcTagsNode):
-        """ populates a selected procedure's 'tags' node with recieved tags
+        """populates a selected procedure's 'tags' node with recieved tags
 
         PARAMETERS
         ---------
@@ -269,7 +295,6 @@ class _ScrClassMethods:
             Represents the procedure node which is to be populated with tags.
         """
         if not tagsRootNode.isPopulated:
-
             # remove the empty init child
             tagsRootNode.removeRows(0, 1)
 
@@ -278,8 +303,9 @@ class _ScrClassMethods:
     """
     functions for connecting pyqt signals
     """
+
     def proc_tree_jump_to_hex(self, index):
-        """ If double-clicked item is a hex item in tree view, jump IDA to that position.
+        """If double-clicked item is a hex item in tree view, jump IDA to that position.
 
         see ProcRootNode for "ea" attr
         """
@@ -295,7 +321,7 @@ class _ScrClassMethods:
                     self.proc_tree.setExpanded(index, False)
 
     def onTreeExpand(self, index):
-        """ What to do when a tree item is expanded.
+        """What to do when a tree item is expanded.
 
         @param index: 'QModelIndex' is a pyqt object which represents where the item is in the tree.
         This function is connected to the tree's 'expand' signal.
@@ -313,7 +339,7 @@ class _ScrClassMethods:
             self.populate_proc_tags(item)
 
     def pushbutton_click(self):
-        """ What to do when the 'request procedures' button is clicked.
+        """What to do when the 'request procedures' button is clicked.
 
         GET from procedures and list all procedures associated with file.
         """
@@ -321,33 +347,33 @@ class _ScrClassMethods:
         self.proc_tree.model().clear()
 
         # explicitly stating readmask to not request extraneous info
-        genomics_read_mask = (
-            'start_ea,is_library,status,procedure_hash,occurrence_count,strings,api_calls'
-        )
+        genomics_read_mask = "start_ea,is_library,status,procedure_hash,occurrence_count,strings,api_calls"
         page_size = 0
-        order_by = 'start_ea'
+        order_by = "start_ea"
 
         try:
             ctmr = self.ctmfiles.list_file_genomics(
                 self.sha256,
                 read_mask=genomics_read_mask,
                 order_by=order_by,
-                page_size=page_size
-            )['resources']
+                page_size=page_size,
+            )["resources"]
         except ApiException as e:
             logger.debug(traceback.format_exc())
-            self.textbrowser.append('No procedures could be gathered.')
+            self.textbrowser.append("No procedures could be gathered.")
             for error in json.loads(e.body).get("errors"):
-                logger.info(error['reason'])
-                self.textbrowser.append(f"{error['reason']}: {error['message']}")
+                logger.info(error["reason"])
+                self.textbrowser.append(
+                    f"{error['reason']}: {error['message']}"
+                )
         except Exception as e:
             logger.debug(traceback.format_exc())
-            self.textbrowser.append('Unknown Error occurred')
+            self.textbrowser.append("Unknown Error occurred")
             self.textbrowser.append(f"<{e.__class__}>: {str(e)}")
             # exit if this call fails so user can retry
             # (this func always returns None anyway)
             return None
         else:
-            self.textbrowser.append('Procedures gathered successfully.')
+            self.textbrowser.append("Procedures gathered successfully.")
             # on a successful call, populate table
             self.populate_proc_table(ctmr)

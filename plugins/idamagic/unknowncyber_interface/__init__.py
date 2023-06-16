@@ -135,7 +135,7 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm, _MAGICFormClassMethods):
         self.pushbutton.setCheckable(False)
 
         # create overarching tab widget
-        self.tab_tables = (QtWidgets.QTabWidget())
+        self.tab_tables = QtWidgets.QTabWidget()
         # help create items in analysis tab, add to tab widget
         self.init_and_populate_files_analysis_tab()
 

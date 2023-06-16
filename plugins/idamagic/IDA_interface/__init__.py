@@ -29,6 +29,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm, _ScrClassMethods):
     """
     functions for PluginForm object functionality.
     """
+
     def __init__(self, title, magic_api_client, autoinst=False):
         """Initialializes the form object
 
@@ -46,6 +47,7 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm, _ScrClassMethods):
         A few are variables which are determined by IDA.
         """
         from idamagic.hooks import PluginScrHooks
+
         super().__init__()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.baseRVA = ida_nalt.get_imagebase()
@@ -59,7 +61,9 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm, _ScrClassMethods):
         self.Show()
 
         # hook into the IDA code
-        self.hooks = PluginScrHooks(self.proc_tree, self.procedureEADict, self.parent)
+        self.hooks = PluginScrHooks(
+            self.proc_tree, self.procedureEADict, self.parent
+        )
         self.hooks.hook()
 
         # dock this widget on the rightmost side of IDA,
@@ -108,12 +112,13 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm, _ScrClassMethods):
                 # | ida_kernwin.PluginForm.WOPN_RESTORE
                 # | ida_kernwin.PluginForm.WCLS_CLOSE_LATER
                 # | ida_kernwin.PluginForm.WCLS_SAVE
-            )
+            ),
         )
 
     """
     functions for building and displaying pyqt.
     """
+
     def load_scroll_view(self):
         """
         Create form items then populate page with them.
@@ -139,10 +144,11 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm, _ScrClassMethods):
         self.parent.setLayout(layout)
 
     def init_scroll_view(self):
-        """Initialize individual items which will be added to the form.
-        """
+        """Initialize individual items which will be added to the form."""
         # personalizing QT items, in order of appearance (order is set by layout though)
-        self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
+        self.t1 = QtWidgets.QLabel(
+            "Lorem Ipsum <font color=red>Cythereal</font>"
+        )
         self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
 
         self.pushbutton = QtWidgets.QPushButton("request procedures")
