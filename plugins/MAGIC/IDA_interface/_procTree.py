@@ -1,23 +1,23 @@
 """
-Main scroll widget at the highest level. 
-
-This is the scaffolding of a simplecustviewer_t for the purpose of 
-testing out how certain functions can be synced.
+Methods and classes in the MAGICPluginScrClass related to populating the procedure tree.
 """
 
 # IDA and UI imports
-import ida_nalt, ida_kernwin
-from PyQt5 import QtWidgets, Qt, QtGui 
-
-#cythereal magic for calling API
-import cythereal_magic
+import ida_kernwin
+from PyQt5 import Qt
 
 # load_dotenv sources the below environment variables from .env
 import os
 PLUGIN_DEBUG = True if os.getenv("PLUGIN_DEBUG") == "True" else False
-PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEBUG") == "True" else False
 
+"""
+Nodes in the proctree
+"""
 class ProcTableItem(Qt.QStandardItem):
+    """Generic form of items on the procs table.
+
+    Contains default features for all table items based on QStandardItem class.
+    """
     def __init__(self):
         super().__init__()
         self.setEditable(False)
@@ -25,6 +25,7 @@ class ProcTableItem(Qt.QStandardItem):
 class ProcRootNode(ProcTableItem):
     """Node representing the root of a single procedure
 
+    Has information related to its start_ea for jumping to the procedure in IDA's view.
     """
     def __init__(self,node_name,start_ea:int):
         super().__init__()
@@ -32,24 +33,35 @@ class ProcRootNode(ProcTableItem):
         self.start_ea = start_ea
 
 class ProcSimpleTextNode(ProcTableItem):
+    """Node which contains only simple text information
+    """
     def __init__(self,text=''):
         super().__init__()
         self.setText(text)
 
 class ProcHeaderItem(ProcSimpleTextNode):
-    """Node representing fields of produes calls which take form of str:str
+    """Node representing fields of produre calls which take form of str:str
 
+    For example, dictionary key values will be printed as "key: value"
     """
     def __init__(self,key,value):
         super().__init__(key + ":\t" + value)
 
 class ProcListItem(ProcSimpleTextNode):
+    """Node representing fields of produre calls which take form of str:str
+
+    For example, dictionary key values will be printed as "key: value"
+    """
     def __init__(self,name,list):
         super().__init__(name)
         for item in list:
             self.appendRow(ProcSimpleTextNode(item))
 
 class ProcNotesNode(ProcTableItem):
+    """Node representing the root of the "notes" category.
+    
+    Contains subnodes representing individual notes.
+    """
     def __init__(self,hard_hash):
         super().__init__()
         self.setText("Notes")
@@ -59,6 +71,10 @@ class ProcNotesNode(ProcTableItem):
         self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
 class ProcTagsNode(ProcTableItem):
+    """Node representing the root of the "tags" category.
+    
+    Contains subnodes representing individual tags.
+    """
     def __init__(self,hard_hash):
         super().__init__()
         self.setText("Tags")
@@ -68,7 +84,9 @@ class ProcTagsNode(ProcTableItem):
         self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
 class ProcFilesNode(ProcTableItem):
-    """Node representing the root of the "files" category. Contains subnodes representing individual files
+    """Node representing the root of the "files" category.
+    
+    Contains subnodes representing individual files.
     """
     def __init__(self,hard_hash):
         super().__init__()
@@ -78,146 +96,14 @@ class ProcFilesNode(ProcTableItem):
         # empty item to be deleted when populated
         self.appendRow(ProcSimpleTextNode()) # expand button will not show unless it has at least one child
 
-class PluginScrHooks(ida_kernwin.UI_Hooks):
-        """Hooks necessary for the functionality of this form
-        
-        Connect to IDA's screen_ea_changed hook
-        """
-        def __init__(self, proc_tree, procedureEADict, *args):
-            super().__init__(*args)
-            # needs to be able to access the process_treeview once generated
-            self.proc_tree = proc_tree
-            self.procedureEADict = procedureEADict
-
-        def screen_ea_changed(self, ea, prev_ea):
-            eaKey = ida_kernwin.ea2str(ea).split(":")[1]
-            eaKey = int(eaKey,16)
-            if eaKey in self.procedureEADict:
-                procedureQIndexItem = self.procedureEADict[eaKey].index()
-                self.proc_tree.setCurrentIndex(procedureQIndexItem) # highlight and select it
-                if not self.proc_tree.isExpanded(procedureQIndexItem): # do not expand before checking if expanded, see proc_tree_jump_to_hex for info
-                    self.proc_tree.expand(procedureQIndexItem)
-                # 3 is an enum telling the widget to open with the item in the center
-                self.proc_tree.scrollTo(procedureQIndexItem,3) # jump to and center it
-                
-
-class MAGICPluginScrClass(ida_kernwin.PluginForm):
+class _ScrClassMethods:
     """
-    Highest level of the plugin Scroll UI Object. Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
+    Methods in the MAGICPluginScrClass related to populating the procedure tree
     """
 
-    """
-    functions for PluginForm object functionality.
-    """
-    def __init__(self, title, magic_api_client):
-        super().__init__()
-        self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
-        self.baseRVA = ida_nalt.get_imagebase()
-        self.title:str = title
-        self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
-        self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
-        self.procedureEADict = {} # dict solution to jump from IDA ea to plugin procedure
-
-        # show widget on creation of new form
-        self.Show()
-
-        # hook into the IDA code
-        self.hooks = PluginScrHooks(self.proc_tree,self.procedureEADict)
-        self.hooks.hook()
-
-        # dock this widget on the rightmost side of IDA, ensure this by setting dest_ctrl to an empty string
-        ida_kernwin.set_dock_pos(self.title,"",ida_kernwin.DP_RIGHT)
-        """
-        A 'QSplitter' is created which can handle the default creation size.
-        Through testing I have found out which widget this is relative to self.
-        It is handled by IDA and doesn't have a simple reference.
-        The number here is a relative size ratio between two widgets (between the scroll widget and the widgets to the left)
-        """
-        self.parent.parent().parent().setSizes([600,1])
-
-        if PLUGIN_DEVELOP:
-            self.pushbutton_click()
-
-    def OnCreate(self, form):
-        """
-        Called when the widget is created.
-        """
-        # Convert form to PyQt obj
-        self.parent = self.FormToPyQtWidget(form)
-
-        self.load_scroll_view()
-     
-    def OnClose(self, form):
-        """
-        Called when the widget is closed.
-        """
-        self.hooks.unhook()
-        return
-
-    def Show(self):
-        #show with intrinsic title, specific options
-        return super().Show(
-            self.title,
-            options=(
-            # for some reason the options appear to only work once after resetting desktop in IDA
-            ida_kernwin.PluginForm.WOPN_DP_SZHINT
-            # | ida_kernwin.PluginForm.WOPN_RESTORE
-            # | ida_kernwin.PluginForm.WCLS_CLOSE_LATER
-            # | ida_kernwin.PluginForm.WCLS_SAVE
-            ),
-        )
-
-    
     """
     functions for building and displaying pyqt.
     """
-    def load_scroll_view(self):
-        """
-        Create form items then populate page with them.
-        """
-        self.init_scroll_view()
-        self.populate_scroll_view()
-
-    def populate_scroll_view(self):
-        """
-        After individual form items are initialized, populate the form with them.
-        """
-        # Create layout object
-        layout = QtWidgets.QVBoxLayout()
-
-        #adding widgets to layout, order here matters
-        layout.addWidget(self.t1)
-        layout.addWidget(self.t2)
-        layout.addWidget(self.pushbutton)
-        layout.addWidget(self.proc_tree)
-        layout.addWidget(self.textbrowser)
-
-        # set main widget's layout based on the above items
-        self.parent.setLayout(layout)
-
-    def init_scroll_view(self):
-        """
-        Initialize individual items which will be added to the form.
-        """
-        #personalizing QT items, in order of appearance (order is set by layout though)
-        self.t1 = QtWidgets.QLabel("Lorem Ipsum <font color=red>Cythereal</font>")
-        self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
-
-        self.pushbutton = QtWidgets.QPushButton("request procedures")
-        self.pushbutton.setCheckable(False)
-
-        self.proc_tree = QtWidgets.QTreeView()
-        self.proc_tree.setHeaderHidden(True)
-        self.proc_tree.setModel(Qt.QStandardItemModel())
-        self.proc_tree.doubleClicked.connect(self.proc_tree_jump_to_hex) # let widget handle doubleclicks
-        self.proc_tree.expanded.connect(self.onTreeExpand) # handle certain expand events
-
-        self.textbrowser = QtWidgets.QTextEdit()
-        self.textbrowser.setReadOnly(True)
-
-        #connecting events to items if necessary, in order of appearance
-        self.pushbutton.clicked.connect(self.pushbutton_click) 
-
     def populate_proc_table(self, procedureInfo):
         """ populates the procedures table with recieved procedures
         
@@ -256,6 +142,12 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             self.proc_tree.model().appendRow(procrootnode) # add root node to tree
     
     def populate_proc_files(self, filesRootNode:ProcFilesNode):
+        """ populates a selected procedure's 'files' node with recieved files
+        
+        @param filesRootNode: ProcFilesNode represents the procedure node which is to be populated with files.
+        Note: is there any difference in performance from many appendRow and one appendRows?
+        """
+
         if not filesRootNode.isPopulated:
             read_mask='sha1,sha256,filenames'
             expand_mask='files'
@@ -289,6 +181,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             filesRootNode.isPopulated = True
 
     def populate_proc_notes(self, notesRootNode:ProcNotesNode):
+        """ populates a selected procedure's 'notes' node with recieved notes
+        
+        @param notesRootNode: ProcNotesNode represents the procedure node which is to be populated with notes.
+        """
         if not notesRootNode.isPopulated:
             expand_mask='notes'
 
@@ -312,6 +208,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             notesRootNode.isPopulated = True
 
     def populate_proc_tags(self, tagsRootNode:ProcTagsNode):
+        """ populates a selected procedure's 'tags' node with recieved tags
+        
+        @param tagsRootNode: ProcTagsNode represents the procedure node which is to be populated with tags.
+        """
         if not tagsRootNode.isPopulated:
 
             tagsRootNode.removeRows(0,1) # remove the empty init child
@@ -324,19 +224,26 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
     def proc_tree_jump_to_hex(self,index):
         """ If double-clicked item is a hex item in tree view, jump IDA to that position. 
         
-        see ProcTableHexAddrItem for "ea" attr
+        see ProcRootNode for "ea" attr
         """
         item = self.proc_tree.model().itemFromIndex(index)
         if type(item) is ProcRootNode:
             if self.procedureEADict[item.start_ea]:
                 # this jump will note the ea and try to expand even though we doubleclicked
                 # therefore, set as expanded and check this expression in the hook feature
+                # afterwards, unset expanded
                 if not self.proc_tree.isExpanded(index):
                     self.proc_tree.setExpanded(index,True)
                     ida_kernwin.jumpto(item.start_ea)
                     self.proc_tree.setExpanded(index,False)
 
     def onTreeExpand(self,index):
+        """ What to do when a tree item is expanded. 
+        
+        @param index: 'QModelIndex' is a pyqt object which represents where the item is in the tree.
+        This function is connected to the tree's 'expand' signal.
+        Check what type of object was expand and call the function related to handling the population of that type.
+        """
         item = self.proc_tree.model().itemFromIndex(index)
         itemType = type(item)
 
@@ -348,6 +255,10 @@ class MAGICPluginScrClass(ida_kernwin.PluginForm):
             self.populate_proc_tags(item)
 
     def pushbutton_click(self):
+        """ What to do when the 'request procedures' button is clicked. 
+        
+        GET from procedures and list all procedures associated with file.
+        """
         self.textbrowser.clear()
         self.proc_tree.model().clear()
 

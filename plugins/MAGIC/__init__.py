@@ -19,8 +19,8 @@ from ida_kernwin import find_widget,is_idaq,close_widget
 #cythereal magic for calling API
 import cythereal_magic
 # other MAGIC imports
-from MAGIC import MAGIC_form
-from MAGIC import MAGIC_sync_scroll
+from MAGIC import unknowncyber_interface
+from MAGIC import IDA_interface
 from MAGIC import MAGIC_hooks
 
 PLUGIN_DEVELOP = True if os.getenv("PLUGIN_DEVELOP") == "True" else False
@@ -70,7 +70,7 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
 
     def __init__(self):
         super().__init__()
-        self.form: MAGIC_form.MAGICPluginFormClass
+        self.form: unknowncyber_interface.MAGICPluginFormClass
 
     def init(self):
         """
@@ -91,15 +91,16 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
             print("MAGIC running mode DEBUG")
         if PLUGIN_DEVELOP: 
             print("MAGIC running mode DEVELOP")
-            ida_idaapi.require("MAGIC.MAGIC_form") # reloads the module so we can make changes without restarting IDA
-            ida_idaapi.require("MAGIC.MAGIC_sync_scroll")
+            ida_idaapi.require("MAGIC.unknowncyber_interface") # reloads the module so we can make changes without restarting IDA
+            ida_idaapi.require("MAGIC.IDA_interface")
             ida_idaapi.require("MAGIC.MAGIC_hooks")
             return ida_idaapi.PLUGIN_OK
         
         # check if our widget is registered with IDA
         # if found, display it
         # if not found, register it
-        self.form = MAGIC_hooks.register_autoinst_hooks(PLUGIN_NAME)
+        self.form = MAGIC_hooks.register_autoinst_hooks(PLUGIN_NAME,PLUGIN_API_CLIENT,unknowncyber_interface.MAGICPluginFormClass)
+        self.syncscroll = MAGIC_hooks.register_autoinst_hooks(PLUGIN_SCROLLWIDGET_NAME,PLUGIN_API_CLIENT,IDA_interface.MAGICPluginScrClass)
 
         return ida_idaapi.PLUGIN_KEEP
 
@@ -117,9 +118,9 @@ class MAGIC_plugin(ida_idaapi.plugin_t):
         
         # if IDA widget with our title does not exist, create it and populate it. Do nothing otherwise.
         if find_widget(PLUGIN_NAME) is None:
-            self.form = MAGIC_form.MAGICPluginFormClass(PLUGIN_NAME,PLUGIN_API_CLIENT)
+            self.form = unknowncyber_interface.MAGICPluginFormClass(PLUGIN_NAME,PLUGIN_API_CLIENT)
         if find_widget(PLUGIN_SCROLLWIDGET_NAME) is None:    
-            self.syncscroll = MAGIC_sync_scroll.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME,PLUGIN_API_CLIENT)
+            self.syncscroll = IDA_interface.MAGICPluginScrClass(PLUGIN_SCROLLWIDGET_NAME,PLUGIN_API_CLIENT)
 
     def term(self):
         """
