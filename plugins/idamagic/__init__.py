@@ -59,7 +59,7 @@ class magic(ida_idaapi.plugin_t):
 
     form = MAGICPluginFormClass
 
-    #required or otherwise handled by IDA
+    # required or otherwise handled by IDA
     wanted_name = PLUGIN_NAME
     wanted_hotkey = PLUGIN_HOTKEY
     comment = PLUGIN_COMMENT
@@ -85,7 +85,7 @@ class magic(ida_idaapi.plugin_t):
 
         logger.debug(logger)
 
-        self.api_client = unknowncyber.ApiClient() # Create API client to be used by plugin
+        self.api_client = unknowncyber.ApiClient()  # Create API client to be used by plugin
 
         if HOT_RELOAD:
             logger.info("MAGIC plugin is hot reloadable")
@@ -99,8 +99,10 @@ class magic(ida_idaapi.plugin_t):
         # check if our widget is registered with IDA
         # if found, display it
         # if not found, register it
-        self.form = register_autoinst_hooks(self.wanted_name,self.api_client,MAGICPluginFormClass)
-        self.syncscroll = register_autoinst_hooks(SCROLLWIDGET_TITLE,self.api_client,MAGICPluginScrClass)
+        self.form = register_autoinst_hooks(self.wanted_name, self.api_client, MAGICPluginFormClass)
+        self.syncscroll = register_autoinst_hooks(SCROLLWIDGET_TITLE,
+                                                  self.api_client,
+                                                  MAGICPluginScrClass)
 
         return ida_idaapi.PLUGIN_KEEP
 
@@ -126,7 +128,7 @@ class magic(ida_idaapi.plugin_t):
         if find_widget(SCROLLWIDGET_TITLE) is None:
             logger.debug("Creating MAGIC plugin sync scroll")
             self.syncscroll = MAGICPluginScrClass(
-                SCROLLWIDGET_TITLE, self.api_client, 
+                SCROLLWIDGET_TITLE, self.api_client,
             )
 
     def term(self):
