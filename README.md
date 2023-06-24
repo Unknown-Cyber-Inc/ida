@@ -29,44 +29,67 @@ This does not mean it won't work for other versions, but there are no guarantees
 
 ## Prerequisites
 
-- DEVELOPERS: If you don't want to use the docker container, it is recommended to use a python virtual environment and install requirements on that instead. [Setting this up with IDA requires some configuration](#venv-setup).
 - Install IDApro — This should automatically include IDAPython (python API for IDA, which we rely on).
 
-## User Install
+## Installations  
+See the [troubleshooting](#troubleshooting) section for help with common issues.
 
-- Clone this repo
-- Open terminal and navigate to the MAGIC folder
-- Run `pip install cythereal_magic`
-   * IDA can potentially point to multiple versions of python. ensure IDA's version has this package installed.
-- You can install this plugin in either `<IDA/INSTALL/DIRECTORY>/plugins` or  `$HOME/.idapro/plugins`, [the advantages can be found here](https://hex-rays.com/blog/igors-tip-of-the-week-33-idas-user-directory-idausr/):
+### For Users
+
+- Open the terminal in the unknowncyber plugin folder, above `plugins`
+- Run `pip install -e .`
+- Open the `.env.example` file and change `MAGIC_API_KEY` to your UnknownCyber API key, then save and exit.
+- Run `cp .env.example ./plugins/idamagic/.env`
+- You can install this plugin in either `<IDA/INSTALL/DIRECTORY>/plugins` or  `$HOME/.idapro/plugins` [(the advantages can be found here)](https://hex-rays.com/blog/igors-tip-of-the-week-33-idas-user-directory-idausr/):
    * `cp plugins/* <CHOICE/OF/IDA/PLUGINS/DIRECTORY>`
+- Open a binary with IDA and run the plugin with **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
+- 
+### For Developers  
 
-## Developer Install
+IMPORTANT: Verify that all changes work both inside of and outside of the docker container.
 
-- Run this whole command: `cd ~ && mkdir .idapro && git clone git@bitbucket.org:unknowncyber/ida-plugins.git && cp -ar ida-plugins/. .idapro/ && rm -rf ida-plugins
+- Run this whole command: `cd ~ && mkdir .idapro && git clone <UNKNOWNCYBER/IDA-PLUGINS/REMOTE-REPOSITORY> && cp -ar ida-plugins/. .idapro/ && rm -rf ida-plugins
 `
-    * makes `$HOME/.idapro` if not already available
-    * clones this repo
-    * copies contents of this repo into `$HOME/.idapro` (this particular command includes hidden files and merges the `plugins` folder if not available already)
-    * removes the original repo
-    * this ensures that `$HOME/.idapro` will be the root of the github folder for this repository, and that it can work in the docker container and the standalone version of IDA.
+    * This command:
+      * makes `$HOME/.idapro` if not already available
+      * clones this repo
+      * copies contents of this repo into `$HOME/.idapro` (this particular command includes hidden files and merges the `plugins` folder if not available already)
+      * removes the original repo
+      * this ensures that `$HOME/.idapro` will be the root of the github folder for this repository, and that it can work in the docker container and the standalone version of IDA.
+- Run `cd $HOME/.idapro`
+- Plugin development with local IDA installation:
+    * (OPTIONAL): [Configure a virtual environment](#venv-setup). It's a large section but there really aren't many steps.
+    * Run `pip install -e .` (in your virtual environment if applicable).
+    * Run `cp .env.example ./plugins/idamagic/.env`
+    * Open and edit `./plugins/idamagic/.env` to set your API key and modify your [desired environment variables](#environment-variables)
+    * Open a binary with IDA and run the plugin with **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
+- Plugin development inside UnknownCyber's docker container
+    * Add the following to your `~/.bashrc`:
+      * `export IDA_PLUGIN_PATH=$HOME/.idapro`
+    * Speak with Lee to set up the docker system
+    * Speak with Lee about setting the plugin's environment variables within the container
+    * IMPORTANT: the `./plugins/idamagic/.env` takes precedence over the container's environment variables, as it currently is reset in the code
+    * Open a binary with IDA and run the plugin with **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
+- Info about the plugin's files can be found [here](#files-section).
 
----
+### Troubleshooting <a name="troubleshooting"></a>
 
-# MODIFYING THIS SECTION
-
-- Install python requirements. <a name="python-requirements"></a>
-    * Open terminal and navigate to the MAGIC folder
-    * Run `pip install -r requirements.txt`
-    * If this doesn't work, replace `pip` with `pip3`
-    * IDA can potentially point to multiple versions of python. Make sure IDA's version has these packages installed.
-
-## Installation
-- Move the `MAGIC` directory and `MAGIC_plugin_entry.py` to your IDA plugin directory. In my case `/opt/ida/plugins`. These can also be installed to `$HOME/.idapro/plugins` [as per this link](https://hex-rays.com/blog/igors-tip-of-the-week-33-idas-user-directory-idausr/)
-- Copy the contents of `.env.example` to a file called `.env`
-    * If you are not a developer, you should only need to change `MAGIC_API_KEY` to your MAGIC API key
-    * If are a developer, read the [environment variables](#environment-variables) section and change them accordingly
-- That's all. Info about the plugins files can be found [here](#files-section). Open a binary with IDA and run the plugin with **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
+* Python-related issues
+  * You may need to replace commands `pip` with `pip3`, `python` with `python3`, or some variant of these dependent on your python install.
+  * IDA can potentially be pointing to a different version of python. ensure IDA's version of python is where you installed the package:
+    * Open IDA.
+    * ensure that IDA is using your desired python version (the "output" window at the bottom should display version information).
+    * In this window, there is a section for commands.
+    * Make sure the button on the left says "Python". It might say "IDC" or something else. If so, just click it and select "Python".
+    * Enter `import cythereal_magic`
+    * If there is an error, you can either:
+      * reinstall python dependencies on this version (RECOMMENDED)
+      * or change your python version (next step)
+  * Changing the version of Python that IDA points to:
+    * Navigate to your IDA install folder in the terminal. `/opt/ida` for example.
+    * Run `sudo ./idapyswitch`
+    * If your desired version does not show up, the only way to get this to work is to find your desired python version's shared library files and run `sudo ./idapyswitch --force-path /PATH/TO/SHARED/LIBRARY/FILE`. If you don't know how to do this, it is recommended to move on to the next step 
+  * If there are still python-related issues there may be a need to [configure a python3.7 virtual environment](#venv-setup). It's a large section but there aren't too many steps.
 
 ---
 
