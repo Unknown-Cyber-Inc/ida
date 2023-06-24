@@ -70,7 +70,7 @@ IMPORTANT: Verify that all changes work both inside of and outside of the docker
     * Speak with Lee about setting the plugin's environment variables within the container
     * IMPORTANT: the `./plugins/idamagic/.env` takes precedence over the container's environment variables, as it currently is reset in the code
     * Open a binary with IDA and run the plugin with **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
-- Info about the plugin's files can be found [here](#files-section).
+- Developers should read about the plugin's files which can be found [here](#files-section) as well as the notes section which can be found [here](#notes-section).
 
 ### Troubleshooting <a name="troubleshooting"></a>  
 
@@ -94,7 +94,7 @@ Python-related issues
 
 ---
 
-## Setup Files <a name="files-section"></a>  
+## Setup Files 
 Files specifically related to setup/development/installation. All except the `README.md` are located in the `MAGIC` directory.  
 
 ### `setup.cfg`  
@@ -133,13 +133,13 @@ Build tools.
 ### `docker`  
 Files related to docker plugin container setup.
 
-## Plugin Files  
+## Plugin Files <a name="files-section"></a>  
 Files related to the functionality of the IDA plugin. All except the `MAGIC_plugin_entry.py` are located in the `MAGIC` directory.  
 
 ### `MAGIC_plugin_entry.py`  
 Contains code which is required by IDA that returns a required IDA class representing the plugin. It must be in IDA's `plugins` folder, it must contain a PLUGIN_ENTRY function, and it must return an `ida_idaapi.plugin_t` object.  
 ### idamagic
-Base of all plugin code. Its init file handles the plugin class. This tells IDA how to initialize, run, and terminate the plugin. It also tells IDA how to load and handle the plugin in memory. The run() function is where the form creation happens.
+Base of all plugin code. Its init file handles the plugin class. This tells IDA how to initialize, run, and terminate the plugin. It also tells IDA how to load and handle the plugin in memory. The run() function is where the form creation happens. There are some confusing IDA-specific functionalities in this main folder's `__init__.py` which I try to explain [here](#idamagic-init-notes).
 * `helpers.py`  
 Separate helper functions which do not particularly organize somewehere else.
 * `MAGIC_hooks.py`  
@@ -152,6 +152,24 @@ Contains code for the plugin form which is meant to act as an interface between 
 Contains the code for the plugin form which is just planned to be a minimal version of unknowncyber (for displaying and navigating information related to all files, etc.)
   * Init handles the form object and most of the basic form elements
   * `_filesTable.py` handles the methods related to populating the `filestable` element. This is a table that displays all of the user's files.
+
+---
+
+### Notes for idamagic's `__init__.py` <a name="idamagic-init-notes"></a>  
+* 
+
+---
+
+## Developer Notes <a name="notes-section"></a>  
+- Don't use IDA libraries not preceded by `ida_*`. Libraries such as `idaapi` are massive libraries, all of their functions have been split up among the `ida_*` files such as `ida_kernwin` and `ida_idaapi`.
+- Search functionality is not good on the IDA SDKs. Start with the [idapy docs](https://www.hex-rays.com/products/ida/support/idapython_docs/). Try to keep the search as simple as possible. If the information is too sparse, try the [C documents](https://www.hex-rays.com/products/ida/support/sdkdoc/). The search function here is not great, try to comb the docs to see if you can find the functionality you need. Next, try reading the actual idapython libraries in your IDA install folders.
+
+---
+
+## Future Plans  
+- Plugins should eventually use pagination when getting information from the unknowncyber API
+- Plugin should eventually convert form items like qstandarditem to PyQt's abstract versions. This requires implementation of a lot of features but allows more flexibility in terms of the data shown versus the data stored. The inspiration for my suggestion on this can be found [here](https://doc.qt.io/qt-6/model-view-programming.html).
+- Can save retrieved unknowncyber information onto disk, either for later uses or just as a temporary cache.
 
 ---
 
@@ -191,6 +209,7 @@ After installing pyenv and the version you want:
         
         ```python
         import os
+        import ida_diskio
         virtualenv_path = "path/to/venv"
 
         def activate_virtualenv(virtualenv_path):
@@ -204,7 +223,7 @@ After installing pyenv and the version you want:
         with open(activate_this_path) as f:
             exec(f.read(), dict(__file__=activate_this_path))
 
-        activate_virtualenv(os.path.join(idaapi.get_user_idadir(), virtualenv_path))
+        activate_virtualenv(os.path.join(ida_diskio.get_user_idadir(), virtualenv_path))
         ```  
         
         <p></p>
