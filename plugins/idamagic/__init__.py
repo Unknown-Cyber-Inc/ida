@@ -59,6 +59,7 @@ class magic(ida_idaapi.plugin_t):
 
     form = MAGICPluginFormClass
 
+    # required or otherwise handled by IDA
     wanted_name = PLUGIN_NAME
     wanted_hotkey = PLUGIN_HOTKEY
     comment = PLUGIN_COMMENT
@@ -84,6 +85,8 @@ class magic(ida_idaapi.plugin_t):
 
         logger.debug(logger)
 
+        self.api_client = unknowncyber.ApiClient()  # Create API client to be used by plugin
+
         if HOT_RELOAD:
             logger.info("MAGIC plugin is hot reloadable")
             ida_idaapi.require(
@@ -96,7 +99,10 @@ class magic(ida_idaapi.plugin_t):
         # check if our widget is registered with IDA
         # if found, display it
         # if not found, register it
-        self.form = register_autoinst_hooks(self.wanted_name)
+        self.form = register_autoinst_hooks(self.wanted_name, self.api_client, MAGICPluginFormClass)
+        self.syncscroll = register_autoinst_hooks(SCROLLWIDGET_TITLE,
+                                                  self.api_client,
+                                                  MAGICPluginScrClass)
 
         return ida_idaapi.PLUGIN_KEEP
 
@@ -114,19 +120,15 @@ class magic(ida_idaapi.plugin_t):
             close_widget(find_widget(self.wanted_name), 0)
             close_widget(find_widget(SCROLLWIDGET_TITLE), 0)
 
-        # Create API client to be used by plugin
-        config = unknowncyber.Configuration()
-        api_client = unknowncyber.ApiClient(configuration=config)
-
         # if IDA widget with our title does not exist,
         # create it and populate it. Do nothing otherwise.
         if find_widget(self.wanted_name) is None:
             logger.debug("Creating MAGIC plugin form")
-            self.form = MAGICPluginFormClass(self.wanted_name, api_client)
+            self.form = MAGICPluginFormClass(self.wanted_name, self.api_client)
         if find_widget(SCROLLWIDGET_TITLE) is None:
             logger.debug("Creating MAGIC plugin sync scroll")
             self.syncscroll = MAGICPluginScrClass(
-                SCROLLWIDGET_TITLE, api_client
+                SCROLLWIDGET_TITLE, self.api_client,
             )
 
     def term(self):

@@ -29,9 +29,33 @@ This does not mean it won't work for other versions, but there are no guarantees
 
 ## Prerequisites
 
-- DEVELOPERS: it is recommended to use a python virtual environment and install requirements on that instead. [Setting this up with IDA requires some configuration](#development-setup).
+- DEVELOPERS: If you don't want to use the docker container, it is recommended to use a python virtual environment and install requirements on that instead. [Setting this up with IDA requires some configuration](#venv-setup).
 - Install IDApro — This should automatically include IDAPython (python API for IDA, which we rely on).
-- Install python requirements. (Developers, do this in your virtual environment if you chose to use one). <a name="python-requirements"></a>
+
+## User Install
+
+- Clone this repo
+- Open terminal and navigate to the MAGIC folder
+- Run `pip install cythereal_magic`
+   * IDA can potentially point to multiple versions of python. ensure IDA's version has this package installed.
+- You can install this plugin in either `<IDA/INSTALL/DIRECTORY>/plugins` or  `$HOME/.idapro/plugins`, [the advantages can be found here](https://hex-rays.com/blog/igors-tip-of-the-week-33-idas-user-directory-idausr/):
+   * `cp plugins/* <CHOICE/OF/IDA/PLUGINS/DIRECTORY>`
+
+## Developer Install
+
+- Run this whole command: `cd ~ && mkdir .idapro && git clone git@bitbucket.org:unknowncyber/ida-plugins.git && cp -ar ida-plugins/. .idapro/ && rm -rf ida-plugins
+`
+    * makes `$HOME/.idapro` if not already available
+    * clones this repo
+    * copies contents of this repo into `$HOME/.idapro` (this particular command includes hidden files and merges the `plugins` folder if not available already)
+    * removes the original repo
+    * this ensures that `$HOME/.idapro` will be the root of the github folder for this repository, and that it can work in the docker container and the standalone version of IDA.
+
+---
+
+# MODIFYING THIS SECTION
+
+- Install python requirements. <a name="python-requirements"></a>
     * Open terminal and navigate to the MAGIC folder
     * Run `pip install -r requirements.txt`
     * If this doesn't work, replace `pip` with `pip3`
@@ -46,7 +70,44 @@ This does not mean it won't work for other versions, but there are no guarantees
 
 ---
 
-## Development Setup <a name="development-setup"></a>
+## Setup Files <a name="files-section"></a>  
+Files specifically related to setup/development/installation. All except the `README.md` are located in the `MAGIC` directory.
+### `requirements.txt`  
+Python requirements
+- python-dotenv, package which will load variables from files into environment
+- cythereal_magic, unknowncyber's python library which handles API requests
+
+### `.env.example` <a name="environment-variables"></a>  
+Environment variables sourced in the plugin by the python-dotenv python library. You're supposed to copy the contents to a file called `.env` for the variables to be sourced.
+#### MAGIC related environment variables
+- MAGIC_API_HOST — str, main endpoint for sending requests to MAGIC
+- MAGIC_API_KEY — str, API key for connecting with MAGIC's API
+#### DEV/DEBUG vars
+- PLUGIN_DEVELOP — bool, "True" allows the plugin to be tweaked for easier time with development. For example, in the plugin code this tells IDA to unload the plugin from memory as soon as it is finished running. This means we don't have to continually restart IDA to test plugin changes.
+- PLUGIN_DEVELOP_RECREATE_WIDGETS — bool, "True" Tells the plugin to delete and reload plugin widgets on hotkey press
+- PLUGIN_DEBUG — bool, "True" lets the plugin print stack traces on errors and some extra information
+- PLUGIN_DEVELOP_LOCAL_API — bool, "True" allows the plugin to redirect requests to local instance of unknowncyber
+- MAGIC_API_HOST_LOCAL — str, main endpoint for sending requests to local instance of MAGIC
+- MAGIC_API_KEY_LOCAL — str, API key for connecting with local instance of MAGIC's API
+- PLUGIN_DEVELOP_LOCAL_CERT_PATH — str, path to dev.crt cert file. running an environment on localhost may create cert validation errors when using cythereal_magic python package. this will point those requests to the right directory.
+
+### `README.md`  
+Setup instructions and plugin notes
+
+## Plugin Files  
+Files related to the functionality of the IDA plugin. All except the `MAGIC_plugin_entry.py` are located in the `MAGIC` directory.
+### `MAGIC_plugin_entry.py`  
+Contains code which is required by IDA that returns a required IDA class representing the plugin.
+### `MAGIC_form.py`  
+Contains the code for the plugin form which is just planned to be a minimal version of unknowncyber (for displaying and navigating information related to all files, etc.)
+### `MAGIC_hooks.py`  
+Contains global hooks required by this plugin.
+### `MAGIC_sync_scroll.py`  
+Contains code for the plugin form which is meant to act as an interface between the average IDA user's workflow and unknowncyber's procedure information.
+
+---
+
+## Development Setup <a name="venv-setup"></a>
 - Create a virtual environment and note its path `yourvenv/bin/`
 - Run `source yourvenv/bin/activate` to launch the virtual environment
     * This is when you install the [python requirements](#python-requirements).
@@ -128,40 +189,3 @@ This does not mean it won't work for other versions, but there are no guarantees
         ```  
         
         <p></p>
-
----
-
-## Setup Files <a name="files-section"></a>  
-Files specifically related to setup/development/installation. All except the `README.md` are located in the `MAGIC` directory.
-### `requirements.txt`  
-Python requirements
-- python-dotenv, package which will load variables from files into environment
-- cythereal_magic, unknowncyber's python library which handles API requests
-
-### `.env.example` <a name="environment-variables"></a>  
-Environment variables sourced in the plugin by the python-dotenv python library. You're supposed to copy the contents to a file called `.env` for the variables to be sourced.
-#### MAGIC related environment variables
-- MAGIC_API_HOST — str, main endpoint for sending requests to MAGIC
-- MAGIC_API_KEY — str, API key for connecting with MAGIC's API
-#### DEV/DEBUG vars
-- PLUGIN_DEVELOP — bool, "True" allows the plugin to be tweaked for easier time with development. For example, in the plugin code this tells IDA to unload the plugin from memory as soon as it is finished running. This means we don't have to continually restart IDA to test plugin changes.
-- PLUGIN_DEVELOP_RECREATE_WIDGETS — bool, "True" Tells the plugin to delete and reload plugin widgets on hotkey press
-- PLUGIN_DEBUG — bool, "True" lets the plugin print stack traces on errors and some extra information
-- PLUGIN_DEVELOP_LOCAL_API — bool, "True" allows the plugin to redirect requests to local instance of unknowncyber
-- MAGIC_API_HOST_LOCAL — str, main endpoint for sending requests to local instance of MAGIC
-- MAGIC_API_KEY_LOCAL — str, API key for connecting with local instance of MAGIC's API
-- PLUGIN_DEVELOP_LOCAL_CERT_PATH — str, path to dev.crt cert file. running an environment on localhost may create cert validation errors when using cythereal_magic python package. this will point those requests to the right directory.
-
-### `README.md`  
-Setup instructions and plugin notes
-
-## Plugin Files  
-Files related to the functionality of the IDA plugin. All except the `MAGIC_plugin_entry.py` are located in the `MAGIC` directory.
-### `MAGIC_plugin_entry.py`  
-Contains code which is required by IDA that returns a required IDA class representing the plugin.
-### `MAGIC_form.py`  
-Contains the code for the plugin form which is just planned to be a minimal version of unknowncyber (for displaying and navigating information related to all files, etc.)
-### `MAGIC_hooks.py`  
-Contains global hooks required by this plugin.
-### `MAGIC_sync_scroll.py`  
-Contains code for the plugin form which is meant to act as an interface between the average IDA user's workflow and unknowncyber's procedure information.

@@ -18,7 +18,7 @@ definitions:
           - pip
         script:
           - pip install -e .[DEV]
-          - python -m flak8 --docstring-convention numpy .
+          - python -m flake8 --docstring-convention numpy .
 
 pipelines:
   default:

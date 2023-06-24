@@ -225,10 +225,10 @@ class _ScrClassMethods:
             # start adding file information
             for file in ctmr:
                 # don't display current file, that's implicit
-                if file["sha256"] != self.sha256:
+                if file.get("sha256") != self.sha256:
                     sha1 = file["sha1"]
                     filename = sha1
-                    if file["filenames"]:
+                    if file.get("filenames"):
                         filename = file["filenames"][0]
 
                     # build a fileNode
