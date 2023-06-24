@@ -139,7 +139,8 @@ Files related to the functionality of the IDA plugin. All except the `MAGIC_plug
 ### `MAGIC_plugin_entry.py`  
 Contains code which is required by IDA that returns a required IDA class representing the plugin. It must be in IDA's `plugins` folder, it must contain a PLUGIN_ENTRY function, and it must return an `ida_idaapi.plugin_t` object.  
 ### idamagic
-Base of all plugin code. Its init file handles the plugin class. This tells IDA how to initialize, run, and terminate the plugin. It also tells IDA how to load and handle the plugin in memory. The run() function is where the form creation happens. There are some confusing IDA-specific functionalities in this main folder's `__init__.py` which I try to explain [here](#idamagic-init-notes).
+Base of all plugin code. Its init file handles the plugin class. This tells IDA how to initialize, run, and terminate the plugin. It also tells IDA how to load and handle the plugin in memory. The run() function is where the form creation happens.  
+There are some confusing IDA-specific functionalities which I found sparse information about online. I try to explain these [here](#idamagic-notes).
 * `helpers.py`  
 Separate helper functions which do not particularly organize somewehere else.
 * `MAGIC_hooks.py`  
@@ -155,8 +156,13 @@ Contains the code for the plugin form which is just planned to be a minimal vers
 
 ---
 
-### Notes for idamagic's `__init__.py` <a name="idamagic-init-notes"></a>  
-* 
+### Notes for idamagic's IDA-specifics <a name="idamagic-notes"></a>  
+* `__init__.py`
+  *  The plugin requires certain class members such as `wanted_name` and `wanted_hotkey`. It also requires `flags` which describe how the plugin behaves in memory. I'm honestly unsure the specifics of how these work still. `PLUGIN_FIX` tells it to remain in memory once initialized, `PLUGIN_UNL` tells it not to remain until called explicitly. the `init()` function also is required to return similar flags. `PLUGIN_SKIP` tells IDA to ignore this function, `PLUGIN_KEEP` tells IDA to keep this plugin in memory, and `PLUGIN_OK` which allows the plugin to be unloaded.
+  *  `ida.require()` is a function that will explicitly reload modules. This helps for development because python modules won't reload if they are already left in memory.
+* IDA_interface and unknowncyber_interface
+  * Inside the class initializations of the forms, I call the `Show()` function. This function takes the created widgets and actually puts them on the GUI. This way, when the object is created it automatically shows. This is to wrap the function within the class with default options. I'm unsure exactly how these options work, as they don't appear to use these options unless the "desktop" is reset (this is a feature of IDA).
+  * `OnCreate()` and `OnClose()` are functions required by `ida_kernwin.PluginForm`. These are called automatically by IDA, so if you use them keep in mind the order that they are called as this may cause errors.
 
 ---
 
