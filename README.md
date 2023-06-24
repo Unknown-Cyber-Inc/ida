@@ -59,7 +59,7 @@ IMPORTANT: Verify that all changes work both inside of and outside of the docker
 - Run `cd $HOME/.idapro`
 - Plugin development with local IDA installation:
     * (OPTIONAL): [Configure a virtual environment](#venv-setup). It's a large section but it should be straightforward.
-    * Run `pip install -e .` (in your virtual environment if applicable).
+    * Run `pip install -e dev .` (in your virtual environment if applicable).
     * Run `cp .env.example ./plugins/idamagic/.env`
     * Open and edit `./plugins/idamagic/.env` to set your API key and modify your [desired environment variables](#environment-variables)
     * Open a binary with IDA and run the plugin with **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
@@ -95,39 +95,63 @@ Python-related issues
 ---
 
 ## Setup Files <a name="files-section"></a>  
-Files specifically related to setup/development/installation. All except the `README.md` are located in the `MAGIC` directory.
-### `requirements.txt`  
-Python requirements
+Files specifically related to setup/development/installation. All except the `README.md` are located in the `MAGIC` directory.  
+
+### `setup.cfg`  
+Contains package requirement information for plugin, plus dev requirements.  
+Base python requirements for plugin:
 - python-dotenv, package which will load variables from files into environment
 - cythereal_magic, unknowncyber's python library which handles API requests
 
 ### `.env.example` <a name="environment-variables"></a>  
-Environment variables sourced in the plugin by the python-dotenv python library. You're supposed to copy the contents to a file called `.env` for the variables to be sourced.
-#### MAGIC related environment variables
+Environment variables sourced in the plugin by the python-dotenv python library. You're supposed to copy the contents to a file called `.env` for the variables to be sourced.  
+
+#### MAGIC related environment variables  
+
 - MAGIC_API_HOST — str, main endpoint for sending requests to MAGIC
 - MAGIC_API_KEY — str, API key for connecting with MAGIC's API
-#### DEV/DEBUG vars
-- PLUGIN_DEVELOP — bool, "True" allows the plugin to be tweaked for easier time with development. For example, in the plugin code this tells IDA to unload the plugin from memory as soon as it is finished running. This means we don't have to continually restart IDA to test plugin changes.
-- PLUGIN_DEVELOP_RECREATE_WIDGETS — bool, "True" Tells the plugin to delete and reload plugin widgets on hotkey press
-- PLUGIN_DEBUG — bool, "True" lets the plugin print stack traces on errors and some extra information
-- PLUGIN_DEVELOP_LOCAL_API — bool, "True" allows the plugin to redirect requests to local instance of unknowncyber
-- MAGIC_API_HOST_LOCAL — str, main endpoint for sending requests to local instance of MAGIC
-- MAGIC_API_KEY_LOCAL — str, API key for connecting with local instance of MAGIC's API
-- PLUGIN_DEVELOP_LOCAL_CERT_PATH — str, path to dev.crt cert file. running an environment on localhost may create cert validation errors when using cythereal_magic python package. this will point those requests to the right directory.
+#### DEV/DEBUG vars  
+
+- HOT_RELOAD — bool, "True" allows the plugin to be tweaked for easier time with development. For example, in the plugin code this tells IDA to unload the plugin from memory as soon as it is finished running. This means we don't have to continually restart IDA to test plugin changes. This also tells the plugin to close and reload the actual forms on hotkey press.
+- IDA_LOGLEVEL — bool, "True" lets the plugin print stack traces on errors and some extra information. This can take the values of "", DEBUG, INFO, WARNING, or ERROR. Users would prefer "", while developers should use DEBUG. Uses python's `logging` library.
 
 ### `README.md`  
 Setup instructions and plugin notes
 
+### `.gitignore`  
+Ignores the files in the $HOME/.idapro/ irrelevant to the plugin.
+
+### `bitbucket-pipelines.yml`  
+yml pipeline file for automatic fail testing when pushing to bitbucket.
+
+### `Justfile`  
+`just` commands for atuomated tasks.
+
+### `pyproject.toml`  
+Build tools.
+
+### `docker`  
+Files related to docker plugin container setup.
+
 ## Plugin Files  
-Files related to the functionality of the IDA plugin. All except the `MAGIC_plugin_entry.py` are located in the `MAGIC` directory.
+Files related to the functionality of the IDA plugin. All except the `MAGIC_plugin_entry.py` are located in the `MAGIC` directory.  
+
 ### `MAGIC_plugin_entry.py`  
-Contains code which is required by IDA that returns a required IDA class representing the plugin.
-### `MAGIC_form.py`  
-Contains the code for the plugin form which is just planned to be a minimal version of unknowncyber (for displaying and navigating information related to all files, etc.)
-### `MAGIC_hooks.py`  
-Contains global hooks required by this plugin.
-### `MAGIC_sync_scroll.py`  
+Contains code which is required by IDA that returns a required IDA class representing the plugin. It must be in IDA's `plugins` folder, it must contain a PLUGIN_ENTRY function, and it must return an `ida_idaapi.plugin_t` object.  
+### idamagic
+Base of all plugin code. Its init file handles the plugin class. This tells IDA how to initialize, run, and terminate the plugin. It also tells IDA how to load and handle the plugin in memory. The run() function is where the form creation happens.
+* `helpers.py`  
+Separate helper functions which do not particularly organize somewehere else.
+* `MAGIC_hooks.py`  
+Contains global hooks required by this plugin. Contains hooks for other functions. Be careful to avoid circular dependencies by only importing the required classes in its hook definition. Alternatively, these items can be moved to their own files.
+* IDA_interface  
 Contains code for the plugin form which is meant to act as an interface between the average IDA user's workflow and unknowncyber's procedure information.
+  * Init handles the form object and most of the basic form elements
+  * `_procTree.py` handles the methods related to populating the `proc_tree` element. This is a hierarchical tree that displays all of the procedures related to the currently open input file.
+* unknowncyber_interface  
+Contains the code for the plugin form which is just planned to be a minimal version of unknowncyber (for displaying and navigating information related to all files, etc.)
+  * Init handles the form object and most of the basic form elements
+  * `_filesTable.py` handles the methods related to populating the `filestable` element. This is a table that displays all of the user's files.
 
 ---
 
