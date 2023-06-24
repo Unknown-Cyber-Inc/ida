@@ -58,7 +58,7 @@ IMPORTANT: Verify that all changes work both inside of and outside of the docker
       * this ensures that `$HOME/.idapro` will be the root of the github folder for this repository, and that it can work in the docker container and the standalone version of IDA.
 - Run `cd $HOME/.idapro`
 - Plugin development with local IDA installation:
-    * (OPTIONAL): [Configure a virtual environment](#venv-setup). It's a large section but there really aren't many steps.
+    * (OPTIONAL): [Configure a virtual environment](#venv-setup). It's a large section but it should be straightforward.
     * Run `pip install -e .` (in your virtual environment if applicable).
     * Run `cp .env.example ./plugins/idamagic/.env`
     * Open and edit `./plugins/idamagic/.env` to set your API key and modify your [desired environment variables](#environment-variables)
@@ -72,24 +72,25 @@ IMPORTANT: Verify that all changes work both inside of and outside of the docker
     * Open a binary with IDA and run the plugin with **"Edit -> Plugins -> MAGIC"** or by the shortcut **"ctrl+shift+A"**.
 - Info about the plugin's files can be found [here](#files-section).
 
-### Troubleshooting <a name="troubleshooting"></a>
+### Troubleshooting <a name="troubleshooting"></a>  
 
-* Python-related issues
-  * You may need to replace commands `pip` with `pip3`, `python` with `python3`, or some variant of these dependent on your python install.
-  * IDA can potentially be pointing to a different version of python. ensure IDA's version of python is where you installed the package:
-    * Open IDA.
-    * ensure that IDA is using your desired python version (the "output" window at the bottom should display version information).
-    * In this window, there is a section for commands.
-    * Make sure the button on the left says "Python". It might say "IDC" or something else. If so, just click it and select "Python".
-    * Enter `import cythereal_magic`
-    * If there is an error, you can either:
-      * reinstall python dependencies on this version (RECOMMENDED)
-      * or change your python version (next step)
-  * Changing the version of Python that IDA points to:
-    * Navigate to your IDA install folder in the terminal. `/opt/ida` for example.
-    * Run `sudo ./idapyswitch`
-    * If your desired version does not show up, the only way to get this to work is to find your desired python version's shared library files and run `sudo ./idapyswitch --force-path /PATH/TO/SHARED/LIBRARY/FILE`. If you don't know how to do this, it is recommended to move on to the next step 
-  * If there are still python-related issues there may be a need to [configure a python3.7 virtual environment](#venv-setup). It's a large section but there aren't too many steps.
+Python-related issues  
+
+* You may need to replace commands `pip` with `pip3`, `python` with `python3`, or some variant of these dependent on your python install.
+* IDA can potentially be pointing to a different version of python. ensure IDA's version of python is where you installed the package:
+  * Open IDA.
+  * ensure that IDA is using your desired python version (the "output" window at the bottom should display version information).
+  * In this window, there is a section for commands.
+  * Make sure the button on the left says "Python". It might say "IDC" or something else. If so, just click it and select "Python".
+  * Enter `import cythereal_magic`
+  * If there is an error, you can either:
+    * reinstall python dependencies on this version (RECOMMENDED)
+    * or change your python version (next step)
+* Changing the version of Python that IDA points to:
+  * Navigate to your IDA install folder in the terminal. `/opt/ida` for example.
+  * Run `sudo ./idapyswitch`
+  * If your desired version does not show up, the only way to get this to work is to find your desired python version's shared library files and run `sudo ./idapyswitch --force-path /PATH/TO/SHARED/LIBRARY/FILE`. If you don't know how to do this, it is recommended to move on to the next step 
+* If there are still python-related issues there may be a need to [configure a python3.7 virtual environment](#venv-setup). It's a large section but it should be straightforward.
 
 ---
 
@@ -130,19 +131,35 @@ Contains code for the plugin form which is meant to act as an interface between 
 
 ---
 
-## Development Setup <a name="venv-setup"></a>
-- Create a virtual environment and note its path `yourvenv/bin/`
-- Run `source yourvenv/bin/activate` to launch the virtual environment
-    * This is when you install the [python requirements](#python-requirements).
-        * To ensure that IDA is running off of the correct environment, install a simple python library which is not included in the default python installation ["art"](https://pypi.org/project/art/) into your target environment
-        * If you can import and run the above library through IDA's CLI for python, then IDA is using the correct environment
-- You can type `deactivate` in the terminal to exit the virtual environment
-- In `idapro/python/examples/core` there is a script `idapythonrc.py`
-    * Copy the `idapythonrc.py` script inside `~/.idapro/`
-        * Placing it here means IDA will run this code directly after core initialization
+## Virtual Environment Setup <a name="venv-setup"></a>  
+
+There are four main steps in this whole section:
+- [Pyenv](#pyenv)
+- [idapythonrc.py](#idapython)
+- [activate_this.py](#activate_this)
+- [idapyswitch](#idapyswitch)
+
+### Pyenv <a name="pyenv"></a>    
+
+I could not get this to work with python3's venv/virtualenv, however I did get this to work with pyenv. You can find [install instructions here](https://realpython.com/intro-to-pyenv/).  
+  
+IMPORTANT: Make sure you install your virtual environment with shared libraries enabled. you CANNOT get IDA to work with a virtual environment without it. This is done in the pyenv instructions above by replacing `pyenv install <OPTIONS> <VERSION>` with `env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install <OPTIONS> <VERSION>`.  
+
+After installing pyenv and the version you want:
+- Run `pyenv virtualenv <VERSION> <VENV_NAME>`
+- Run `pyenv activate <VENV_NAME>`
+- Reinstall python packages to this environment using `pip install -e .` in the plugins directory
+- Run `pyenv deactivate`
+
+### idapythonrc.py <a name="idapython"></a>  
+
+- Note your virtual environment's path as `path/to/venv` above the `bin` folder. If following the previous instructions, it should be `$HOME/.pyenv/versions/<VERSION>`.
+- In `IDAINSTALLFOLDER/python/examples/core` there is a script `idapythonrc.py`
+    * Run `cp idapythonrc.py ~/.idapro`
+        * Placing it here means IDA will run this code directly after initialization
     * Append the code in the following block to `~/.idapro/idapythonrc.py`
         * This will execute a script activating the virtual environment that IDA will use
-        * `path/to/your/virtual/environment` refers to your virtual environment path above its `bin` directory
+        * `path/to/venv` refers to your virtual environment path above its `bin` directory
         
         contents to add to `idapythonrc.py`:  
         
@@ -150,7 +167,7 @@ Contains code for the plugin form which is meant to act as an interface between 
         
         ```python
         import os
-        virtualenv_path = "path/to/your/virtual/environment"
+        virtualenv_path = "path/to/venv"
 
         def activate_virtualenv(virtualenv_path):
         for bindir in ("Scripts", "bin"):
@@ -168,10 +185,12 @@ Contains code for the plugin form which is meant to act as an interface between 
         
         <p></p>
         
-- The above code requires a script in the virtual environment bin that is deprecated in later versions of `python -m venv` 
-    * Create a file in `path/to/your/virtual/environment/bin` called `activate_this.py`
-    * Appending the code in the following block essentially tells the running application (IDA in this case) to prepend the virtual environment to its PATH, thereby prioritizing that python environment
-        * As a note, the line `site_packages = os.path.join(base, 'lib', 'python%s' % sys.version[:3], 'site-packages')` may fail in certain python versions since it is looking for only the third character in, say, `3.7.9`
+### activate_this.py <a name="activate-this"></a>
+
+- The above code requires a script in the virtual environment bin that is deprecated in later versions of python virtual environment tools.
+    * Create a file in `path/to/venv/bin` called `activate_this.py`. Note this goes in the `bin` folder.
+    * Appending the code in the following block essentially tells the running application (IDA in this case) to prepend the virtual environment to its PATH, thereby prioritizing that python environment.
+        * NOTE: the line `site_packages = os.path.join(base, 'lib', 'python%s' % sys.version[:3], 'site-packages')` may fail in certain python versions since it is looking for only the third character in, say, `3.7.9`
         
         contents of `activate_this.py`:  
         
@@ -212,3 +231,10 @@ Contains code for the plugin form which is meant to act as an interface between 
         ```  
         
         <p></p>
+
+### idapyswitch <a name="idapyswitch"></a>  
+
+- Note your python environment's shared library folder. If following the previous instructions, it should be `$HOME/.pyenv/versions/<VERSION>/lib`.
+- Navigate to your IDA install folder.
+- Run `sudo ./idapyswitch --force-path path/to/shared/libraries/<VERSION>m.so`  
+- IDA should now run in the virtual environment. Check the IDA output window to check that the correct version is loaded.
