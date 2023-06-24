@@ -1,0 +1,30 @@
+# Guides at https://confluence.atlassian.com/x/x4UWN
+---
+image: python:3.7-slim
+definitions:
+  steps:
+    - step: &Lint
+        name: Lint the codebase
+        max-time: 10
+        caches:
+          - pip
+        script:
+          - pip install -e .[DEV]
+          - python -m pylama .
+    - step: &Flake
+        name: Lint the codebase with flake8
+        max-time: 10
+        caches:
+          - pip
+        script:
+          - pip install -e .[DEV]
+          - python -m flak8 --docstring-convention numpy .
+
+pipelines:
+  default:
+    - step: *Lint
+  custom:
+    Lint:
+      - step: *Lint
+    Flake:
+      - step: *Flake
