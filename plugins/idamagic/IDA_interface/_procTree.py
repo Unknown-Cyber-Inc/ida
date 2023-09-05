@@ -192,11 +192,11 @@ class _ScrClassMethods:
             procrootnode.appendRows(
                 [
                     ProcHeaderItem(
-                        "Group Occurrences", str(proc.occurrence_count)
+                        "Occurrence count", str(proc.occurrence_count)
                     ),
                     # tab is ignored for boolean for some reason
                     # ProcHeaderItem("Library", "\t" + str(proc.is_library)),
-                    ProcHeaderItem("Group Type", proc.status),
+                    ProcHeaderItem("Type", proc.status),
                 ]
             )
 
