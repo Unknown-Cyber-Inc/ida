@@ -7,6 +7,7 @@ import logging
 
 from idamagic.unknowncyber_interface import MAGICPluginFormClass
 from idamagic.IDA_interface import MAGICPluginScrClass
+from idamagic.main_interface import MAGICMainClass
 
 logger = logging.getLogger(__name__)
 
@@ -32,38 +33,20 @@ def register_autoinst_hooks(
         hook to register globally with IDA.
     """
 
-    class MAGIC_inst_auto_hook_t(ida_kernwin.UI_Hooks):
+    class MAGIC_main_inst_auto_hook_t(ida_kernwin.UI_Hooks):
         """
-        Inherets UI_hooks functionality from IDA C++ objects.
-
-        Register hooks that will be used by IDA.
-        These are essentially listeners for certain global events
-        associated with a particular task/function.
+        Same as above but for the main widget
         """
-
-        def create_desktop_widget(self, ttl, cfg):
-            if ttl == name:
-                MAGICWidgetPage = form_type(name, api_client)
-                return MAGICWidgetPage.GetWidget()
-
-    class MAGIC_procedures_inst_auto_hook_t(ida_kernwin.UI_Hooks):
-        """
-        Same as above but for the procedures widget
-        """
-
         def create_desktop_widget(self, ttl, cfg):
             if ttl == name:
                 MAGICWidgetPage = form_type(name, api_client, autoinst=True)
                 return MAGICWidgetPage.GetWidget()
 
-    if form_type is MAGICPluginFormClass:
-        global MAGIC_inst_auto_hook
-        MAGIC_inst_auto_hook = MAGIC_inst_auto_hook_t()
-        MAGIC_inst_auto_hook.hook()
-    elif form_type is MAGICPluginScrClass:
-        global MAGIC_procedures_inst_auto_hook
-        MAGIC_procedures_inst_auto_hook = MAGIC_procedures_inst_auto_hook_t()
-        MAGIC_procedures_inst_auto_hook.hook()
+    if form_type is MAGICMainClass:
+        global MAGIC_main_inst_auto_hook
+        MAGIC_main_inst_auto_hook = MAGIC_main_inst_auto_hook_t()
+        MAGIC_main_inst_auto_hook.hook()
+
 
 
 class PluginScrHooks(ida_kernwin.UI_Hooks):
@@ -76,7 +59,7 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
 
     def __init__(self, proc_tree, procedureEADict, procWidgetParent, *args):
         super().__init__(*args)
-        # needs to be able to access the process_treeview once generated
+        # needs to be able to access the proc_tree view once generated
         self.procWidgetParent = procWidgetParent
         self.proc_tree = proc_tree
         self.procedureEADict = procedureEADict
@@ -93,6 +76,7 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
                 procedureQIndexItem
             ):  # do not expand before checking if expanded, see proc_tree_jump_to_hex for info
                 self.proc_tree.expand(procedureQIndexItem)
+                print(procedureQIndexItem)
             # 3 is an enum telling the widget to open with the item in the center
             self.proc_tree.scrollTo(
                 procedureQIndexItem, 3
@@ -101,4 +85,5 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
     # this object will not have "parent" until all UI objects are loaded
     # additionally, this 'ready_to_run' will only occur once on initialization
     def ready_to_run(self, *args):
-        self.procWidgetParent.parent().parent().setSizes([600, 1])
+        # self.procWidgetParent.parent().parent().setSizes([100, 1])
+        return
