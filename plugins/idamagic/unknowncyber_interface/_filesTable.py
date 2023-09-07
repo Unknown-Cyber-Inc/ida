@@ -11,8 +11,6 @@ import ida_nalt
 import ida_loader
 import hashlib
 import base64
-import magic
-import idaapi
 
 from cythereal_magic.rest import ApiException
 from PyQt5 import QtWidgets, Qt
