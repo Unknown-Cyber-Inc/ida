@@ -162,17 +162,10 @@ class FileListWidget(BaseListWidget):
     def on_delete_click(self):
         """Handle delete pushbutton click"""
         item = self.list_widget.currentItem()
-        api_call = None
-        type_str = ""
-        if "Notes" in self.label.text():
-            type_str = "NOTE"
-            api_call = ctmfiles.delete_file_note
-        elif "Tags" in self.label.text():
-            type_str = "TAG"
-            api_call = ctmfiles.remove_file_tag
-
+        type_str = self.label.text()
         try:
-            if "Notes" in self.label.text():
+            if "Notes" in type_str:
+                api_call = ctmfiles.delete_file_note
                 response = api_call(
                     binary_id=self.binary_id,
                     note_id=item.proc_node.node_id,
@@ -180,7 +173,8 @@ class FileListWidget(BaseListWidget):
                     no_links=True,
                     async_req=True,
                 )
-            elif "Tags" in self.label.text():
+            elif "Tags" in type_str:
+                api_call = ctmfiles.remove_file_tag
                 response = api_call(
                     binary_id=self.binary_id,
                     tag_id=item.proc_node.node_id,
@@ -298,7 +292,7 @@ class ProcTextPopup(TextPopup):
         listing_item=None,
         binary_id=None,
         rva=None,
-        type=None,
+        item_type=None,
     ):
         """Init method"""
         super().__init__(fill_text, parent)
@@ -306,7 +300,7 @@ class ProcTextPopup(TextPopup):
         self.listing_item = listing_item
         self.binary_id = binary_id
         self.rva = rva
-        self.type = type
+        self.item_type = item_type
 
     def on_cancel_click(self):
         """When edit popup's cancel button is clicked"""
@@ -330,15 +324,9 @@ class ProcTextPopup(TextPopup):
 
     def save_create(self, text):
         """API call logic for `create` submissions"""
-        if self.type == "Notes":
-            type_str = "NOTE"
-            api_call = ctmfiles.create_procedure_genomics_note
-        elif self.type == "Tags":
-            type_str = "TAG"
-            api_call = ctmfiles.create_procedure_genomics_tag
-
         try:
-            if type_str == "NOTE":
+            if self.item_type == "Notes":
+                api_call = ctmfiles.create_procedure_genomics_note
                 response = api_call(
                     binary_id=self.binary_id,
                     rva=self.rva,
@@ -347,7 +335,8 @@ class ProcTextPopup(TextPopup):
                     no_links=True,
                     async_req=True,
                 )
-            elif type_str == "TAG":
+            elif self.item_type == "Tags":
+                api_call = ctmfiles.create_procedure_genomics_tag
                 response = api_call(
                     binary_id=self.binary_id,
                     rva=self.rva,
@@ -358,7 +347,7 @@ class ProcTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not update {type_str} from selected procedure.")
+            print(f"Could not update {self.item_type} from selected procedure.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -375,9 +364,9 @@ class ProcTextPopup(TextPopup):
                 from .IDA_interface._procTree import ProcSimpleTextNode
 
                 print(
-                    f"{type_str} from selected procedure created successfully."
+                    f"{self.item_type} from selected procedure created successfully."
                 )
-                if type_str == "NOTE":
+                if self.item_type == "Notes":
                     self.listing_item.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=self.listing_item.hard_hash,
@@ -387,7 +376,7 @@ class ProcTextPopup(TextPopup):
                             rva=self.rva,
                         )
                     )
-                elif type_str == "TAG":
+                elif self.item_type == "Tags":
                     self.listing_item.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=self.listing_item.hard_hash,
@@ -399,24 +388,16 @@ class ProcTextPopup(TextPopup):
                     )
                 return text
             else:
-                print(f"Error updating {type_str}.")
+                print(f"Error updating {self.item_type}.")
                 print(f"Status Code: {response.status}")
                 print(f"Error message: {response.errors}")
                 return None
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
-        if self.type == "Notes":
-            type_str = "NOTE"
-            api_call = ctmfiles.update_procedure_genomics_note
-        elif self.type == "Proc Name":
-            type_str = "PROCEDURE NAME"
-            api_call = print(
-                "API call not implemented for procedure name EDIT, faux call made instead."
-            )
-
         try:
-            if type_str == "NOTE":
+            if self.item_type == "Notes":
+                api_call = ctmfiles.update_procedure_genomics_note
                 response = api_call(
                     binary_id=self.binary_id,
                     rva=self.rva,
@@ -428,11 +409,14 @@ class ProcTextPopup(TextPopup):
                     async_req=True,
                 )
                 response = response.get()
-            elif type_str == "PROCEDURE NAME":
+            elif self.item_type == "Proc Name" == "PROCEDURE NAME":
+                api_call = print(
+                "API call not implemented for procedure name EDIT, faux call made instead."
+            )
                 response = api_call()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not update {type_str} from selected procedure.")
+            print(f"Could not update {self.item_type} from selected procedure.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -446,18 +430,18 @@ class ProcTextPopup(TextPopup):
             return None
         else:
             # remove this block once endpoint implemented
-            if type_str == "PROCEDURE NAME":
+            if self.item_type == "PROCEDURE NAME":
                 print(
                     "Endpoints for procedure name functionality not implemented."
                 )
                 return None
             if response.status >= 200 and response.status <= 299:
                 print(
-                    f"{type_str} from selected procedure updated successfully."
+                    f"{self.item_type} from selected procedure updated successfully."
                 )
                 return text
             else:
-                print(f"Error updating {type_str}.")
+                print(f"Error updating {self.item_type}.")
                 print(f"Status Code: {response.status}")
                 return None
 
@@ -491,15 +475,10 @@ class FileTextPopup(TextPopup):
 
     def save_create(self, text):
         """API call logic for `create` submissions"""
-        if "Notes" in self.parent.label.text():
-            type_str = "NOTE"
-            api_call = ctmfiles.create_file_note
-        elif "Tags" in self.parent.label.text():
-            type_str = "TAG"
-            api_call = ctmfiles.create_file_tag
-
+        parent_label = self.parent.label.text()
         try:
-            if type_str == "NOTE":
+            if "Notes" in parent_label:
+                api_call = ctmfiles.create_file_note
                 response = api_call(
                     binary_id=self.parent.binary_id,
                     note=text,
@@ -507,7 +486,8 @@ class FileTextPopup(TextPopup):
                     no_links=True,
                     async_req=True,
                 )
-            elif type_str == "TAG":
+            elif "Tags" in parent_label:
+                api_call = ctmfiles.create_file_tag
                 response = api_call(
                     binary_id=self.parent.binary_id,
                     name=text,
@@ -517,7 +497,7 @@ class FileTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not create {type_str} for File.")
+            print(f"Could not create {parent_label} for File.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -533,7 +513,7 @@ class FileTextPopup(TextPopup):
             if response.status >= 200 and response.status <= 299:
                 from .IDA_interface._procTree import ProcSimpleTextNode
 
-                if type_str == "NOTE":
+                if "Notes" in parent_label:
                     self.parent.list_widget.addItem(
                         CustomListItem(
                             ProcSimpleTextNode(
@@ -542,7 +522,7 @@ class FileTextPopup(TextPopup):
                             )
                         )
                     )
-                elif type_str == "TAG":
+                elif "Tags" in parent_label:
                     self.parent.list_widget.addItem(
                         CustomListItem(
                             ProcSimpleTextNode(
@@ -551,21 +531,19 @@ class FileTextPopup(TextPopup):
                             )
                         )
                     )
-                print(f"{type_str} for File created successfully.")
+                print(f"{parent_label} for File created successfully.")
                 return text
             else:
-                print(f"Error updating {type_str}.")
+                print(f"Error updating {parent_label}.")
                 print(f"Status Code: {response.status}")
                 return None
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
-        if "Notes" in self.parent.label.text():
-            type_str = "NOTE"
-            api_call = ctmfiles.update_file_note
-
+        parent_label = self.parent.label.text()
         try:
-            if type_str == "NOTE":
+            if "Notes" in self.parent.label.text():
+                api_call = ctmfiles.update_file_note
                 response = api_call(
                     binary_id=self.parent.binary_id,
                     note_id=item.proc_node.node_id,
@@ -578,7 +556,7 @@ class FileTextPopup(TextPopup):
                 response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not update File {type_str}.")
+            print(f"Could not update File {parent_label}.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -592,9 +570,9 @@ class FileTextPopup(TextPopup):
             return None
         else:
             if response[1] >= 200 and response[1] <= 299:
-                print(f"File {type_str} updated successfully.")
+                print(f"File {parent_label} updated successfully.")
                 return text
             else:
-                print(f"Error updating {type_str}.")
+                print(f"Error updating {parent_label}.")
                 print(f"Status Code: {response[1]}")
                 return None

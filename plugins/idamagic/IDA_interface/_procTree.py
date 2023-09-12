@@ -496,26 +496,32 @@ class _ScrClassMethods:
 
     def item_selected(self, index):
         if index.parent().data() == None:
+            # selecting a procedure of ProcRootNode
             self.create_button.setEnabled(False)
             self.edit_button.setEnabled(True)
             self.delete_button.setEnabled(False)
         elif index.data() == "Tags":
+            # selecting the ProcTagsNode
             self.create_button.setEnabled(True)
             self.edit_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         elif index.parent().data() == "Tags":
+            # selecting a tag node of ProcSimpleTextNode
             self.create_button.setEnabled(True)
             self.edit_button.setEnabled(False)
             self.delete_button.setEnabled(True)
         elif index.data() == "Notes":
+            # selecting the ProcNotesNode
             self.create_button.setEnabled(True)
             self.edit_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         elif index.parent().data() == "Notes":
+            # selecting a note node of ProcSimpleTextNode
             self.create_button.setEnabled(True)
             self.edit_button.setEnabled(True)
             self.delete_button.setEnabled(True)
         else:
+            # for all other nodes, disable all CRUD buttons
             self.create_button.setEnabled(False)
             self.edit_button.setEnabled(False)
             self.delete_button.setEnabled(False)
@@ -527,7 +533,7 @@ class _ScrClassMethods:
         listing_item=None,
         binary_id=None,
         rva=None,
-        type=None,
+        item_type=None,
     ):
         """Handle showing edit popup"""
         self.popup = ProcTextPopup(
@@ -536,7 +542,7 @@ class _ScrClassMethods:
             parent=parent,
             binary_id=binary_id,
             rva=rva,
-            type=type,
+            item_type=item_type,
         )
         self.popup.show()
 
@@ -547,8 +553,11 @@ class _ScrClassMethods:
         text = item.text
 
         if isinstance(item, ProcRootNode):
-            type = "Proc Name"
+            item_type = "Proc Name"
             if item.full_name is not None:
+                # for a procedure with a full_name (node_name, padding, and
+                # procedure name), get the procedure_name by skipping the
+                # node name and added padding.
                 text = item.full_name[(len(item.node_name) + 3) :]
             else:
                 text = None
@@ -558,17 +567,17 @@ class _ScrClassMethods:
                 parent=item.parent(),
                 binary_id=None,
                 rva=None,
-                type=type,
+                item_type=item_type,
             )
         elif isinstance(item.parent(), ProcNotesNode):
-            type = "Notes"
+            item_type = "Notes"
             self.show_popup(
                 listing_item=item,
                 text=text,
                 parent=item.parent().parent().parent(),
                 binary_id=item.parent().binary_id,
                 rva=item.parent().rva,
-                type=type,
+                item_type=item_type,
             )
 
     def on_create_click(self):
@@ -577,62 +586,55 @@ class _ScrClassMethods:
         item = index.model().itemFromIndex(index)
 
         if isinstance(item, ProcNotesNode):
-            type = "Notes"
+            item_type = "Notes"
             self.show_popup(
                 listing_item=item,
                 text=None,
                 parent=item.parent().parent(),
                 binary_id=item.binary_id,
                 rva=item.rva,
-                type=type,
+                item_type=item_type,
             )
         elif isinstance(item, ProcTagsNode):
-            type = "Tags"
+            item_type = "Tags"
             self.show_popup(
                 listing_item=item,
                 text=None,
                 parent=item.parent().parent(),
                 binary_id=item.binary_id,
                 rva=item.rva,
-                type=type,
+                item_type=item_type,
             )
         elif isinstance(item.parent(), ProcNotesNode):
-            type = "Notes"
+            item_type = "Notes"
             self.show_popup(
                 listing_item=item.parent(),
                 text=None,
                 parent=item.parent().parent().parent(),
                 binary_id=item.parent().binary_id,
                 rva=item.parent().rva,
-                type=type,
+                item_type=item_type,
             )
         elif isinstance(item.parent(), ProcTagsNode):
-            type = "Tags"
+            item_type = "Tags"
             self.show_popup(
                 listing_item=item.parent(),
                 text=None,
                 parent=item.parent().parent().parent(),
                 binary_id=item.parent().binary_id,
                 rva=item.parent().rva,
-                type=type,
+                item_type=item_type,
             )
 
     def on_delete_click(self):
         """Handle delete pushbutton click"""
         index = self.proc_tree.selectedIndexes()[0]
         item = index.model().itemFromIndex(index)
-        api_call = None
-        type_str = ""
-
-        if index.parent().data() == "Notes":
-            type_str = "NOTE"
-            api_call = self.ctmfiles.delete_procedure_genomics_note
-        elif index.parent().data() == "Tags":
-            type_str = "TAG"
-            api_call = self.ctmfiles.delete_procedure_genomics_tag_by_id
+        type_str = index.parent().data()
 
         try:
-            if index.parent().data() == "Notes":
+            if type_str == "Notes":
+                api_call = self.ctmfiles.delete_procedure_genomics_note
                 response = api_call(
                     binary_id=item.binary_id,
                     note_id=item.node_id,
@@ -641,7 +643,8 @@ class _ScrClassMethods:
                     no_links=True,
                     async_req=True,
                 )
-            elif index.parent().data() == "Tags":
+            elif type_str == "Tags":
+                api_call = self.ctmfiles.delete_procedure_genomics_tag_by_id
                 response = api_call(
                     binary_id=item.binary_id,
                     rva=item.rva,

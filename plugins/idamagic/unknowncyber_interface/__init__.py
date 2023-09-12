@@ -106,7 +106,11 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         self.init_and_populate_tabs()
 
     def tab_changed(self, index):
-        """Tab change behavior"""
+        """Tab change behavior
+
+           Index here is used to access the tab position.
+           [NoteTab, TagsTab, MatchesTab]
+        """
         if index == 0:
             self.make_list_api_call("Notes")
         elif index == 1:
