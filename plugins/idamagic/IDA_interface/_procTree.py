@@ -72,7 +72,7 @@ class ProcHeaderItem(ProcSimpleTextNode):
     """
 
     def __init__(self, key, value):
-        super().__init__(text=(key + ":\t" + value))
+        super().__init__(text=(f"{key}: {value}"))
 
 
 class ProcListItem(ProcSimpleTextNode):
@@ -131,7 +131,7 @@ class ProcFilesNode(ProcTableItem):
 
     def __init__(self, hard_hash, rva):
         super().__init__()
-        self.setText("Files")
+        self.setText("Containing Files")
         self.hard_hash = hard_hash
         self.isPopulated = False
         self.rva = rva
@@ -148,7 +148,7 @@ class ProcSimilarityNode(ProcTableItem):
 
     def __init__(self, hard_hash, binary_id, rva):
         super().__init__()
-        self.setText("Similarities")
+        self.setText("Similarity Locations")
         self.hard_hash = hard_hash
         self.isPopulated = False
         self.binary_id = binary_id
@@ -211,9 +211,7 @@ class _ScrClassMethods:
                     ProcNotesNode(hard_hash, self.sha256, proc.start_ea),
                     ProcTagsNode(hard_hash, self.sha256, proc.start_ea),
                     ProcFilesNode(hard_hash, proc.start_ea),
-                    ProcSimilarityNode(
-                        hard_hash, self.sha256, proc.start_ea
-                    ),
+                    ProcSimilarityNode(hard_hash, self.sha256, proc.start_ea),
                 ]
             )
 
@@ -237,7 +235,7 @@ class _ScrClassMethods:
                 if file.sha256 != self.sha256:
                     filename = sha1
                     if file.filenames:
-                        filename = file["filenames"][0]
+                        filename = file.filenames[0]
                 else:
                     filename = f"Current file - {sha1}"
 
@@ -320,22 +318,35 @@ class _ScrClassMethods:
             file_sha1 = self.retrieve_file_sha1(similarityRootNode.binary_id)
 
             node_text = ""
+            current_sha1 = None
             for proc in returned_vals:
-                if (
-                    file_sha1 == proc.binary_id
-                    and similarityRootNode.rva == proc.start_ea
-                ):
-                    node_text = (
-                        f"Current function - sha1: {proc.binary_id},"
-                        f" startEA: {proc.start_ea}"
+                if current_sha1 == proc.binary_id:
+                    similarityRootNode.appendRow(
+                        ProcSimpleTextNode(
+                            text=f"\t{proc.start_ea}",
+                        )
                     )
                 else:
-                    node_text = f"sha1: {proc.binary_id}, startEA: {proc.start_ea}"
-                similarityRootNode.appendRow(
-                    ProcSimpleTextNode(
-                        hard_hash=similarityRootNode.hard_hash, text=node_text
+                    current_sha1 = proc.binary_id
+                    if (
+                        file_sha1 == proc.binary_id
+                        and similarityRootNode.rva == proc.start_ea
+                    ):
+                        node_text = (
+                            f"Current File - sha1: {proc.binary_id}"
+                            f"\n       startEA: {proc.start_ea}"
+                        )
+                    else:
+                        node_text = (
+                            f"sha1: {proc.binary_id}"
+                            f"\n       startEA: {proc.start_ea}"
+                        )
+                    similarityRootNode.appendRow(
+                        ProcSimpleTextNode(
+                            hard_hash=similarityRootNode.hard_hash,
+                            text=node_text,
+                        )
                     )
-                )
 
             # remove the empty init child
             similarityRootNode.removeRows(0, 1)
@@ -373,13 +384,16 @@ class _ScrClassMethods:
                     read_mask=read_mask,
                     expand_mask=type_str.lower(),
                     no_links=True,
+                    async_req=True,
                 )
             else:
                 ctmr = api_call(
                     binary_id=node.binary_id,
                     rva=node.rva,
                     no_links=True,
+                    async_req=True,
                 )
+            ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(
@@ -412,7 +426,10 @@ class _ScrClassMethods:
 
         try:
             response = self.ctmfiles.get_file(
-                binary_id=binary_id, read_mask=read_mask, no_links=True,
+                binary_id=binary_id,
+                read_mask=read_mask,
+                no_links=True,
+                async_req=True,
             )
         except ApiException as exp:
             logger.debug(traceback.format_exc())
@@ -428,6 +445,7 @@ class _ScrClassMethods:
             # (this func always returns None anyway)
             return None
         else:
+            response = response.get()
             if response.status >= 200 and response.status <= 299:
                 print("File GET successful.")
             else:
@@ -503,7 +521,13 @@ class _ScrClassMethods:
             self.delete_button.setEnabled(False)
 
     def show_popup(
-        self, text, parent, listing_item=None, binary_id=None, rva=None, type=None
+        self,
+        text,
+        parent,
+        listing_item=None,
+        binary_id=None,
+        rva=None,
+        type=None,
     ):
         """Handle showing edit popup"""
         self.popup = ProcTextPopup(
@@ -525,7 +549,7 @@ class _ScrClassMethods:
         if isinstance(item, ProcRootNode):
             type = "Proc Name"
             if item.full_name is not None:
-                text = item.full_name[(len(item.node_name)+ 3):]
+                text = item.full_name[(len(item.node_name) + 3) :]
             else:
                 text = None
             self.show_popup(
@@ -609,21 +633,24 @@ class _ScrClassMethods:
 
         try:
             if index.parent().data() == "Notes":
-                _, status, _ = api_call(
+                ctmr = api_call(
                     binary_id=item.binary_id,
                     note_id=item.node_id,
                     rva=item.rva,
                     force=True,
                     no_links=True,
+                    async_req=True,
                 )
             elif index.parent().data() == "Tags":
-                _, status, _ = api_call(
+                ctmr = api_call(
                     binary_id=item.binary_id,
                     rva=item.rva,
                     tag_id=item.node_id,
                     force=True,
                     no_links=True,
+                    async_req=True,
                 )
+            ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(f"Could not delete {type_str} from selected procedure.")
@@ -641,14 +668,14 @@ class _ScrClassMethods:
 
             return None
         else:
-            if status >= 200 and status <= 299:
+            if ctmr[1] >= 200 and ctmr[1] <= 299:
                 item.parent().removeRow(item.row())
                 print(
                     f"{type_str} removed from selected procedure successfully."
                 )
             else:
                 print(f"Error deleting {type_str}.")
-                print(f"Status Code: {status}")
+                print(f"Status Code: {ctmr[1]}")
                 # print(f"Error message: {ctmr.errors}")
                 return None
 
@@ -672,13 +699,16 @@ class _ScrClassMethods:
                 order_by=order_by,
                 no_links=True,
                 page_size=250,
+                async_req=True,
             )
+            ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print("No procedures could be gathered.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
+            return None
         except Exception as exp:
             logger.debug(traceback.format_exc())
             print("Unknown Error occurred")

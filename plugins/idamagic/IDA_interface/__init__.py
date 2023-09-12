@@ -74,8 +74,8 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         )
         self.plugin_hook.hook()
 
-        if HOT_RELOAD:
-            self.pushbutton_click()
+        # if HOT_RELOAD:
+        #     self.pushbutton_click()
 
     """
     functions for building and displaying pyqt.
@@ -141,15 +141,9 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         # connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click)
 
-        self.proc_tree.expanded.connect(
-            self.onTreeExpand
-        )
-        self.proc_tree.doubleClicked.connect(
-            self.proc_tree_jump_to_hex
-        )
-        self.proc_tree.clicked.connect(
-            self.item_selected
-        )
+        self.proc_tree.expanded.connect(self.onTreeExpand)
+        self.proc_tree.doubleClicked.connect(self.proc_tree_jump_to_hex)
+        self.proc_tree.clicked.connect(self.item_selected)
 
     #
     # functions for connecting pyqt signals

@@ -6,11 +6,17 @@ import logging
 import json
 import os
 import traceback
+from unittest import result
 
 import ida_nalt
 import ida_loader
+import ida_kernwin
 import hashlib
 import base64
+import idaapi
+import idc
+import idautils
+from pprint import pprint
 
 from cythereal_magic.rest import ApiException
 from PyQt5 import QtWidgets, Qt
@@ -102,13 +108,9 @@ class _MAGICFormClassMethods:
         # add tabs to sub upload_tab_table
         self.upload_tabs = QtWidgets.QTabWidget()
         self.upload_tabs.addTab(self.file_upload_tab, "Original File")
-        self.upload_tabs.addTab(
-            self.binary_upload_tab, "Disassembled"
-        )
+        self.upload_tabs.addTab(self.binary_upload_tab, "Disassembled")
         # set layout for sub upload tab table
-        self.upload_tabs_layout = QtWidgets.QVBoxLayout(
-            self.upload_tabs
-        )
+        self.upload_tabs_layout = QtWidgets.QVBoxLayout(self.upload_tabs)
         self.upload_tabs.setLayout(self.upload_tabs_layout)
 
         # ---------------------------------------------------------------------------
@@ -152,11 +154,19 @@ class _MAGICFormClassMethods:
         """Populates the File list 'Matches' tab with recieved matches"""
         matches = []
         for match in list_items:
+            if match["sha1"] != self.sha1:
+                filename = f"sha1: {match['sha1']}"
+            else:
+                filename = f"Current file - sha1: {match['sha1']}"
+
             matches.append(
                 FileSimpleTextNode(
-                    text=match.filename,
+                    text=(
+                        f"{filename},\n   Max Similarity: {match['max_similarity']}"
+                    )
                 )
             )
+        self.list_widget.list_widget.clear()
         self.update_list_widget(self.list_widget, matches, "Matches")
 
     def make_list_api_call(self, list_type):
@@ -170,12 +180,21 @@ class _MAGICFormClassMethods:
             expand_mask = "tags"
         elif list_type == "Matches":
             api_call = self.ctmfiles.list_file_matches
+            expand_mask = "matches"
 
         try:
-            if list_type == "Tags":
-                ctmr = api_call(binary_id=self.sha1, expand_mask=expand_mask, no_links=True)
+            if list_type != "Notes":
+                ctmr = api_call(
+                    binary_id=self.sha1,
+                    expand_mask=expand_mask,
+                    no_links=True,
+                    async_req=True,
+                )
             else:
-                ctmr = api_call(binary_id=self.sha1, no_links=True)
+                ctmr = api_call(
+                    binary_id=self.sha1, no_links=True, async_req=True
+                )
+            ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(f"No {list_type.lower()} could be gathered from File.")
@@ -198,6 +217,7 @@ class _MAGICFormClassMethods:
                     print(f"Error gathering {list_type}.")
                     print(f"Status Code: {ctmr['status']}")
                     print(f"Error message: {ctmr['errors']}")
+                    self.populate_file_matches(list())
                 return None
             if ctmr.status >= 200 and ctmr.status <= 299:
                 print(f"{list_type} gathered from File successfully.")
@@ -209,8 +229,6 @@ class _MAGICFormClassMethods:
             self.populate_file_notes(ctmr.resources)
         elif list_type == "Tags":
             self.populate_file_tags(ctmr.resources)
-        elif list_type == "Matches":
-            self.populate_file_matches(ctmr.resources)
 
     def check_file_exists(self, binary_id):
         """Call the api at `get_file`
@@ -218,13 +236,19 @@ class _MAGICFormClassMethods:
         Return the sha1 of the file if it exists.
         """
         try:
-            response = self.ctmfiles.get_file(binary_id=binary_id, no_links=True)
+            response = self.ctmfiles.get_file(
+                binary_id=binary_id, no_links=True, async_req=True
+            )
+            response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print("File GET request failed.")
+            print("File does not exist")
+            self.file_exists = False
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
+            return None
         except Exception as exp:
             logger.debug(traceback.format_exc())
             print("Unknown Error occurred")
@@ -298,6 +322,12 @@ class _MAGICFormClassMethods:
             file_bytes = base64.b64encode(file.read())
         return file_bytes
 
+    def encode_disassembled_file(self, path):
+        """Encode the disassembled file into base64"""
+        with open(path, "rb") as file:
+            file_bytes = base64.b64encode(file.read())
+        return file_bytes
+
     def upload_file_button_click(self):
         """Upload file button click behavior
 
@@ -310,7 +340,7 @@ class _MAGICFormClassMethods:
         filedata = self.encode_loaded_file()
 
         try:
-            return_data, status, _ = api_call(
+            ctmr = api_call(
                 skip_unpack=skip_unpack,
                 filedata=[filedata],
                 password="",
@@ -318,7 +348,9 @@ class _MAGICFormClassMethods:
                 notes=notes,
                 no_links=True,
                 b64=True,
+                async_req=True,
             )
+            ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print("No procedures could be gathered.")
@@ -333,24 +365,32 @@ class _MAGICFormClassMethods:
             # (this func always returns None anyway)
             return None
         else:
-            if status >= 200 and status <= 299:
+            if ctmr.status >= 200 and ctmr.status <= 299:
                 self.file_exists = True
-                self.sha1 = hash_file()
+                self.sha1 = ctmr.resources[0].sha1
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
-                # self.make_list_api_call("Matches")
-                print(str(return_data))
                 print("Upload Successful.")
             else:
                 print("Error gathering Procedures.")
-                print(f"Status Code: {status}")
+                print(f"Status Code: {ctmr.status}")
 
     def upload_disassembled_click(self):
         """Upload editted binaries button behavior"""
-        # from ..helpers import get_input_file_path
-        # path = get_input_file_path()
-        # file = ida_loader.base2file(path)
+        from ..helpers import get_input_file_path
+
+        input_path = get_input_file_path()
+        ida_dir = os.path.dirname(input_path)
+        # file_name = "output_bin.bin"
+        # out_path = os.path.join(ida_dir, file_name)
+
+        file = ida_loader.save_database(ida_dir, ida_loader.DBFL_BAK)
+        # with open(out_path, "wb") as binfile:
+        #     for addr in idautils.Functions():
+        #         byte = idaapi.get_byte(addr)
+        #         binfile.write(byte.to_bytes(1, byteorder='little'))
+        # filedata = self.encode_disassembled_file(out_path)
 
         # api_call = self.ctmfiles.upload_file
         # skip_unpack = self.skip_unpack_check.isChecked()
@@ -359,15 +399,16 @@ class _MAGICFormClassMethods:
         # try:
         #     return_data, status, _ = api_call(
         #         skip_unpack=skip_unpack,
-        #         filedata=[file],
+        #         filedata=[filedata],
         #         password="",
         #         tags=tags,
         #         notes=notes,
         #         no_links=True,
+        #         b64=True,
         #     )
         # except ApiException as exp:
         #     logger.debug(traceback.format_exc())
-        #     print("No procedures could be gathered.")
+        #     print("Disassembly upload failed.")
         #     for error in json.loads(exp.body).get("errors"):
         #         logger.info(error["reason"])
         #         print(f"{error['reason']}: {error['message']}")
@@ -391,8 +432,8 @@ class _MAGICFormClassMethods:
         #     else:
         #         print("Error gathering Procedures.")
         #         print(f"Status Code: {status}")
-        parse_binary()
-        print("Attempted to upload editted disassembled binary")
+        # parse_binary()
+        # print("Attempted to upload editted disassembled binary")
 
     def update_list_widget(
         self,

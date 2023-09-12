@@ -91,9 +91,9 @@ class FileListWidget(BaseListWidget):
             binary_id=binary_id,
             popup=self.popup,
         )
-        self.update_widget()
+        self.populate_widget()
 
-    def update_widget(self):
+    def populate_widget(self):
         """Create widget and handle behavior"""
         self.popup = (FileTextPopup(fill_text=None, parent=self),)
         self.list_widget_tab_bar.addTab("NOTES")
@@ -173,19 +173,22 @@ class FileListWidget(BaseListWidget):
 
         try:
             if "Notes" in self.label.text():
-                _, status, _ = api_call(
+                ctmr = api_call(
                     binary_id=self.binary_id,
                     note_id=item.proc_node.node_id,
                     force=True,
                     no_links=True,
+                    async_req=True,
                 )
             elif "Tags" in self.label.text():
-                _, status, _ = api_call(
+                ctmr = api_call(
                     binary_id=self.binary_id,
                     tag_id=item.proc_node.node_id,
                     force=True,
                     no_links=True,
+                    async_req=True,
                 )
+            ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(f"Could not delete {type_str} from selected procedure.")
@@ -201,13 +204,13 @@ class FileListWidget(BaseListWidget):
             # (this func always returns None anyway)
             return None
         else:
-            if status >= 200 and status <= 299:
+            if ctmr[1] >= 200 and ctmr[1] <= 299:
                 print(
                     f"{type_str} removed from selected procedure successfully."
                 )
             else:
                 print(f"Error deleting {type_str}.")
-                print(f"Status Code: {status}")
+                print(f"Status Code: {ctmr[1]}")
                 # print(f"Error message: {ctmr.errors}")
                 return None
 
@@ -317,13 +320,13 @@ class ProcTextPopup(TextPopup):
             text = self.save_edit(text, self.listing_item)
             if text:
                 self.listing_item.setText(text)
+                self.listing_item.text = text
                 self.listing_item.note = text
         else:
             text = self.save_create(text)
 
         if text is not None:
             self.hide()
-            # update list here
 
     def save_create(self, text):
         """API call logic for `create` submissions"""
@@ -342,6 +345,7 @@ class ProcTextPopup(TextPopup):
                     note=text,
                     public=False,
                     no_links=True,
+                    async_req=True,
                 )
             elif type_str == "TAG":
                 ctmr = api_call(
@@ -349,7 +353,9 @@ class ProcTextPopup(TextPopup):
                     rva=self.rva,
                     name=text,
                     no_links=True,
+                    async_req=True,
                 )
+            ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(f"Could not update {type_str} from selected procedure.")
@@ -365,7 +371,6 @@ class ProcTextPopup(TextPopup):
             # (this func always returns None anyway)
             return None
         else:
-            print(ctmr)
             if ctmr.status >= 200 and ctmr.status <= 299:
                 from .IDA_interface._procTree import ProcSimpleTextNode
 
@@ -412,15 +417,17 @@ class ProcTextPopup(TextPopup):
 
         try:
             if type_str == "NOTE":
-                _, status, _ = api_call(
+                ctmr = api_call(
                     binary_id=self.binary_id,
                     rva=self.rva,
                     note_id=item.node_id,
                     note=text,
                     public=False,
                     no_links=True,
-                    update_mask="note"
+                    update_mask="note",
+                    async_req=True,
                 )
+                ctmr = ctmr.get()
             elif type_str == "PROCEDURE NAME":
                 ctmr = api_call()
         except ApiException as exp:
@@ -444,14 +451,14 @@ class ProcTextPopup(TextPopup):
                     "Endpoints for procedure name functionality not implemented."
                 )
                 return None
-            if status >= 200 and status <= 299:
+            if ctmr.status >= 200 and ctmr.status <= 299:
                 print(
                     f"{type_str} from selected procedure updated successfully."
                 )
                 return text
             else:
                 print(f"Error updating {type_str}.")
-                print(f"Status Code: {status}")
+                print(f"Status Code: {ctmr.status}")
                 return None
 
 
@@ -498,13 +505,16 @@ class FileTextPopup(TextPopup):
                     note=text,
                     public=False,
                     no_links=True,
+                    async_req=True,
                 )
             elif type_str == "TAG":
                 ctmr = api_call(
                     binary_id=self.parent.binary_id,
                     name=text,
                     no_links=True,
+                    async_req=True,
                 )
+            ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(f"Could not create {type_str} for File.")
@@ -556,14 +566,16 @@ class FileTextPopup(TextPopup):
 
         try:
             if type_str == "NOTE":
-                _, status, _ = api_call(
+                ctmr = api_call(
                     binary_id=self.parent.binary_id,
                     note_id=item.proc_node.node_id,
                     note=text,
                     public=False,
                     no_links=True,
-                    update_mask="note"
+                    update_mask="note",
+                    async_req=True,
                 )
+                ctmr = ctmr.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(f"Could not update File {type_str}.")
@@ -579,10 +591,10 @@ class FileTextPopup(TextPopup):
             # (this func always returns None anyway)
             return None
         else:
-            if status >= 200 and status <= 299:
+            if ctmr[1] >= 200 and ctmr[1] <= 299:
                 print(f"File {type_str} updated successfully.")
                 return text
             else:
                 print(f"Error updating {type_str}.")
-                print(f"Status Code: {status}")
+                print(f"Status Code: {ctmr[1]}")
                 return None

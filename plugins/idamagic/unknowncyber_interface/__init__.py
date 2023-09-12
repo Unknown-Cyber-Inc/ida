@@ -56,7 +56,6 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
 
         self.load_files_view()
 
-
     #
     # functions for building and displaying pyqt.
     #

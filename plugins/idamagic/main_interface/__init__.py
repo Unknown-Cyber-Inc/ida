@@ -25,7 +25,6 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         magic_api_client,
         autoinst=False,
     ):
-        print(f"MAGIC CLIENT: {magic_api_client}")
         """Initialize main plugin and attach sub-plugins."""
         super().__init__()
 
