@@ -379,7 +379,7 @@ class _ScrClassMethods:
 
         try:
             if type_str == "Files":
-                ctmr = api_call(
+                response = api_call(
                     node.hard_hash,
                     read_mask=read_mask,
                     expand_mask=type_str.lower(),
@@ -387,13 +387,13 @@ class _ScrClassMethods:
                     async_req=True,
                 )
             else:
-                ctmr = api_call(
+                response = api_call(
                     binary_id=node.binary_id,
                     rva=node.rva,
                     no_links=True,
                     async_req=True,
                 )
-            ctmr = ctmr.get()
+            response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(
@@ -410,15 +410,15 @@ class _ScrClassMethods:
             # (this func always returns None anyway)
             return None
         else:
-            if ctmr.status >= 200 and ctmr.status <= 299:
+            if response.status >= 200 and response.status <= 299:
                 print(
                     f"{type_str} gathered from selected procedure successfully."
                 )
             else:
                 print(f"Error gathering {type_str}.")
-                print(f"Status Code: {ctmr.status}")
-                print(f"Error message: {ctmr.errors}")
-        return ctmr.resources
+                print(f"Status Code: {response.status}")
+                print(f"Error message: {response.errors}")
+        return response.resources
 
     def retrieve_file_sha1(self, binary_id):
         """Get the sha1 for a given file."""
@@ -633,7 +633,7 @@ class _ScrClassMethods:
 
         try:
             if index.parent().data() == "Notes":
-                ctmr = api_call(
+                response = api_call(
                     binary_id=item.binary_id,
                     note_id=item.node_id,
                     rva=item.rva,
@@ -642,7 +642,7 @@ class _ScrClassMethods:
                     async_req=True,
                 )
             elif index.parent().data() == "Tags":
-                ctmr = api_call(
+                response = api_call(
                     binary_id=item.binary_id,
                     rva=item.rva,
                     tag_id=item.node_id,
@@ -650,7 +650,7 @@ class _ScrClassMethods:
                     no_links=True,
                     async_req=True,
                 )
-            ctmr = ctmr.get()
+            response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(f"Could not delete {type_str} from selected procedure.")
@@ -668,15 +668,15 @@ class _ScrClassMethods:
 
             return None
         else:
-            if ctmr[1] >= 200 and ctmr[1] <= 299:
+            if response[1] >= 200 and response[1] <= 299:
                 item.parent().removeRow(item.row())
                 print(
                     f"{type_str} removed from selected procedure successfully."
                 )
             else:
                 print(f"Error deleting {type_str}.")
-                print(f"Status Code: {ctmr[1]}")
-                # print(f"Error message: {ctmr.errors}")
+                print(f"Status Code: {response[1]}")
+                # print(f"Error message: {response.errors}")
                 return None
 
     def pushbutton_click(self):
@@ -693,7 +693,7 @@ class _ScrClassMethods:
         order_by = "start_ea"
 
         try:
-            ctmr = self.ctmfiles.list_file_genomics(
+            response = self.ctmfiles.list_file_genomics(
                 binary_id=self.sha256,
                 read_mask=genomics_read_mask,
                 order_by=order_by,
@@ -701,7 +701,7 @@ class _ScrClassMethods:
                 page_size=250,
                 async_req=True,
             )
-            ctmr = ctmr.get()
+            response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print("No procedures could be gathered.")
@@ -718,11 +718,11 @@ class _ScrClassMethods:
             # (this func always returns None anyway)
             return None
         else:
-            if ctmr.status >= 200 and ctmr.status <= 299:
+            if response.status >= 200 and response.status <= 299:
                 print("Procedures gathered successfully.")
                 # on a successful call, populate table
-                self.populate_proc_table(ctmr.resource)
+                self.populate_proc_table(response.resource)
             else:
                 print("Error gathering Procedures.")
-                print(f"Status Code: {ctmr.status}")
-                print(f"Error message: {ctmr.errors}")
+                print(f"Status Code: {response.status}")
+                print(f"Error message: {response.errors}")

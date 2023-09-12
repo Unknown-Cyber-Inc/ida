@@ -184,17 +184,17 @@ class _MAGICFormClassMethods:
 
         try:
             if list_type != "Notes":
-                ctmr = api_call(
+                response = api_call(
                     binary_id=self.sha1,
                     expand_mask=expand_mask,
                     no_links=True,
                     async_req=True,
                 )
             else:
-                ctmr = api_call(
+                response = api_call(
                     binary_id=self.sha1, no_links=True, async_req=True
                 )
-            ctmr = ctmr.get()
+            response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(f"No {list_type.lower()} could be gathered from File.")
@@ -210,25 +210,25 @@ class _MAGICFormClassMethods:
             return None
         else:
             if list_type == "Matches":
-                if ctmr["status"] >= 200 and ctmr["status"] <= 299:
+                if response["status"] >= 200 and response["status"] <= 299:
                     print(f"{list_type} gathered from File successfully.")
-                    self.populate_file_matches(ctmr["resources"])
+                    self.populate_file_matches(response["resources"])
                 else:
                     print(f"Error gathering {list_type}.")
-                    print(f"Status Code: {ctmr['status']}")
-                    print(f"Error message: {ctmr['errors']}")
+                    print(f"Status Code: {response['status']}")
+                    print(f"Error message: {response['errors']}")
                     self.populate_file_matches(list())
                 return None
-            if ctmr.status >= 200 and ctmr.status <= 299:
+            if response.status >= 200 and response.status <= 299:
                 print(f"{list_type} gathered from File successfully.")
             else:
                 print(f"Error gathering {list_type}.")
-                print(f"Status Code: {ctmr.status}")
-                print(f"Error message: {ctmr.errors}")
+                print(f"Status Code: {response.status}")
+                print(f"Error message: {response.errors}")
         if list_type == "Notes":
-            self.populate_file_notes(ctmr.resources)
+            self.populate_file_notes(response.resources)
         elif list_type == "Tags":
-            self.populate_file_tags(ctmr.resources)
+            self.populate_file_tags(response.resources)
 
     def check_file_exists(self, binary_id):
         """Call the api at `get_file`
@@ -340,7 +340,7 @@ class _MAGICFormClassMethods:
         filedata = self.encode_loaded_file()
 
         try:
-            ctmr = api_call(
+            response = api_call(
                 skip_unpack=skip_unpack,
                 filedata=[filedata],
                 password="",
@@ -350,7 +350,7 @@ class _MAGICFormClassMethods:
                 b64=True,
                 async_req=True,
             )
-            ctmr = ctmr.get()
+            response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print("No procedures could be gathered.")
@@ -365,16 +365,23 @@ class _MAGICFormClassMethods:
             # (this func always returns None anyway)
             return None
         else:
-            if ctmr.status >= 200 and ctmr.status <= 299:
+            if response.status == 200:
                 self.file_exists = True
-                self.sha1 = ctmr.resources[0].sha1
+                self.sha1 = response.resources[0].sha1
+                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
+                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
+                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
+                print("File previously uploaded and available.")
+            elif response.status >= 201 and response.status <= 299:
+                self.file_exists = True
+                self.sha1 = response.resources[0].sha1
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("Upload Successful.")
             else:
-                print("Error gathering Procedures.")
-                print(f"Status Code: {ctmr.status}")
+                print("Error During Upload.")
+                print(f"Status Code: {response.status}")
 
     def upload_disassembled_click(self):
         """Upload editted binaries button behavior"""
