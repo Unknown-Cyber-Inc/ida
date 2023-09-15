@@ -173,6 +173,7 @@ class _ScrClassMethods:
         @param resources: dict containing procedures return request
         Note: is there any difference in performance from many appendRow and one appendRows?
         """
+        print(procedureInfo)
         for proc in procedureInfo.procedures:
             start_ea = ida_kernwin.str2ea(proc.start_ea) + int(
                 procedureInfo.image_base, 16

@@ -17,6 +17,7 @@ import idaapi
 import idc
 import idautils
 from pprint import pprint
+import tempfile
 
 from cythereal_magic.rest import ApiException
 from PyQt5 import QtWidgets, Qt
@@ -383,64 +384,57 @@ class _MAGICFormClassMethods:
                 print("Error During Upload.")
                 print(f"Status Code: {response.status}")
 
-    def upload_disassembled_click(self):
-        """Upload editted binaries button behavior"""
+    def upload_database_click(self):
+        """Upload database file"""
         from ..helpers import get_input_file_path
 
         input_path = get_input_file_path()
         ida_dir = os.path.dirname(input_path)
-        # file_name = "output_bin.bin"
-        # out_path = os.path.join(ida_dir, file_name)
-
         file = ida_loader.save_database(ida_dir, ida_loader.DBFL_BAK)
-        # with open(out_path, "wb") as binfile:
-        #     for addr in idautils.Functions():
-        #         byte = idaapi.get_byte(addr)
-        #         binfile.write(byte.to_bytes(1, byteorder='little'))
-        # filedata = self.encode_disassembled_file(out_path)
 
-        # api_call = self.ctmfiles.upload_file
-        # skip_unpack = self.skip_unpack_check.isChecked()
-        # tags = []
-        # notes = []
-        # try:
-        #     return_data, status, _ = api_call(
-        #         skip_unpack=skip_unpack,
-        #         filedata=[filedata],
-        #         password="",
-        #         tags=tags,
-        #         notes=notes,
-        #         no_links=True,
-        #         b64=True,
-        #     )
-        # except ApiException as exp:
-        #     logger.debug(traceback.format_exc())
-        #     print("Disassembly upload failed.")
-        #     for error in json.loads(exp.body).get("errors"):
-        #         logger.info(error["reason"])
-        #         print(f"{error['reason']}: {error['message']}")
-        # except Exception as exp:
-        #     logger.debug(traceback.format_exc())
-        #     print("Unknown Error occurred")
-        #     print(f"<{exp.__class__}>: {str(exp)}")
-        #     # exit if this call fails so user can retry
-        #     # (this func always returns None anyway)
-        #     return None
-        # else:
-        #     if status >= 200 and status <= 299:
-        #         self.file_exists = True
-        #         self.sha1 = hash_file()
-        #         self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-        #         self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-        #         self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
-        #         # self.make_list_api_call("Matches")
-        #         print(str(return_data))
-        #         print("Upload Successful.")
-        #     else:
-        #         print("Error gathering Procedures.")
-        #         print(f"Status Code: {status}")
-        # parse_binary()
-        # print("Attempted to upload editted disassembled binary")
+    def upload_disassembled_click(self):
+        """Upload editted binaries button behavior"""
+        zip_path = parse_binary()
+        api_call = self.ctmfiles.upload_idaless
+        filetype = "archive"
+        tags = []
+        notes = []
+
+        try:
+            response = api_call(
+                filedata=zip_path,
+                filetype=filetype,
+                tags=tags,
+                notes=notes,
+                no_links=True,
+                binary_id=self.sha1,
+                async_req=True,
+            )
+            response = response.get()
+        except ApiException as exp:
+            logger.debug(traceback.format_exc())
+            print("Disassembly upload failed.")
+            for error in json.loads(exp.body).get("errors"):
+                logger.info(error["reason"])
+                print(f"{error['reason']}: {error['message']}")
+        except Exception as exp:
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+            # exit if this call fails so user can retry
+            # (this func always returns None anyway)
+            return None
+        else:
+            if response.status >= 200 and response.status <= 299:
+                self.file_exists = True
+                self.sha1 = hash_file()
+                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
+                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
+                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
+                print("Upload Successful.")
+            else:
+                print("Error uploading disassembled binary.")
+                print(f"Status Code: {response.status}")
 
     def update_list_widget(
         self,

@@ -19,6 +19,7 @@ import idc
 import idaapi
 import idautils
 import ida_loader
+import tarfile
 
 from networkx.drawing import nx_pydot
 from collections import namedtuple
@@ -1158,11 +1159,12 @@ def get_input_file_name():
         return idc.GetInputFile()
 
 def zip_disassembled(outdir):
-    """Zip the binary.json and all procedure files."""
+    """Tar the binary.json and all procedure files."""
     try:
         shutil.make_archive(f"{get_input_file_name()}", "zip", outdir)
         zip_path = f"{get_input_file_name()}.zip"
         shutil.move(zip_path, outdir)
+        return os.path.join(outdir, zip_path)
     except Exception as exc:
         print(f"Error: {exc}")
 
@@ -1203,13 +1205,14 @@ def parse_binary(orig_dir=None):
         bin_dict = {
             "image_base": get_image_base(),
             "md5": hash_file("md5"),
-            "sha1": hash_file("sha1"),
+            "sha1": binary_id,
             "sha256": hash_file("sha256"),
             "sha512": hash_file("sha512"),
             "unix_filetype": getUnixFileType(),
         }
 
-        with open(os.path.join(outdir, "binary.json"), "w") as outfile:
+        bin_path = os.path.join(outdir, "binary.json")
+        with open(bin_path, "w") as outfile:
             json.dump(bin_dict, outfile)
 
         logger.info("[{}] Started data extraction".format(binary_id))
@@ -1240,7 +1243,7 @@ def parse_binary(orig_dir=None):
                 "endEA": get_end_ea(func),
                 "procedure_name": get_function_name(get_start_ea(func)),
                 "segment_name": get_segment_name(get_end_ea(func)),
-                "strings": list(get_strings(func)),
+                "strings": list(),
                 "api_calls": list(get_api_calls(func)),
                 "cfg": cfg_obj.to_dict(),
             }
@@ -1293,15 +1296,16 @@ def parse_binary(orig_dir=None):
                     )
                 )
 
-            with open(
-                os.path.join(proc_outdir, f"{proc_dict['startEA']}.json"), "w"
-            ) as outfile:
+            proc_path = os.path.join(proc_outdir, f"{proc_dict['startEA']}.json")
+            with open(proc_path, "w") as outfile:
                 json.dump(proc_dict, outfile)
 
         logger.info("Finished parsing %s", binary_id)
         logger.info(f"Creating archive file {get_input_file_name()}.zip")
-        zip_disassembled(outdir)
+        zip_path = zip_disassembled(outdir)
         logger.info(f"Done creating archive file {get_input_file_name()}.zip")
+
+        return zip_path
 
     finally:
         pass
