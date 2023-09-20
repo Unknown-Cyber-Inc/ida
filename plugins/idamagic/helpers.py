@@ -19,7 +19,6 @@ import idc
 import idaapi
 import idautils
 import ida_loader
-import tarfile
 
 from networkx.drawing import nx_pydot
 from collections import namedtuple

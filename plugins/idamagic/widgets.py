@@ -185,7 +185,7 @@ class FileListWidget(BaseListWidget):
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not delete {type_str} from selected procedure.")
+            print(f"Could not delete file {type_str}.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -198,9 +198,9 @@ class FileListWidget(BaseListWidget):
             # (this func always returns None anyway)
             return None
         else:
-            if response[1] >= 200 and response[1] <= 299:
+            if 200 <= response[1] <= 299:
                 print(
-                    f"{type_str} removed from selected procedure successfully."
+                    f"File {type_str} removed successfully."
                 )
             else:
                 print(f"Error deleting {type_str}.")
@@ -360,7 +360,7 @@ class ProcTextPopup(TextPopup):
             # (this func always returns None anyway)
             return None
         else:
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= response.status <= 299:
                 from .IDA_interface._procTree import ProcSimpleTextNode
 
                 print(
@@ -435,7 +435,7 @@ class ProcTextPopup(TextPopup):
                     "Endpoints for procedure name functionality not implemented."
                 )
                 return None
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= response.status <= 299:
                 print(
                     f"{self.item_type} from selected procedure updated successfully."
                 )
@@ -510,7 +510,7 @@ class FileTextPopup(TextPopup):
             # (this func always returns None anyway)
             return None
         else:
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= response.status <= 299:
                 from .IDA_interface._procTree import ProcSimpleTextNode
 
                 if "Notes" in parent_label:
@@ -569,7 +569,7 @@ class FileTextPopup(TextPopup):
             # (this func always returns None anyway)
             return None
         else:
-            if response[1] >= 200 and response[1] <= 299:
+            if 200 <= response[1] <= 299:
                 print(f"File {parent_label} updated successfully.")
                 return text
             else:

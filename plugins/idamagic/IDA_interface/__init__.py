@@ -13,6 +13,7 @@ import os
 from PyQt5 import QtWidgets, Qt
 from idamagic.helpers import to_bool
 from ..widgets import ProcTextPopup
+from ..helpers import hash_file
 
 # contains classes related to different types of nodes in the list,
 # + methods for scrclass related to list
@@ -38,6 +39,7 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         A few are variables which are determined by IDA.
         """
         super().__init__()
+        self.sha1 = hash_file()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.baseRVA = ida_nalt.get_imagebase()
         self.title: str = title

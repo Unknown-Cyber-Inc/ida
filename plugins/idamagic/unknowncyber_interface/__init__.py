@@ -10,6 +10,7 @@ import cythereal_magic
 import ida_nalt
 import ida_kernwin
 import logging
+from ..helpers import hash_file
 
 from PyQt5 import QtWidgets
 
@@ -43,7 +44,7 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         self.title: str = title
         self.file_exists = False
         self.file_type = None
-        self.sha1 = None
+        self.sha1 = hash_file()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
@@ -95,7 +96,7 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         self.list_widget = FileListWidget(
             list_items=[],
             list_type="NOTES",
-            binary_id=self.sha256,
+            binary_id=self.sha1,
             parent=self,
         )
         self.list_widget.list_widget_tab_bar.currentChanged.connect(

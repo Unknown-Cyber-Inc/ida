@@ -174,6 +174,8 @@ class _MAGICFormClassMethods:
         """Make api call and handle exceptions"""
         api_call = None
 
+        print("self.sha1: ", self.sha1)
+
         if list_type == "Notes":
             api_call = self.ctmfiles.list_file_notes
         elif list_type == "Tags":
@@ -211,7 +213,7 @@ class _MAGICFormClassMethods:
             return None
         else:
             if list_type == "Matches":
-                if response["status"] >= 200 and response["status"] <= 299:
+                if 200 <= response["status"] <= 299:
                     print(f"{list_type} gathered from File successfully.")
                     self.populate_file_matches(response["resources"])
                 else:
@@ -220,7 +222,7 @@ class _MAGICFormClassMethods:
                     print(f"Error message: {response['errors']}")
                     self.populate_file_matches(list())
                 return None
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= response.status <= 299:
                 print(f"{list_type} gathered from File successfully.")
             else:
                 print(f"Error gathering {list_type}.")
@@ -249,6 +251,7 @@ class _MAGICFormClassMethods:
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
+            self.sha1 = hash_file()
             return None
         except Exception as exp:
             logger.debug(traceback.format_exc())
@@ -258,25 +261,25 @@ class _MAGICFormClassMethods:
             # (this func always returns None anyway)
             return None
         else:
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= response.status <= 299:
                 print("File already exists.")
-                resource = response.resource
+                # resource = response.resource
                 self.file_exists = True
-                self.sha1 = resource.sha1
+                # self.sha1 = resource.sha1
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
             elif response.status == 404:
                 print("File does not exist.")
                 self.file_exists = False
-                self.sha1 = hash_file()
+                # self.sha1 = hash_file()
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, False)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, False)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, False)
                 return None
             elif response.status == 403:
                 print("Access denied to existing file.")
-                self.sha1 = response.errors.parameters
+                # self.sha1 = response.errors.parameters
                 # setting file_exists to false so that they are not given
                 # any of the values for that file (notes, tags, etc.)
                 self.file_exists = False
@@ -395,22 +398,17 @@ class _MAGICFormClassMethods:
     def upload_disassembled_click(self):
         """Upload editted binaries button behavior"""
         zip_path = parse_binary()
-        api_call = self.ctmfiles.upload_idaless
+        api_call = self.ctmfiles.upload_disassembly
         filetype = "archive"
-        tags = []
-        notes = []
 
+        print(self.sha1)
         try:
-            response = api_call(
+            _, status, _ = api_call(
                 filedata=zip_path,
                 filetype=filetype,
-                tags=tags,
-                notes=notes,
                 no_links=True,
                 binary_id=self.sha1,
-                async_req=True,
             )
-            response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print("Disassembly upload failed.")
@@ -425,7 +423,7 @@ class _MAGICFormClassMethods:
             # (this func always returns None anyway)
             return None
         else:
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= status <= 299:
                 self.file_exists = True
                 self.sha1 = hash_file()
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
@@ -434,7 +432,7 @@ class _MAGICFormClassMethods:
                 print("Upload Successful.")
             else:
                 print("Error uploading disassembled binary.")
-                print(f"Status Code: {response.status}")
+                print(f"Status Code: {status}")
 
     def update_list_widget(
         self,

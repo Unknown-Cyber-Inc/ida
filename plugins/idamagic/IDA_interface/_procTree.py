@@ -173,7 +173,6 @@ class _ScrClassMethods:
         @param resources: dict containing procedures return request
         Note: is there any difference in performance from many appendRow and one appendRows?
         """
-        print(procedureInfo)
         for proc in procedureInfo.procedures:
             start_ea = ida_kernwin.str2ea(proc.start_ea) + int(
                 procedureInfo.image_base, 16
@@ -209,10 +208,10 @@ class _ScrClassMethods:
 
             procrootnode.appendRows(
                 [
-                    ProcNotesNode(hard_hash, self.sha256, proc.start_ea),
-                    ProcTagsNode(hard_hash, self.sha256, proc.start_ea),
+                    ProcNotesNode(hard_hash, self.sha1, proc.start_ea),
+                    ProcTagsNode(hard_hash, self.sha1, proc.start_ea),
                     ProcFilesNode(hard_hash, proc.start_ea),
-                    ProcSimilarityNode(hard_hash, self.sha256, proc.start_ea),
+                    ProcSimilarityNode(hard_hash, self.sha1, proc.start_ea),
                 ]
             )
 
@@ -411,7 +410,7 @@ class _ScrClassMethods:
             # (this func always returns None anyway)
             return None
         else:
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= response.status <= 299:
                 print(
                     f"{type_str} gathered from selected procedure successfully."
                 )
@@ -447,7 +446,7 @@ class _ScrClassMethods:
             return None
         else:
             response = response.get()
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= response.status <= 299:
                 print("File GET successful.")
             else:
                 print("Error with file GET.")
@@ -672,7 +671,7 @@ class _ScrClassMethods:
 
             return None
         else:
-            if response[1] >= 200 and response[1] <= 299:
+            if 200 <= response[1] <= 299:
                 item.parent().removeRow(item.row())
                 print(
                     f"{type_str} removed from selected procedure successfully."
@@ -698,7 +697,7 @@ class _ScrClassMethods:
 
         try:
             response = self.ctmfiles.list_file_genomics(
-                binary_id=self.sha256,
+                binary_id=self.sha1,
                 read_mask=genomics_read_mask,
                 order_by=order_by,
                 no_links=True,
@@ -722,7 +721,7 @@ class _ScrClassMethods:
             # (this func always returns None anyway)
             return None
         else:
-            if response.status >= 200 and response.status <= 299:
+            if 200 <= response.status <= 299:
                 print("Procedures gathered successfully.")
                 # on a successful call, populate table
                 self.populate_proc_table(response.resource)
