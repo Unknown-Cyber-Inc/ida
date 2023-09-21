@@ -51,7 +51,7 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
 
         # main pyqt widgets used
         self.t1: QtWidgets.QLabel
-        self.upload_tabs: QtWidgets.QTabWidget
+        self.upload_button: QtWidgets.QPushButton
 
         self.list_widget: FileListWidget
 
@@ -77,7 +77,7 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
 
         # adding widgets to layout, order here matters
         self.layout.addWidget(self.t1)
-        self.layout.addWidget(self.upload_tabs)
+        self.layout.addWidget(self.upload_button)
         self.layout.addWidget(self.list_widget)
 
         # set main widget's layout based on the above items
@@ -104,7 +104,7 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         )
 
         # help create items, add to tab widget
-        self.init_and_populate_tabs()
+        self.init_and_populate()
 
     def tab_changed(self, index):
         """Tab change behavior

@@ -64,59 +64,13 @@ class _MAGICFormClassMethods:
     functions for building and displaying pyqt.
     """
 
-    def init_and_populate_tabs(self):
+    def init_and_populate(self):
         """
         Helper, initialize and populate items in analysis tab widget
         """
 
-        # create the original file upload button and skip_unpack checkbox
-        self.skip_unpack_check = QtWidgets.QCheckBox("Skip Unpack")
-        self.original_upload_button = QtWidgets.QPushButton("Submit File")
-        self.original_upload_button.setEnabled(True)
-        self.original_upload_button.clicked.connect(
-            self.upload_file_button_click
-        )
-
-        # create layout to hold original upload button, password, and checkbox
-        self.file_inputs_layout = QtWidgets.QHBoxLayout()
-        self.file_inputs_layout.addWidget(self.skip_unpack_check)
-        self.file_inputs_layout.addWidget(self.original_upload_button)
-
-        # create the binary upload buttons
-        self.binary_upload_button = QtWidgets.QPushButton(
-            "Submit disassembled binary"
-        )
-        self.binary_upload_button.setEnabled(True)
-        self.binary_upload_button.clicked.connect(
-            self.upload_disassembled_click
-        )
-
-        # TABS FOR FILE PAGE
-        # original file upload tab
-        self.file_upload_tab = QtWidgets.QWidget()
-        self.file_upload_tab_layout = QtWidgets.QVBoxLayout(
-            self.file_upload_tab
-        )
-        self.file_upload_tab_layout.addLayout(self.file_inputs_layout)
-
-        # binary upload tab
-        self.binary_upload_tab = QtWidgets.QWidget()
-        self.binary_upload_tab_layout = QtWidgets.QVBoxLayout(
-            self.binary_upload_tab
-        )
-        self.binary_upload_tab_layout.addWidget(self.binary_upload_button)
-
-        # add tabs to sub upload_tab_table
-        self.upload_tabs = QtWidgets.QTabWidget()
-        self.upload_tabs.addTab(self.file_upload_tab, "Original File")
-        self.upload_tabs.addTab(self.binary_upload_tab, "Disassembled")
-        # set layout for sub upload tab table
-        self.upload_tabs_layout = QtWidgets.QVBoxLayout(self.upload_tabs)
-        self.upload_tabs.setLayout(self.upload_tabs_layout)
-
-        # ---------------------------------------------------------------------------
-        # populate this tab similar to populate_files_view
-        # it's less confusing if individual tab population is not in its own function
+        self.upload_button = QtWidgets.QPushButton("Upload File")
+        self.upload_button.clicked.connect(self.main_upload_button_click)
 
         self.check_file_exists(self.sha256)
         if self.file_exists:
@@ -173,8 +127,6 @@ class _MAGICFormClassMethods:
     def make_list_api_call(self, list_type):
         """Make api call and handle exceptions"""
         api_call = None
-
-        print("self.sha1: ", self.sha1)
 
         if list_type == "Notes":
             api_call = self.ctmfiles.list_file_notes
@@ -332,6 +284,32 @@ class _MAGICFormClassMethods:
             file_bytes = base64.b64encode(file.read())
         return file_bytes
 
+    def main_upload_button_click(self):
+        """Main upload button click behavior
+
+        Renders a QMessageBox with all upload buttons
+        """
+        upload_popup = QtWidgets.QMessageBox()
+        upload_popup.setWindowTitle("Upload")
+        upload_popup.setText("Select the type of upload to perform.")
+
+        # File upload button
+        file_upload_button = upload_popup.addButton(
+            "File", QtWidgets.QMessageBox.ActionRole
+        )
+        file_upload_button.setEnabled(True)
+        file_upload_button.clicked.connect(self.upload_file_button_click)
+        # Disassembly upload button
+        binary_upload_button = upload_popup.addButton(
+            "Disassembly", QtWidgets.QMessageBox.ActionRole
+        )
+        binary_upload_button.setEnabled(True)
+        binary_upload_button.clicked.connect(
+            self.upload_disassembled_click
+        )
+
+        upload_popup.exec_()
+
     def upload_file_button_click(self):
         """Upload file button click behavior
 
@@ -340,12 +318,10 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
-        skip_unpack = self.skip_unpack_check.isChecked()
         filedata = self.encode_loaded_file()
 
         try:
             response = api_call(
-                skip_unpack=skip_unpack,
                 filedata=[filedata],
                 password="",
                 tags=tags,
@@ -401,7 +377,6 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_disassembly
         filetype = "archive"
 
-        print(self.sha1)
         try:
             _, status, _ = api_call(
                 filedata=zip_path,
