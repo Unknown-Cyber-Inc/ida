@@ -824,6 +824,17 @@ def parse_sib(op_t):
     return sark.get_register_name(base), sark.get_register_name(index), scale
 
 
+def get_ida_version():
+    try:
+        version_string = idaapi.IDA_SDK_VERSION
+        # Convert string to charlist with list(), then back to dot version
+        # ie "800" -> ["8", "0", "0"] -> "8.0.0"
+        dotted_version = ".".join(list(str(version_string)))
+        return dotted_version
+    except:
+        return "8.2.230124"
+
+
 def get_operand_value(ea, op):
     """Get the value of the `op`_th operand of instruction at address `ea`.
     In general, prefer the use of sark to interact with operands.
@@ -1208,6 +1219,7 @@ def parse_binary(orig_dir=None):
             "sha256": hash_file("sha256"),
             "sha512": hash_file("sha512"),
             "unix_filetype": getUnixFileType(),
+            "version": get_ida_version(),
         }
 
         bin_path = os.path.join(outdir, "binary.json")
