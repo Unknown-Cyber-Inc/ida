@@ -311,6 +311,36 @@ class _MAGICFormClassMethods:
         upload_popup.exec_()
 
     def upload_file_button_click(self):
+        """Display check for `skip_unpack`"""
+        unpack_popup = QtWidgets.QMessageBox()
+        unpack_popup.setWindowTitle("Skip unpack?")
+        unpack_popup.setText("Skip unpacking the uploaded file?")
+
+        # skip unpack button
+        skip_button = unpack_popup.addButton(
+            "YES, skip unpacking", QtWidgets.QMessageBox.ActionRole
+        )
+        skip_button.setEnabled(True)
+        skip_button.clicked.connect(self.skip_unpack)
+
+        # unpack button
+        unpack_button = unpack_popup.addButton(
+            "NO, unpack file", QtWidgets.QMessageBox.ActionRole
+        )
+        unpack_button.setEnabled(True)
+        unpack_button.clicked.connect(self.unpack)
+
+        unpack_popup.exec_()
+
+    def skip_unpack(self):
+        """Set skip_unpack arg to True. Send upload_file request method."""
+        self.upload_file(skip_unpack=True)
+
+    def unpack(self):
+        """Set skip_unpack arg to False. Send upload_file request method."""
+        self.upload_file(skip_unpack=False)
+
+    def upload_file(self, skip_unpack):
         """Upload file button click behavior
 
         POST to upload_file
@@ -326,6 +356,7 @@ class _MAGICFormClassMethods:
                 password="",
                 tags=tags,
                 notes=notes,
+                skip_unpack=skip_unpack,
                 no_links=True,
                 b64=True,
                 async_req=True,

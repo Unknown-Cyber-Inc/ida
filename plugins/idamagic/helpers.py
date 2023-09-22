@@ -1157,7 +1157,6 @@ def prolog_format_instruction(instruction, line_ea):
 
 def getUnixFileType():
     """Get the file type."""
-    print(f"name: {ida_loader.get_file_type_name()}")
     return ida_loader.get_file_type_name()
 
 def get_input_file_name():
