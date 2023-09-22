@@ -88,7 +88,11 @@ class _MAGICFormClassMethods:
             notes.append(
                 FileSimpleTextNode(
                     node_id=note.id,
-                    text=note.note,
+                    text=(
+                        f"{note.note}\n"
+                        f"    User:{note.username}\n"
+                        f"    Create time: {note.create_time}"
+                    ),
                 )
             )
         self.update_list_widget(self.list_widget, notes, "Notes")
@@ -304,9 +308,7 @@ class _MAGICFormClassMethods:
             "Disassembly", QtWidgets.QMessageBox.ActionRole
         )
         binary_upload_button.setEnabled(True)
-        binary_upload_button.clicked.connect(
-            self.upload_disassembled_click
-        )
+        binary_upload_button.clicked.connect(self.upload_disassembled_click)
 
         upload_popup.exec_()
 

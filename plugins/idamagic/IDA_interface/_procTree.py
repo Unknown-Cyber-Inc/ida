@@ -265,7 +265,11 @@ class _ScrClassMethods:
                     ProcSimpleTextNode(
                         hard_hash=notesRootNode.hard_hash,
                         node_id=note.id,
-                        text=note.note,
+                        text=(
+                            f"{note.note}\n"
+                            f"    User:{note.username}\n"
+                            f"    Create time: {note.create_time}"
+                        ),
                         binary_id=notesRootNode.binary_id,
                         rva=notesRootNode.rva,
                     )
