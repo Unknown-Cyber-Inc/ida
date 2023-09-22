@@ -22,7 +22,7 @@ import tempfile
 from cythereal_magic.rest import ApiException
 from PyQt5 import QtWidgets, Qt
 
-from ..helpers import hash_file, parse_binary
+from ..helpers import hash_file, parse_binary, getUnixFileType
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 
@@ -375,12 +375,11 @@ class _MAGICFormClassMethods:
         """Upload editted binaries button behavior"""
         zip_path = parse_binary()
         api_call = self.ctmfiles.upload_disassembly
-        filetype = "archive"
 
         try:
             _, status, _ = api_call(
                 filedata=zip_path,
-                filetype=filetype,
+                filetype=getUnixFileType(),
                 no_links=True,
                 binary_id=self.sha1,
             )
