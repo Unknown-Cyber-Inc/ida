@@ -51,6 +51,7 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
 
         # main pyqt widgets used
         self.t1: QtWidgets.QLabel
+        self.files_toggle: QtWidgets.QPushButton
         self.upload_button: QtWidgets.QPushButton
 
         self.list_widget: FileListWidget
@@ -77,6 +78,7 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
 
         # adding widgets to layout, order here matters
         self.layout.addWidget(self.t1)
+        self.layout.addLayout(self.files_toggle_layout)
         self.layout.addWidget(self.upload_button)
         self.layout.addWidget(self.list_widget)
 
@@ -91,6 +93,19 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         # NOTE! Upon display, actual arrangement is solely determined by
         #       the order widgets are ADDED to the layout.
         self.t1 = QtWidgets.QLabel("<font color=red>Files</font>")
+
+        # toggle collapse/expand button
+        self.files_toggle = QtWidgets.QPushButton("Hide Files Section")
+        self.files_toggle.clicked.connect(self.toggle_files)
+        self.files_toggle_layout = QtWidgets.QHBoxLayout()
+        self.files_toggle_layout.addWidget(self.files_toggle)
+        spacer = QtWidgets.QSpacerItem(
+            0,
+            0,
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Minimum,
+        )
+        self.files_toggle_layout.addItem(spacer)
 
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
@@ -109,8 +124,8 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
     def tab_changed(self, index):
         """Tab change behavior
 
-           Index here is used to access the tab position.
-           [NoteTab, TagsTab, MatchesTab]
+        Index here is used to access the tab position.
+        [NoteTab, TagsTab, MatchesTab]
         """
         if index == 0:
             self.make_list_api_call("Notes")
@@ -118,6 +133,15 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
             self.make_list_api_call("Tags")
         elif index == 2:
             self.make_list_api_call("Matches")
+
+    def toggle_files(self):
+        """Toggle collapse or expansion of files widget"""
+        if self.files_toggle.text() == "Hide Files Section":
+            self.files_toggle.setText("Show Files Section")
+            self.list_widget.hide()
+        else:
+            self.files_toggle.setText("Hide Files Section")
+            self.list_widget.show()
 
     #
     # functions for connecting pyqt signals

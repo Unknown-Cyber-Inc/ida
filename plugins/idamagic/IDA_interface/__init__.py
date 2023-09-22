@@ -99,6 +99,7 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
 
         # adding widgets to layout, order here matters
         self.layout.addWidget(self.t1)
+        self.layout.addLayout(self.procs_toggle_layout)
         self.layout.addWidget(self.pushbutton)
         self.layout.addWidget(self.proc_tree)
         self.layout.addLayout(self.button_row)
@@ -109,6 +110,17 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
     def init_scroll_view(self):
         """Initialize individual items which will be added to the form."""
         self.t1 = QtWidgets.QLabel("<font color=red>Procedures</font>")
+        self.procs_toggle = QtWidgets.QPushButton("Hide Procedures Section")
+        self.procs_toggle.clicked.connect(self.toggle_procs)
+        self.procs_toggle_layout = QtWidgets.QHBoxLayout()
+        self.procs_toggle_layout.addWidget(self.procs_toggle)
+        spacer = QtWidgets.QSpacerItem(
+            0,
+            0,
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Minimum,
+        )
+        self.procs_toggle_layout.addItem(spacer)
 
         # create procedure buttons, place them in layout, add to main layout
         self.pushbutton = QtWidgets.QPushButton("Get Procedures")
@@ -150,3 +162,12 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
     #
     # functions for connecting pyqt signals
     #
+
+    def toggle_procs(self):
+        """Toggle collapse or expansion of procedures widget"""
+        if self.procs_toggle.text() == "Hide Procedures Section":
+            self.procs_toggle.setText("Show Procedures Section")
+            self.proc_tree.hide()
+        else:
+            self.procs_toggle.setText("Hide Procedures Section")
+            self.proc_tree.show()
