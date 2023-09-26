@@ -62,10 +62,6 @@ class _MAGICFormClassMethods:
         """
         Helper, initialize and populate items in analysis tab widget
         """
-
-        self.upload_button = QtWidgets.QPushButton("Upload File")
-        self.upload_button.clicked.connect(self.main_upload_button_click)
-
         self.check_file_exists(self.sha256)
         if self.file_exists:
             self.make_list_api_call("Matches")
@@ -275,6 +271,15 @@ class _MAGICFormClassMethods:
         with open(path, "rb") as file:
             file_bytes = base64.b64encode(file.read())
         return file_bytes
+
+    def toggle_files(self):
+        """Toggle collapse or expansion of files widget"""
+        if self.files_toggle.text() == "Hide Files Section":
+            self.files_toggle.setText("Show Files Section")
+            self.list_widget.hide()
+        else:
+            self.files_toggle.setText("Hide Files Section")
+            self.list_widget.show()
 
     def main_upload_button_click(self):
         """Main upload button click behavior

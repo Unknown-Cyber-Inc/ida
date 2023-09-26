@@ -43,13 +43,12 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         self.title: str = title
         self.file_exists = False
         self.file_type = None
-        self.sha1 = hash_file()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
+        self.sha1 = hash_file()
 
         # main pyqt widgets used
-        self.t1: QtWidgets.QLabel
         self.files_toggle: QtWidgets.QPushButton
         self.upload_button: QtWidgets.QPushButton
 
@@ -76,9 +75,7 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         self.layout = QtWidgets.QVBoxLayout()
 
         # adding widgets to layout, order here matters
-        self.layout.addWidget(self.t1)
-        self.layout.addLayout(self.files_toggle_layout)
-        self.layout.addWidget(self.upload_button)
+        self.layout.addLayout(self.files_buttons_layout)
         self.layout.addWidget(self.list_widget)
 
         # set main widget's layout based on the above items
@@ -91,20 +88,25 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         # Personalizing QT items, in decending order of appearance.
         # NOTE! Upon display, actual arrangement is solely determined by
         #       the order widgets are ADDED to the layout.
-        self.t1 = QtWidgets.QLabel("<font color=red>Files</font>")
 
-        # toggle collapse/expand button
+        # buttons and their layouts
         self.files_toggle = QtWidgets.QPushButton("Hide Files Section")
-        self.files_toggle.clicked.connect(self.toggle_files)
-        self.files_toggle_layout = QtWidgets.QHBoxLayout()
-        self.files_toggle_layout.addWidget(self.files_toggle)
-        spacer = QtWidgets.QSpacerItem(
-            0,
-            0,
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Minimum,
+        self.files_toggle.setSizePolicy(
+            QtWidgets.QSizePolicy.MinimumExpanding,
+            QtWidgets.QSizePolicy.Fixed,
         )
-        self.files_toggle_layout.addItem(spacer)
+        self.files_toggle.clicked.connect(self.toggle_files)
+
+        self.upload_button = QtWidgets.QPushButton("Upload File")
+        self.upload_button.setSizePolicy(
+            QtWidgets.QSizePolicy.MinimumExpanding,
+            QtWidgets.QSizePolicy.Fixed,
+        )
+        self.upload_button.clicked.connect(self.main_upload_button_click)
+
+        self.files_buttons_layout = QtWidgets.QHBoxLayout()
+        self.files_buttons_layout.addWidget(self.files_toggle)
+        self.files_buttons_layout.addWidget(self.upload_button)
 
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
@@ -132,15 +134,6 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
             self.make_list_api_call("Tags")
         elif index == 2:
             self.make_list_api_call("Matches")
-
-    def toggle_files(self):
-        """Toggle collapse or expansion of files widget"""
-        if self.files_toggle.text() == "Hide Files Section":
-            self.files_toggle.setText("Show Files Section")
-            self.list_widget.hide()
-        else:
-            self.files_toggle.setText("Hide Files Section")
-            self.list_widget.show()
 
     #
     # functions for connecting pyqt signals

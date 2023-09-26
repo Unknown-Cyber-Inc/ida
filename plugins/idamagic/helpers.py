@@ -7,7 +7,6 @@ import logging
 import six
 import struct
 import shutil
-# import subprocess
 import networkx
 
 import sark
@@ -168,7 +167,7 @@ def to_bool(param, default=False):
     return default
 
 
-def hash_file(hashtype='sha1'):
+def hash_file(hashtype="sha1"):
     """Hash uploaded file.
 
     Returns
@@ -179,14 +178,21 @@ def hash_file(hashtype='sha1'):
     hash_func = getattr(hashlib, hashtype.lower())
     digest = hash_func()
 
-    with open(get_input_file_path(), "rb") as f:
-        while True:
-            block = f.read(2**10)  # Magic number: one-megabyte blocks.
-            if not block:
-                break
-            digest.update(block)
+    try:
+        with open(get_input_file_path(), "rb") as f:
+            while True:
+                block = f.read(2**10)  # Magic number: one-megabyte blocks.
+                if not block:
+                    break
+                digest.update(block)
 
-        return digest.hexdigest()
+            return digest.hexdigest()
+    except FileNotFoundError:
+        print(
+            "Original binary not accessible."
+            + " Place binary in the directory containing the loaded idb file"
+        )
+        return None
 
 
 ImportedFunction = namedtuple("APIFunc", "name module ea ord")
@@ -1159,6 +1165,7 @@ def getUnixFileType():
     """Get the file type."""
     return ida_loader.get_file_type_name()
 
+
 def get_input_file_name():
     """Returns the name of the file currently being analyzed."""
     # Maintain backwards compatibility with IDA < 7.4
@@ -1166,6 +1173,7 @@ def get_input_file_name():
         return ida_nalt.get_root_filename()
     except (NameError, AttributeError):
         return idc.GetInputFile()
+
 
 def zip_disassembled(outdir):
     """Tar the binary.json and all procedure files."""
@@ -1176,6 +1184,7 @@ def zip_disassembled(outdir):
         return os.path.join(outdir, zip_path)
     except Exception as exc:
         print(f"Error: {exc}")
+
 
 def parse_binary(orig_dir=None):
     """Parse the input binary and run it through the provided factory.
@@ -1306,7 +1315,9 @@ def parse_binary(orig_dir=None):
                     )
                 )
 
-            proc_path = os.path.join(proc_outdir, f"{proc_dict['startEA']}.json")
+            proc_path = os.path.join(
+                proc_outdir, f"{proc_dict['startEA']}.json"
+            )
             with open(proc_path, "w") as outfile:
                 json.dump(proc_dict, outfile)
 

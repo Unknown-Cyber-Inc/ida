@@ -7,7 +7,6 @@ information of the current file from unknowncyber.
 
 import cythereal_magic
 import ida_nalt
-import ida_kernwin
 import os
 
 from PyQt5 import QtWidgets, Qt
@@ -98,10 +97,10 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         self.layout = QtWidgets.QVBoxLayout()
 
         # adding widgets to layout, order here matters
-        self.layout.addWidget(self.t1)
         self.layout.addLayout(self.procs_toggle_layout)
         self.layout.addWidget(self.pushbutton)
         self.layout.addWidget(self.proc_tree)
+        self.layout.addWidget(self.proc_table)
         self.layout.addLayout(self.button_row)
 
         # set widget's layout based on the above items
@@ -109,7 +108,6 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
 
     def init_scroll_view(self):
         """Initialize individual items which will be added to the form."""
-        self.t1 = QtWidgets.QLabel("<font color=red>Procedures</font>")
         self.procs_toggle = QtWidgets.QPushButton("Hide Procedures Section")
         self.procs_toggle.clicked.connect(self.toggle_procs)
         self.procs_toggle_layout = QtWidgets.QHBoxLayout()
@@ -146,11 +144,21 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         self.button_row.addWidget(self.create_button)
         self.button_row.addWidget(self.edit_button)
         self.button_row.addWidget(self.delete_button)
-        self.button_row.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
 
         self.proc_tree = QtWidgets.QTreeView()
         self.proc_tree.setHeaderHidden(True)
         self.proc_tree.setModel(Qt.QStandardItemModel())
+
+        self.proc_table = QtWidgets.QTableWidget()
+        self.proc_table.setColumnCount(5)
+        self.proc_table.setHorizontalHeaderLabels(
+            ["Address", "Occurrence #", "Type", "Notes", "Tags"]
+        )
+        self.proc_table.setEditTriggers(
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
+        self.proc_table.setSortingEnabled(True)
+        self.proc_table.verticalHeader().setVisible(False)
 
         # connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click)
@@ -167,7 +175,25 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         """Toggle collapse or expansion of procedures widget"""
         if self.procs_toggle.text() == "Hide Procedures Section":
             self.procs_toggle.setText("Show Procedures Section")
-            self.proc_tree.hide()
+            self.hide_widgets()
         else:
             self.procs_toggle.setText("Hide Procedures Section")
-            self.proc_tree.show()
+            self.show_widgets()
+
+    def show_widgets(self):
+        """Set widgets to `show()`"""
+        self.pushbutton.show()
+        self.create_button.show()
+        self.edit_button.show()
+        self.delete_button.show()
+        self.proc_tree.show()
+        self.proc_table.show()
+
+    def hide_widgets(self):
+        """Set widgets to `hide()`"""
+        self.pushbutton.hide()
+        self.create_button.hide()
+        self.edit_button.hide()
+        self.delete_button.hide()
+        self.proc_tree.hide()
+        self.proc_table.hide()

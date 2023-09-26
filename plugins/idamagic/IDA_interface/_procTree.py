@@ -9,9 +9,10 @@ import logging
 import traceback
 
 from cythereal_magic.rest import ApiException
-from PyQt5 import Qt
+from PyQt5 import Qt, QtWidgets
 
 from ..widgets import ProcTextPopup
+from ..helpers import hash_file
 
 logger = logging.getLogger(__name__)
 
@@ -189,17 +190,6 @@ class _ScrClassMethods:
             # add node to dict to avoid looping through all objects in PluginScrHooks
             self.procedureEADict[start_ea] = procrootnode
 
-            procrootnode.appendRows(
-                [
-                    ProcHeaderItem(
-                        "Occurrence count", str(proc.occurrence_count)
-                    ),
-                    # tab is ignored for boolean for some reason
-                    # ProcHeaderItem("Library", "\t" + str(proc.is_library)),
-                    ProcHeaderItem("Type", proc.status),
-                ]
-            )
-
             if strings:
                 procrootnode.appendRow(ProcListItem("Strings", strings))
 
@@ -217,6 +207,21 @@ class _ScrClassMethods:
 
             # add root node to tree
             self.proc_tree.model().appendRow(procrootnode)
+
+            # gather response data and populate table
+            proc_info = [
+                (full_name if proc_name else proc.start_ea),
+                str(proc.occurrence_count),
+                proc.status,
+                ("notes - 0" if not proc.notes else len(proc.notes)),
+                ("tags - 0" if not proc.tags else len(proc.tags)),
+            ]
+            self.proc_table.insertRow(self.proc_table.rowCount())
+            for col, info in enumerate(proc_info):
+                col_item = QtWidgets.QTableWidgetItem(info)
+                self.proc_table.setItem(
+                    self.proc_table.rowCount()-1, col, col_item
+                )
 
     def populate_proc_files(self, filesRootNode: ProcFilesNode):
         """populates a selected procedure's 'files' node with recieved files
@@ -319,7 +324,7 @@ class _ScrClassMethods:
         if not similarityRootNode.isPopulated:
             returned_vals = self.make_list_api_call(similarityRootNode)
 
-            file_sha1 = self.retrieve_file_sha1(similarityRootNode.binary_id)
+            file_sha1 = hash_file()
 
             node_text = ""
             current_sha1 = None
@@ -423,41 +428,6 @@ class _ScrClassMethods:
                 print(f"Status Code: {response.status}")
                 print(f"Error message: {response.errors}")
         return response.resources
-
-    def retrieve_file_sha1(self, binary_id):
-        """Get the sha1 for a given file."""
-        read_mask = "sha1"
-
-        try:
-            response = self.ctmfiles.get_file(
-                binary_id=binary_id,
-                read_mask=read_mask,
-                no_links=True,
-                async_req=True,
-            )
-        except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print("File GET failed.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
-        except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
-            return None
-        else:
-            response = response.get()
-            if 200 <= response.status <= 299:
-                print("File GET successful.")
-            else:
-                print("Error with file GET.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")
-
-        return response.resource.sha1
 
     def proc_tree_jump_to_hex(self, index):
         """If double-clicked item is a hex item in tree view, jump IDA to that position.

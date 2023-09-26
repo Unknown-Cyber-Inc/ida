@@ -1,5 +1,5 @@
 """Custom widgets"""
-from PyQt5 import QtWidgets, Qt
+from PyQt5 import QtWidgets
 import cythereal_magic
 from cythereal_magic.rest import ApiException
 import json
