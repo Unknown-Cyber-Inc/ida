@@ -6,23 +6,17 @@ import logging
 import json
 import os
 import traceback
-from unittest import result
 
 import ida_nalt
 import ida_loader
-import ida_kernwin
 import hashlib
 import base64
-import idaapi
-import idc
-import idautils
-from pprint import pprint
-import tempfile
 
 from cythereal_magic.rest import ApiException
 from PyQt5 import QtWidgets, Qt
 
 from ..helpers import hash_file, parse_binary, getUnixFileType
+from ..widgets import FileNotFoundPopup
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 
@@ -195,6 +189,7 @@ class _MAGICFormClassMethods:
         Return the sha1 of the file if it exists.
         """
         try:
+            self.sha1 = hash_file()
             response = self.ctmfiles.get_file(
                 binary_id=binary_id, no_links=True, async_req=True
             )
@@ -202,12 +197,12 @@ class _MAGICFormClassMethods:
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print("File GET request failed.")
-            print("File does not exist")
             self.file_exists = False
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
-            self.sha1 = hash_file()
+            self.list_widget.disable_tab_bar()
+            FileNotFoundPopup(func=self.upload_file_button_click)
             return None
         except Exception as exp:
             logger.debug(traceback.format_exc())
@@ -218,34 +213,27 @@ class _MAGICFormClassMethods:
             return None
         else:
             if 200 <= response.status <= 299:
-                print("File already exists.")
-                # resource = response.resource
+                print("File uploaded previously.")
                 self.file_exists = True
-                # self.sha1 = resource.sha1
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
+                self.list_widget.enable_tab_bar()
             elif response.status == 404:
-                print("File does not exist.")
+                print("File not yet uploaded.")
                 self.file_exists = False
-                # self.sha1 = hash_file()
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, False)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, False)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, False)
+                self.list_widget.disable_tab_bar()
+                FileNotFoundPopup(func=self.upload_file_button_click)
                 return None
             elif response.status == 403:
                 print("Access denied to existing file.")
-                # self.sha1 = response.errors.parameters
                 # setting file_exists to false so that they are not given
                 # any of the values for that file (notes, tags, etc.)
                 self.file_exists = False
+                FileNotFoundPopup(func=self.upload_file_button_click)
                 return None
             else:
                 print("Error with file GET.")
                 print(f"Status Code: {response.status}")
                 print(f"Error message: {response.errors}")
                 return None
-            return response.resource.sha1
 
     def get_file_location(self):
         """Get the user's input file.
@@ -315,7 +303,7 @@ class _MAGICFormClassMethods:
     def upload_file_button_click(self):
         """Display check for `skip_unpack`"""
         unpack_popup = QtWidgets.QMessageBox()
-        unpack_popup.setWindowTitle("Skip unpack?")
+        unpack_popup.setWindowTitle("Skip unpacking?")
         unpack_popup.setText("Skip unpacking the uploaded file?")
 
         # skip unpack button

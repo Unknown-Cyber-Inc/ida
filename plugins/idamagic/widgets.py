@@ -99,9 +99,16 @@ class FileListWidget(BaseListWidget):
         self.list_widget_tab_bar.addTab("NOTES")
         self.list_widget_tab_bar.addTab("TAGS")
         self.list_widget_tab_bar.addTab("MATCHES")
+
+    def disable_tab_bar(self):
         self.list_widget_tab_bar.setTabEnabled(0, False)
         self.list_widget_tab_bar.setTabEnabled(1, False)
         self.list_widget_tab_bar.setTabEnabled(2, False)
+
+    def enable_tab_bar(self):
+        self.list_widget_tab_bar.setTabEnabled(0, True)
+        self.list_widget_tab_bar.setTabEnabled(1, True)
+        self.list_widget_tab_bar.setTabEnabled(2, True)
 
     def on_item_select(self, create, edit, delete):
         """Handle item selection behavior"""
@@ -199,9 +206,7 @@ class FileListWidget(BaseListWidget):
             return None
         else:
             if 200 <= response[1] <= 299:
-                print(
-                    f"File {type_str} removed successfully."
-                )
+                print(f"File {type_str} removed successfully.")
             else:
                 print(f"Error deleting {type_str}.")
                 print(f"Status Code: {response[1]}")
@@ -347,7 +352,9 @@ class ProcTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not update {self.item_type} from selected procedure.")
+            print(
+                f"Could not update {self.item_type} from selected procedure."
+            )
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -411,12 +418,14 @@ class ProcTextPopup(TextPopup):
                 response = response.get()
             elif self.item_type == "Proc Name" == "PROCEDURE NAME":
                 api_call = print(
-                "API call not implemented for procedure name EDIT, faux call made instead."
-            )
+                    "API call not implemented for procedure name EDIT, faux call made instead."
+                )
                 response = api_call()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not update {self.item_type} from selected procedure.")
+            print(
+                f"Could not update {self.item_type} from selected procedure."
+            )
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -576,3 +585,35 @@ class FileTextPopup(TextPopup):
                 print(f"Error updating {parent_label}.")
                 print(f"Status Code: {response[1]}")
                 return None
+
+
+class FileNotFoundPopup(QtWidgets.QWidget):
+    """
+    Widget for the popup displayed when the plugin is loaded with a file that
+    has not yet been uploaded to UnknownCyber Magic. Prompts user to upload.
+    """
+
+    def __init__(self, func):
+        super().__init__()
+        self.message = (
+            "You have not uploaded this file to UnknownCyber Magic. "
+            + "Upload to have access to any plugin features."
+        )
+        self.button_function = func
+        self.init_ui()
+
+    def init_ui(self):
+        """Create widgets and populate with data."""
+        # main popup window
+        popup = QtWidgets.QMessageBox()
+        popup.setWindowTitle("Processed file not available.")
+        popup.setText(self.message)
+
+        # upload button
+        upload_button = popup.addButton(
+            "Upload file", QtWidgets.QMessageBox.ActionRole
+        )
+        upload_button.setEnabled(True)
+        upload_button.clicked.connect(self.button_function)
+
+        popup.exec_()

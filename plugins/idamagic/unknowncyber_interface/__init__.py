@@ -8,7 +8,6 @@ Will likely be broken into components as the insides of the form grow.
 
 import cythereal_magic
 import ida_nalt
-import ida_kernwin
 import logging
 from ..helpers import hash_file
 
