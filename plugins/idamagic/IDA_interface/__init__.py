@@ -11,7 +11,7 @@ import os
 
 from PyQt5 import QtWidgets, Qt
 from idamagic.helpers import to_bool
-from ..widgets import ProcTextPopup
+from ..widgets import CenterDisplayWidget
 from ..helpers import hash_file
 
 # contains classes related to different types of nodes in the list,
@@ -41,12 +41,13 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         self.sha1 = hash_file()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.baseRVA = ida_nalt.get_imagebase()
+        self.image_base = None
         self.title: str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
         self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
         # dict solution to jump from IDA ea to plugin procedure
         self.procedureEADict = {}
-        self.popup = ProcTextPopup(fill_text=None, parent=None)
+        self.popup = None
         self.plugin_hook = None
 
         # # dock this widget on the rightmost side of IDA,
@@ -97,17 +98,19 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         self.layout = QtWidgets.QVBoxLayout()
 
         # adding widgets to layout, order here matters
+        self.layout.addWidget(self.center_widget)
+        self.layout.addLayout(self.button_row)
         self.layout.addLayout(self.procs_toggle_layout)
         self.layout.addWidget(self.pushbutton)
-        self.layout.addWidget(self.proc_tree)
         self.layout.addWidget(self.proc_table)
-        self.layout.addLayout(self.button_row)
 
         # set widget's layout based on the above items
         self.setLayout(self.layout)
 
     def init_scroll_view(self):
         """Initialize individual items which will be added to the form."""
+        self.center_widget = CenterDisplayWidget()
+
         self.procs_toggle = QtWidgets.QPushButton("Hide Procedures Section")
         self.procs_toggle.clicked.connect(self.toggle_procs)
         self.procs_toggle_layout = QtWidgets.QHBoxLayout()
@@ -149,6 +152,7 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         self.proc_tree.setHeaderHidden(True)
         self.proc_tree.setModel(Qt.QStandardItemModel())
 
+        # move this to the widgets file
         self.proc_table = QtWidgets.QTableWidget()
         self.proc_table.setColumnCount(5)
         self.proc_table.setHorizontalHeaderLabels(
@@ -159,6 +163,9 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         )
         self.proc_table.setSortingEnabled(True)
         self.proc_table.verticalHeader().setVisible(False)
+        self.proc_table.itemDoubleClicked.connect(
+            self.on_address_col_double_click
+        )
 
         # connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click)
@@ -170,6 +177,12 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
     #
     # functions for connecting pyqt signals
     #
+
+    def on_address_col_double_click(self, item):
+        """Handle proc table row double clicks."""
+        self.center_widget.create_tab(
+            "Original procedure", self.sha1, self.image_base, item.data(1),
+        )
 
     def toggle_procs(self):
         """Toggle collapse or expansion of procedures widget"""
@@ -183,17 +196,9 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
     def show_widgets(self):
         """Set widgets to `show()`"""
         self.pushbutton.show()
-        self.create_button.show()
-        self.edit_button.show()
-        self.delete_button.show()
-        self.proc_tree.show()
         self.proc_table.show()
 
     def hide_widgets(self):
         """Set widgets to `hide()`"""
         self.pushbutton.hide()
-        self.create_button.hide()
-        self.edit_button.hide()
-        self.delete_button.hide()
-        self.proc_tree.hide()
         self.proc_table.hide()

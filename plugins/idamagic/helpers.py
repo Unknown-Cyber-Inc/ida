@@ -18,6 +18,7 @@ import idc
 import idaapi
 import idautils
 import ida_loader
+import ida_kernwin
 
 from networkx.drawing import nx_pydot
 from collections import namedtuple
@@ -139,6 +140,28 @@ class JSONFlowGraph(object):
 
         # Add edge to link the blocks being split.
         self.cfg.add_edge(blockEA, splitEA)
+
+
+def create_proc_name(proc):
+    """If it exists, add procedure name to proc.start_ea"""
+    proc_name = getattr(proc, "procedure_name", None)
+    if proc_name:
+        full_name = f"{proc.start_ea} - {proc_name}"
+    else:
+        full_name = None
+
+    return full_name if proc_name else proc.start_ea
+
+
+def get_response_image_base(proc_info):
+    """Get the response data for image_base"""
+    return proc_info.image_base
+
+
+def calculate_start_ea(proc, image_base):
+    """Get the start_ea of the procedure"""
+    start_ea = ida_kernwin.str2ea(proc.start_ea) + int(image_base, 16)
+    return start_ea
 
 
 def to_bool(param, default=False):

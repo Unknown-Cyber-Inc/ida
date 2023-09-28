@@ -12,7 +12,12 @@ from cythereal_magic.rest import ApiException
 from PyQt5 import Qt, QtWidgets
 
 from ..widgets import ProcTextPopup
-from ..helpers import hash_file
+from ..helpers import (
+    hash_file,
+    create_proc_name,
+    get_response_image_base,
+    calculate_start_ea,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -175,53 +180,34 @@ class _ScrClassMethods:
         Note: is there any difference in performance from many appendRow and one appendRows?
         """
         for proc in procedureInfo.procedures:
-            start_ea = ida_kernwin.str2ea(proc.start_ea) + int(
-                procedureInfo.image_base, 16
-            )
-            hard_hash = proc.hard_hash
-            strings = proc.strings
-            apiCalls = proc.api_calls
-            proc_name = getattr(proc, "procedure_name", None)
-            if proc_name:
-                full_name = f"{proc.start_ea} - {proc_name}"
-            else:
-                full_name = None
-            procrootnode = ProcRootNode(proc.start_ea, full_name, start_ea)
-            # add node to dict to avoid looping through all objects in PluginScrHooks
+            self.image_base = get_response_image_base(proc_info=procedureInfo)
+            proc_name = create_proc_name(proc)
+            start_ea = calculate_start_ea(proc, self.image_base)
+
+            # add node to dict to avoid looping through objects in PluginScrHooks
+            procrootnode = ProcRootNode(proc.start_ea, proc_name, start_ea)
             self.procedureEADict[start_ea] = procrootnode
 
-            if strings:
-                procrootnode.appendRow(ProcListItem("Strings", strings))
-
-            if apiCalls:
-                procrootnode.appendRow(ProcListItem("API Calls", apiCalls))
-
-            procrootnode.appendRows(
-                [
-                    ProcNotesNode(hard_hash, self.sha1, proc.start_ea),
-                    ProcTagsNode(hard_hash, self.sha1, proc.start_ea),
-                    ProcFilesNode(hard_hash, proc.start_ea),
-                    ProcSimilarityNode(hard_hash, self.sha1, proc.start_ea),
-                ]
-            )
-
-            # add root node to tree
-            self.proc_tree.model().appendRow(procrootnode)
-
-            # gather response data and populate table
             proc_info = [
-                (full_name if proc_name else proc.start_ea),
+                proc_name,
                 str(proc.occurrence_count),
                 proc.status,
                 ("notes - 0" if not proc.notes else len(proc.notes)),
                 ("tags - 0" if not proc.tags else len(proc.tags)),
             ]
+            # insert blank row
             self.proc_table.insertRow(self.proc_table.rowCount())
+            # place data in column slots
             for col, info in enumerate(proc_info):
                 col_item = QtWidgets.QTableWidgetItem(info)
                 self.proc_table.setItem(
-                    self.proc_table.rowCount()-1, col, col_item
+                    self.proc_table.rowCount() - 1, col, col_item
                 )
+            # Set the row's address column .data() to proc object
+            row = self.proc_table.rowCount() - 1
+            row_addr_col = self.proc_table.item(row, 0)
+            # QtTableWidgetItem.setData(role: int, value: object)
+            row_addr_col.setData(1, proc)
 
     def populate_proc_files(self, filesRootNode: ProcFilesNode):
         """populates a selected procedure's 'files' node with recieved files
@@ -326,12 +312,13 @@ class _ScrClassMethods:
 
             file_sha1 = hash_file()
 
-            node_text = ""
             current_sha1 = None
             for proc in returned_vals:
                 if current_sha1 == proc.binary_id:
+                    # add additional "startEA"
                     similarityRootNode.appendRow(
                         ProcSimpleTextNode(
+                            hard_hash=similarityRootNode.hard_hash,
                             text=f"\t{proc.start_ea}",
                         )
                     )
@@ -341,19 +328,24 @@ class _ScrClassMethods:
                         file_sha1 == proc.binary_id
                         and similarityRootNode.rva == proc.start_ea
                     ):
-                        node_text = (
-                            f"Current File - sha1: {proc.binary_id}"
-                            f"\n       startEA: {proc.start_ea}"
+                        similarityRootNode.appendRow(
+                            ProcSimpleTextNode(
+                                hard_hash=similarityRootNode.hard_hash,
+                                text=f"Current File - {proc.binary_id}",
+                            )
                         )
                     else:
-                        node_text = (
-                            f"sha1: {proc.binary_id}"
-                            f"\n       startEA: {proc.start_ea}"
+                        similarityRootNode.appendRow(
+                            ProcSimpleTextNode(
+                                hard_hash=similarityRootNode.hard_hash,
+                                text=f"{proc.binary_id}",
+                            )
                         )
+                    # add first startEA
                     similarityRootNode.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
-                            text=node_text,
+                            text=f"       startEAs:{proc.start_ea}",
                         )
                     )
 

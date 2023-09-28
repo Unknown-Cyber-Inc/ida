@@ -1,10 +1,12 @@
 """Custom widgets"""
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, Qt, QtGui, QtCore
 import cythereal_magic
 from cythereal_magic.rest import ApiException
+from .helpers import create_proc_name
 import json
 import traceback
 import logging
+import ida_kernwin
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +217,141 @@ class FileListWidget(BaseListWidget):
 
         index = self.list_widget.row(item)
         self.list_widget.takeItem(index)
+
+
+class CenterDisplayWidget(QtWidgets.QWidget):
+    """Custom display widget for selected items"""
+
+    def __init__(self):
+        super().__init__()
+        self.tabs_widget: QtWidgets.QTabWidget
+        self.init_ui()
+
+    def init_ui(self):
+        """Create widget and handle behavior"""
+        self.tabs_widget = QtWidgets.QTabWidget(self)
+        self.tabs_widget.setTabsClosable(True)
+        self.tabs_widget.setObjectName("tabs_widget")
+        self.tab_bar = self.tabs_widget.tabBar()
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.tabs_widget)
+        self.create_tab("Default tab")
+
+        self.tabs_widget.tabCloseRequested.connect(self.close_tab)
+
+    def close_tab(self, index):
+        """Close one of self.tabs_widget' tabs"""
+        self.tabs_widget.removeTab(index)
+
+        if self.count_tabs() == 0:
+            self.create_tab("Default tab")
+
+    def create_tab(self, tab_type, sha1=None, image_base=None, item=None):
+        """Add a tab to self.tabs_widget"""
+        if tab_type == "Original procedure":
+            tab = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(tab)
+            proc_tree = ProcTreeWidget()
+
+            self.populate(item, proc_tree, image_base, sha1)
+            layout.addWidget(proc_tree)
+            tab.setLayout(layout)
+
+            self.tabs_widget.addTab(tab, item.start_ea)
+            self.remove_default_tab()
+            self.add_tab_visuals(tab_type)
+
+        elif tab_type == "Derived procedure":
+            # create derived procedure tab
+            self.remove_default_tab()
+            self.add_tab_visuals(tab_type)
+        elif tab_type == "Derived file":
+            # create derived file tab
+            self.remove_default_tab()
+            self.add_tab_visuals(tab_type)
+        elif tab_type == "Default tab":
+            tab = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(tab)
+
+            text_box = QtWidgets.QTextEdit()
+            text_box.setReadOnly(True)
+            text_box.setText(
+                "Double click on a procedure address from the "
+                + "table below to display note, tag, and "
+                + "similarity information."
+            )
+            layout.addWidget(text_box)
+            tab.setLayout(layout)
+            self.tabs_widget.addTab(tab, "Get started")
+
+    def remove_default_tab(self):
+        """Removes the default tab if present"""
+        if self.tabs_widget.tabText(0) == "Get started":
+            self.close_tab(0)
+
+    def populate(self, proc, proc_tree, image_base, sha1):
+        """Create a ProcRootNode to display in the center widget"""
+        start_ea = ida_kernwin.str2ea(proc.start_ea) + int(image_base, 16)
+
+        from .IDA_interface._procTree import (
+            ProcFilesNode,
+            ProcListItem,
+            ProcNotesNode,
+            ProcRootNode,
+            ProcSimilarityNode,
+            ProcTagsNode,
+        )
+
+        # create root node
+        procrootnode = ProcRootNode(
+            proc.start_ea, create_proc_name(proc), start_ea
+        )
+        # populate with sub root nodes
+        if proc.strings:
+            procrootnode.appendRow(ProcListItem("Strings", proc.strings))
+
+        if proc.api_calls:
+            procrootnode.appendRow(ProcListItem("API Calls", proc.api_calls))
+
+        procrootnode.appendRows(
+            [
+                ProcNotesNode(proc.hard_hash, sha1, proc.start_ea),
+                ProcTagsNode(proc.hard_hash, sha1, proc.start_ea),
+                ProcFilesNode(proc.hard_hash, proc.start_ea),
+                ProcSimilarityNode(proc.hard_hash, sha1, proc.start_ea),
+            ]
+        )
+        proc_tree.model().appendRow(procrootnode)
+
+    def count_tabs(self):
+        """Return a count of current tabs."""
+        return self.tab_bar.count()
+
+    def add_tab_visuals(self, tab_type: str):
+        """Update the text color (and maybe icon) of a tab.
+        """
+        if tab_type == "Original procedure":
+            self.tab_bar.setTabTextColor(
+                self.count_tabs() - 1, QtGui.QColor("green")
+            )
+        elif tab_type == "Derived procedure":
+            self.tab_bar.setTabTextColor(
+                self.count_tabs() - 1, QtGui.QColor("blue")
+            )
+        elif tab_type == "Derived file":
+            self.tab_bar.setTabTextColor(
+                self.count_tabs() - 1, QtGui.QColor("red")
+            )
+
+
+class ProcTreeWidget(QtWidgets.QTreeView):
+    """Custom widget to display procedure tree"""
+
+    def __init__(self):
+        super().__init__()
+        self.setHeaderHidden(True)
+        self.setModel(Qt.QStandardItemModel())
 
 
 class CustomListItem(QtWidgets.QListWidgetItem):
