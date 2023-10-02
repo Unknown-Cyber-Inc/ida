@@ -7,6 +7,7 @@ information of the current file from unknowncyber.
 
 import cythereal_magic
 import ida_nalt
+import ida_kernwin
 import os
 
 from PyQt5 import QtWidgets, Qt
@@ -47,12 +48,9 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
         # dict solution to jump from IDA ea to plugin procedure
         self.procedureEADict = {}
+        self.procedureEADict_unbased = {}
         self.popup = None
         self.plugin_hook = None
-
-        # # dock this widget on the rightmost side of IDA,
-        # # ensure this by setting dest_ctrl to an empty string
-        # ida_kernwin.set_dock_pos(self.title, "", ida_kernwin.DP_RIGHT)
         """
         A 'QSplitter' is created which can handle the default creation size.
         Through testing I have found out which widget this is relative to self.
@@ -72,7 +70,7 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
 
         # hook into the IDA code
         self.plugin_hook = PluginScrHooks(
-            self.proc_tree, self.procedureEADict, self.parent
+            self.proc_table, self.procedureEADict, self.procedureEADict_unbased
         )
         self.plugin_hook.hook()
 
@@ -99,7 +97,6 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
 
         # adding widgets to layout, order here matters
         self.layout.addWidget(self.center_widget)
-        self.layout.addLayout(self.button_row)
         self.layout.addLayout(self.procs_toggle_layout)
         self.layout.addWidget(self.pushbutton)
         self.layout.addWidget(self.proc_table)
@@ -109,7 +106,7 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
 
     def init_scroll_view(self):
         """Initialize individual items which will be added to the form."""
-        self.center_widget = CenterDisplayWidget()
+        self.center_widget = CenterDisplayWidget(self.sha256)
 
         self.procs_toggle = QtWidgets.QPushButton("Hide Procedures Section")
         self.procs_toggle.clicked.connect(self.toggle_procs)
@@ -126,31 +123,6 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         # create procedure buttons, place them in layout, add to main layout
         self.pushbutton = QtWidgets.QPushButton("Get Procedures")
         self.pushbutton.setCheckable(False)
-
-        self.create_button = QtWidgets.QPushButton("Create")
-        self.create_button.setMinimumSize(30, 30)
-        self.edit_button = QtWidgets.QPushButton("Edit")
-        self.edit_button.setMinimumSize(30, 30)
-        self.delete_button = QtWidgets.QPushButton("Delete")
-        self.delete_button.setMinimumSize(30, 30)
-
-        # link button to clicked functions and set default 'enabled'
-        self.create_button.clicked.connect(self.on_create_click)
-        self.create_button.setEnabled(False)
-        self.edit_button.setEnabled(False)
-        self.edit_button.clicked.connect(self.on_edit_click)
-        self.delete_button.setEnabled(False)
-        self.delete_button.clicked.connect(self.on_delete_click)
-
-        # create button row for create/edit/delete buttons
-        self.button_row = QtWidgets.QHBoxLayout()
-        self.button_row.addWidget(self.create_button)
-        self.button_row.addWidget(self.edit_button)
-        self.button_row.addWidget(self.delete_button)
-
-        self.proc_tree = QtWidgets.QTreeView()
-        self.proc_tree.setHeaderHidden(True)
-        self.proc_tree.setModel(Qt.QStandardItemModel())
 
         # move this to the widgets file
         self.proc_table = QtWidgets.QTableWidget()
@@ -170,19 +142,26 @@ class MAGICPluginScrClass(QtWidgets.QWidget, _ScrClassMethods):
         # connecting events to items if necessary, in order of appearance
         self.pushbutton.clicked.connect(self.pushbutton_click)
 
-        self.proc_tree.expanded.connect(self.onTreeExpand)
-        self.proc_tree.doubleClicked.connect(self.proc_tree_jump_to_hex)
-        self.proc_tree.clicked.connect(self.item_selected)
-
     #
     # functions for connecting pyqt signals
     #
 
+    def proc_tree_jump_to_hex(self, start_ea):
+        """From item address in table view, jump IDA to that position."""
+        start_ea = ida_kernwin.str2ea(start_ea)
+        found_ea = ida_kernwin.jumpto(start_ea)
+        if not found_ea:
+            start_ea = start_ea + self.image_base
+            ida_kernwin.jumpto(start_ea)
+
     def on_address_col_double_click(self, item):
         """Handle proc table row double clicks."""
         self.center_widget.create_tab(
-            "Original procedure", self.sha1, self.image_base, item.data(1),
+            "Original procedure",
+            self.sha1,
+            item.data(1),
         )
+        self.proc_tree_jump_to_hex(item.data(1).start_ea)
 
     def toggle_procs(self):
         """Toggle collapse or expansion of procedures widget"""
