@@ -8,6 +8,7 @@ import six
 import struct
 import shutil
 import networkx
+import base64
 
 import sark
 import ida_nalt
@@ -445,6 +446,13 @@ def strip_parens(string):
     """ " Remove parenthesis and internal content"""
     p = re.compile("\(.*\)")
     return p.sub("", string)
+
+
+def encode_loaded_file():
+    """Encode the currenly loaded file into base64"""
+    with open(get_input_file_path(), "rb") as file:
+        file_bytes = base64.b64encode(file.read())
+    return file_bytes
 
 
 def get_function_name(ea, bare=True, full=False):

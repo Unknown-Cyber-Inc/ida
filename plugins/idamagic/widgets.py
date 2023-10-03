@@ -89,15 +89,18 @@ class BaseListWidget(QtWidgets.QWidget):
 class FileListWidget(BaseListWidget):
     """Custom widget to display notes/tags/matches for a file."""
 
-    def __init__(self, list_items, list_type="", binary_id=None, parent=None):
+    def __init__(
+        self, list_items, list_type="", binary_id=None, widget_parent=None
+    ):
         self.popup = None
         super().__init__(
             list_items=list_items,
             list_type=list_type,
-            parent=parent,
+            parent=widget_parent,
             binary_id=binary_id,
             popup=self.popup,
         )
+        self.widget_parent = widget_parent
         self.populate_widget()
 
     def populate_widget(self):
@@ -106,6 +109,20 @@ class FileListWidget(BaseListWidget):
         self.list_widget_tab_bar.addTab("NOTES")
         self.list_widget_tab_bar.addTab("TAGS")
         self.list_widget_tab_bar.addTab("MATCHES")
+        self.list_widget_tab_bar.currentChanged.connect(self.tab_changed)
+
+    def tab_changed(self, index):
+        """Tab change behavior
+
+        Index here is used to access the tab position.
+        [NoteTab, TagsTab, MatchesTab]
+        """
+        if index == 0:
+            self.widget_parent.make_list_api_call("Notes")
+        elif index == 1:
+            self.widget_parent.make_list_api_call("Tags")
+        elif index == 2:
+            self.widget_parent.make_list_api_call("Matches")
 
     def disable_tab_bar(self):
         self.list_widget_tab_bar.setTabEnabled(0, False)
@@ -222,6 +239,22 @@ class FileListWidget(BaseListWidget):
 
         index = self.list_widget.row(item)
         self.list_widget.takeItem(index)
+
+
+class FileSimpleTextNode(Qt.QStandardItem):
+    """Node which contains only simple text information"""
+
+    def __init__(
+        self, node_id="", text="", sha1="", binary_id="", uploaded=False
+    ):
+        super().__init__()
+        self.setEditable(False)
+        self.setText(text)
+        self.text = text
+        self.node_id = node_id
+        self.sha1 = sha1
+        self.binary_id = binary_id
+        self.uploaded = uploaded
 
 
 class ProcTableItem(Qt.QStandardItem):
@@ -933,6 +966,39 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             )
 
 
+class ProcTableWidget(QtWidgets.QTableWidget):
+    """Custom table widget for procedures"""
+
+    def __init__(self, widget_parent):
+        super().__init__()
+        self.widget_parent = widget_parent
+        self.setColumnCount(5)
+        self.setHorizontalHeaderLabels(
+            ["Address", "Occurrence #", "Type", "Notes", "Tags"]
+        )
+        self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.setSortingEnabled(True)
+        self.verticalHeader().setVisible(False)
+        self.itemDoubleClicked.connect(self.on_address_col_double_click)
+
+    def on_address_col_double_click(self, item):
+        """Handle proc table row double clicks."""
+        self.widget_parent.center_widget.create_tab(
+            "Original procedure",
+            self.sha1,
+            item.data(1),
+        )
+        self.proc_tree_jump_to_hex(item.data(1).start_ea)
+
+    def proc_tree_jump_to_hex(self, start_ea):
+        """From item address in table view, jump IDA to that position."""
+        start_ea = ida_kernwin.str2ea(start_ea)
+        found_ea = ida_kernwin.jumpto(start_ea)
+        if not found_ea:
+            start_ea = start_ea + self.image_base
+            ida_kernwin.jumpto(start_ea)
+
+
 class ProcTreeWidget(QtWidgets.QTreeView):
     """Custom widget to display procedure tree"""
 
@@ -1093,7 +1159,6 @@ class ProcTextPopup(TextPopup):
             return None
         else:
             if 200 <= response.status <= 299:
-
                 print(
                     f"{self.item_type} from selected procedure created successfully."
                 )
@@ -1244,7 +1309,6 @@ class FileTextPopup(TextPopup):
             return None
         else:
             if 200 <= response.status <= 299:
-
                 if "Notes" in parent_label:
                     self.parent.list_widget.addItem(
                         CustomListItem(
@@ -1308,6 +1372,57 @@ class FileTextPopup(TextPopup):
                 print(f"Error updating {parent_label}.")
                 print(f"Status Code: {response[1]}")
                 return None
+
+
+class UploadPopup(QtWidgets.QMessageBox):
+    """Custom popup with file and disassembly upload buttons."""
+
+    def __init__(self, widget_parent):
+        super().__init__()
+        self.widget_parent = widget_parent
+        self.setWindowTitle("Upload")
+        self.setText("Select the type of upload to perform.")
+
+        # File upload button
+        file_upload_button = self.addButton(
+            "File", QtWidgets.QMessageBox.ActionRole
+        )
+        file_upload_button.setEnabled(True)
+        file_upload_button.clicked.connect(
+            self.widget_parent.upload_file_button_click
+        )
+        # Disassembly upload button
+        binary_upload_button = self.addButton(
+            "Disassembly", QtWidgets.QMessageBox.ActionRole
+        )
+        binary_upload_button.setEnabled(True)
+        binary_upload_button.clicked.connect(
+            self.widget_parent.layout_parent.upload_disassembled_click
+        )
+
+
+class UnpackPopup(QtWidgets.QMessageBox):
+    """Custom popup with unpack and skip unpack buttons."""
+
+    def __init__(self, widget_parent):
+        super().__init__()
+        self.widget_parent = widget_parent
+        self.setWindowTitle("Skip unpacking?")
+        self.setText("Skip unpacking the uploaded file?")
+
+        # skip unpack button
+        skip_button = self.addButton(
+            "YES, skip unpacking", QtWidgets.QMessageBox.ActionRole
+        )
+        skip_button.setEnabled(True)
+        skip_button.clicked.connect(self.widget_parent.skip_unpack)
+
+        # unpack button
+        unpack_button = self.addButton(
+            "NO, unpack file", QtWidgets.QMessageBox.ActionRole
+        )
+        unpack_button.setEnabled(True)
+        unpack_button.clicked.connect(self.widget_parent.unpack)
 
 
 class FileNotFoundPopup(QtWidgets.QWidget):

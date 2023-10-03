@@ -1,46 +1,28 @@
 """
 Methods and classes in the MAGICPluginScrClass related to populating the
-procedure list.
+procedure table.
 """
 
 import json
 import logging
 import traceback
-
-from cythereal_magic.rest import ApiException
-
-from PyQt5 import QtWidgets
-from ..helpers import create_proc_name
 import ida_kernwin
 
-from ..widgets import ProcRootNode
+from cythereal_magic.rest import ApiException
+from PyQt5.QtWidgets import QTableWidgetItem
+from ..helpers import create_proc_name
 
 logger = logging.getLogger(__name__)
 
-
-"""
-Nodes in the proctree
-"""
-
-
 class _ScrClassMethods:
     """
-    Methods in the MAGICPluginScrClass related to populating the procedure tree
+    Methods in the MAGICPluginScrClass related to populating the procedure table
     """
-
-    """
-    functions for building and displaying pyqt.
-    """
-
-    #
-    # functions for connecting pyqt signals
-    #
 
     def populate_proc_table(self, procedureInfo):
         """populates the procedures table with recieved procedures
 
         @param resources: dict containing procedures return request
-        Note: is there any difference in performance from many appendRow and one appendRows?
         """
         self.image_base = int(procedureInfo.image_base, 16)
         for proc in procedureInfo.procedures:
@@ -55,9 +37,9 @@ class _ScrClassMethods:
             ]
             # insert blank row
             self.proc_table.insertRow(self.proc_table.rowCount())
-            # place data in column slots
+            # place data in column slots of blank row
             for col, info in enumerate(proc_info):
-                col_item = QtWidgets.QTableWidgetItem(info)
+                col_item = QTableWidgetItem(info)
                 self.proc_table.setItem(
                     self.proc_table.rowCount() - 1, col, col_item
                 )

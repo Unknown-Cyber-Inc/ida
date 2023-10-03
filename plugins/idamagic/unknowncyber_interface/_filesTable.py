@@ -7,46 +7,17 @@ import json
 import os
 import traceback
 
-import ida_nalt
-import ida_loader
-import hashlib
-import base64
-
 from cythereal_magic.rest import ApiException
-from PyQt5 import QtWidgets, Qt
-
-from ..helpers import hash_file, parse_binary, getUnixFileType
-from ..widgets import FileNotFoundPopup
+from ..helpers import (
+    hash_file,
+    parse_binary,
+    getUnixFileType,
+    encode_loaded_file,
+)
+from ..widgets import FileSimpleTextNode
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
-
 logger = logging.getLogger(__name__)
-
-
-class FileTableItem(Qt.QStandardItem):
-    """Generic form of items on the Files lists.
-
-    Contains default features for all list items based on QStandardItem class.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.setEditable(False)
-
-
-class FileSimpleTextNode(FileTableItem):
-    """Node which contains only simple text information"""
-
-    def __init__(
-        self, node_id="", text="", sha1="", binary_id="", uploaded=False
-    ):
-        super().__init__()
-        self.setText(text)
-        self.text = text
-        self.node_id = node_id
-        self.sha1 = sha1
-        self.binary_id = binary_id
-        self.uploaded = uploaded
 
 
 class _MAGICFormClassMethods:
@@ -62,7 +33,7 @@ class _MAGICFormClassMethods:
         """
         Helper, initialize and populate items in analysis tab widget
         """
-        self.check_file_exists(self.sha256)
+        self.check_file_exists()
         if self.file_exists:
             self.make_list_api_call("Matches")
 
@@ -179,7 +150,7 @@ class _MAGICFormClassMethods:
         elif list_type == "Tags":
             self.populate_file_tags(response.resources)
 
-    def check_file_exists(self, binary_id):
+    def check_file_exists(self):
         """Call the api at `get_file`
 
         Return the sha1 of the file if it exists.
@@ -187,7 +158,7 @@ class _MAGICFormClassMethods:
         try:
             self.sha1 = hash_file()
             response = self.ctmfiles.get_file(
-                binary_id=binary_id, no_links=True, async_req=True
+                binary_id=self.sha1, no_links=True, async_req=True
             )
             response = response.get()
         except ApiException as exp:
@@ -197,8 +168,7 @@ class _MAGICFormClassMethods:
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
-            self.list_widget.disable_tab_bar()
-            FileNotFoundPopup(func=self.upload_file_button_click)
+            self.process_file_nonexistent()
             return None
         except Exception as exp:
             logger.debug(traceback.format_exc())
@@ -215,15 +185,14 @@ class _MAGICFormClassMethods:
             elif response.status == 404:
                 print("File not yet uploaded.")
                 self.file_exists = False
-                self.list_widget.disable_tab_bar()
-                FileNotFoundPopup(func=self.upload_file_button_click)
+                self.process_file_nonexistent()
                 return None
             elif response.status == 403:
                 print("Access denied to existing file.")
                 # setting file_exists to false so that they are not given
                 # any of the values for that file (notes, tags, etc.)
                 self.file_exists = False
-                FileNotFoundPopup(func=self.upload_file_button_click)
+                self.process_file_nonexistent()
                 return None
             else:
                 print("Error with file GET.")
@@ -231,109 +200,10 @@ class _MAGICFormClassMethods:
                 print(f"Error message: {response.errors}")
                 return None
 
-    def get_file_location(self):
-        """Get the user's input file.
-
-        Move to helpers.py
-        """
-        # example return: /home/chris/unknowncyber/development/data/file
-        file_path = ida_nalt.get_input_file_path()
-
-        return file_path
-
-    def calculate_file_sha1(self):
-        """Hash the file and return the hexdigest of its sha1
-
-        Move to helpers.py
-        """
-        file_path = self.get_file_location()
-        sha1 = hashlib.sha1()
-
-        with open(file_path, "rb") as file:
-            while True:
-                data = file.read(4096)
-                if not data:
-                    break
-                sha1.update(data)
-        return sha1.hexdigest()
-
-    def encode_loaded_file(self):
-        """Encode the currenly loaded file into base64
-
-        Move to helpers.py
-        """
-        with open(self.get_file_location(), "rb") as file:
-            file_bytes = base64.b64encode(file.read())
-        return file_bytes
-
-    def encode_disassembled_file(self, path):
-        """Encode the disassembled file into base64"""
-        with open(path, "rb") as file:
-            file_bytes = base64.b64encode(file.read())
-        return file_bytes
-
-    def toggle_files(self):
-        """Toggle collapse or expansion of files widget"""
-        if self.files_toggle.text() == "Hide Files Section":
-            self.files_toggle.setText("Show Files Section")
-            self.list_widget.hide()
-        else:
-            self.files_toggle.setText("Hide Files Section")
-            self.list_widget.show()
-
-    def main_upload_button_click(self):
-        """Main upload button click behavior
-
-        Renders a QMessageBox with all upload buttons
-        """
-        upload_popup = QtWidgets.QMessageBox()
-        upload_popup.setWindowTitle("Upload")
-        upload_popup.setText("Select the type of upload to perform.")
-
-        # File upload button
-        file_upload_button = upload_popup.addButton(
-            "File", QtWidgets.QMessageBox.ActionRole
-        )
-        file_upload_button.setEnabled(True)
-        file_upload_button.clicked.connect(self.upload_file_button_click)
-        # Disassembly upload button
-        binary_upload_button = upload_popup.addButton(
-            "Disassembly", QtWidgets.QMessageBox.ActionRole
-        )
-        binary_upload_button.setEnabled(True)
-        binary_upload_button.clicked.connect(self.upload_disassembled_click)
-
-        upload_popup.exec_()
-
-    def upload_file_button_click(self):
-        """Display check for `skip_unpack`"""
-        unpack_popup = QtWidgets.QMessageBox()
-        unpack_popup.setWindowTitle("Skip unpacking?")
-        unpack_popup.setText("Skip unpacking the uploaded file?")
-
-        # skip unpack button
-        skip_button = unpack_popup.addButton(
-            "YES, skip unpacking", QtWidgets.QMessageBox.ActionRole
-        )
-        skip_button.setEnabled(True)
-        skip_button.clicked.connect(self.skip_unpack)
-
-        # unpack button
-        unpack_button = unpack_popup.addButton(
-            "NO, unpack file", QtWidgets.QMessageBox.ActionRole
-        )
-        unpack_button.setEnabled(True)
-        unpack_button.clicked.connect(self.unpack)
-
-        unpack_popup.exec_()
-
-    def skip_unpack(self):
-        """Set skip_unpack arg to True. Send upload_file request method."""
-        self.upload_file(skip_unpack=True)
-
-    def unpack(self):
-        """Set skip_unpack arg to False. Send upload_file request method."""
-        self.upload_file(skip_unpack=False)
+    def process_file_nonexistent(self):
+        """Disables FileListWidget's tabbar and displays FileNotFound popup."""
+        self.list_widget.disable_tab_bar()
+        self.files_buttons_layout.show_file_not_found_popup()
 
     def upload_file(self, skip_unpack):
         """Upload file button click behavior
@@ -343,7 +213,7 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
-        filedata = self.encode_loaded_file()
+        filedata = encode_loaded_file()
 
         try:
             response = api_call(
@@ -388,14 +258,6 @@ class _MAGICFormClassMethods:
             else:
                 print("Error During Upload.")
                 print(f"Status Code: {response.status}")
-
-    def upload_database_click(self):
-        """Upload database file"""
-        from ..helpers import get_input_file_path
-
-        input_path = get_input_file_path()
-        ida_dir = os.path.dirname(input_path)
-        file = ida_loader.save_database(ida_dir, ida_loader.DBFL_BAK)
 
     def upload_disassembled_click(self):
         """Upload editted binaries button behavior"""
