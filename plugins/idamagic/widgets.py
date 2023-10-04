@@ -105,17 +105,18 @@ class FileListWidget(BaseListWidget):
 
     def populate_widget(self):
         """Create widget and handle behavior"""
-        self.popup = (FileTextPopup(fill_text=None, parent=self),)
+        self.popup = FileTextPopup(fill_text=None, parent=self)
         self.list_widget_tab_bar.addTab("NOTES")
         self.list_widget_tab_bar.addTab("TAGS")
         self.list_widget_tab_bar.addTab("MATCHES")
+        self.disable_tab_bar()
         self.list_widget_tab_bar.currentChanged.connect(self.tab_changed)
 
     def tab_changed(self, index):
         """Tab change behavior
 
         Index here is used to access the tab position.
-        [NoteTab, TagsTab, MatchesTab]
+        [<NoteTab>, <TagsTab>, <MatchesTab>]
         """
         if index == 0:
             self.widget_parent.make_list_api_call("Notes")
@@ -184,7 +185,8 @@ class FileListWidget(BaseListWidget):
         """Handle edit pushbutton click"""
         item = self.list_widget.currentItem()
         text = item.text()
-        self.show_popup(text=text)
+        note_text = text.split("\n")[0]
+        self.show_popup(text=note_text)
 
     def on_create_click(self):
         """Handle edit pushbutton click"""
@@ -192,53 +194,58 @@ class FileListWidget(BaseListWidget):
 
     def on_delete_click(self):
         """Handle delete pushbutton click"""
-        item = self.list_widget.currentItem()
-        type_str = self.label.text()
-        try:
-            if "Notes" in type_str:
-                api_call = ctmfiles.delete_file_note
-                response = api_call(
-                    binary_id=self.binary_id,
-                    note_id=item.proc_node.node_id,
-                    force=True,
-                    no_links=True,
-                    async_req=True,
-                )
-            elif "Tags" in type_str:
-                api_call = ctmfiles.remove_file_tag
-                response = api_call(
-                    binary_id=self.binary_id,
-                    tag_id=item.proc_node.node_id,
-                    force=True,
-                    no_links=True,
-                    async_req=True,
-                )
-            response = response.get()
-        except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print(f"Could not delete file {type_str}.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
-            return None
-        except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
-            return None
-        else:
-            if 200 <= response[1] <= 299:
-                print(f"File {type_str} removed successfully.")
-            else:
-                print(f"Error deleting {type_str}.")
-                print(f"Status Code: {response[1]}")
-                # print(f"Error message: {response.errors}")
+        confirmation_popup = DeleteConfirmationPopup(self)
+        confirmation = confirmation_popup.exec_()
+        if confirmation == QtWidgets.QMessageBox.Ok:
+            item = self.list_widget.currentItem()
+            type_str = self.label.text()
+            try:
+                if "Notes" in type_str:
+                    api_call = ctmfiles.delete_file_note
+                    response = api_call(
+                        binary_id=self.binary_id,
+                        note_id=item.proc_node.node_id,
+                        force=True,
+                        no_links=True,
+                        async_req=True,
+                    )
+                elif "Tags" in type_str:
+                    api_call = ctmfiles.remove_file_tag
+                    response = api_call(
+                        binary_id=self.binary_id,
+                        tag_id=item.proc_node.node_id,
+                        force=True,
+                        no_links=True,
+                        async_req=True,
+                    )
+                response = response.get()
+            except ApiException as exp:
+                logger.debug(traceback.format_exc())
+                print(f"Could not delete file {type_str}.")
+                for error in json.loads(exp.body).get("errors"):
+                    logger.info(error["reason"])
+                    print(f"{error['reason']}: {error['message']}")
                 return None
+            except Exception as exp:
+                logger.debug(traceback.format_exc())
+                print("Unknown Error occurred")
+                print(f"<{exp.__class__}>: {str(exp)}")
+                # exit if this call fails so user can retry
+                # (this func always returns None anyway)
+                return None
+            else:
+                if 200 <= response[1] <= 299:
+                    print(f"File {type_str} removed successfully.")
+                else:
+                    print(f"Error deleting {type_str}.")
+                    print(f"Status Code: {response[1]}")
+                    # print(f"Error message: {response.errors}")
+                    return None
 
-        index = self.list_widget.row(item)
-        self.list_widget.takeItem(index)
+            index = self.list_widget.row(item)
+            self.list_widget.takeItem(index)
+        else:
+            return None
 
 
 class FileSimpleTextNode(Qt.QStandardItem):
@@ -319,6 +326,7 @@ class ProcListItem(ProcSimpleTextNode):
 
     def __init__(self, name, rows):
         super().__init__(name)
+        self.setText(name)
         for item in rows:
             self.appendRow(ProcSimpleTextNode(text=item))
 
@@ -479,7 +487,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             text_box.setReadOnly(True)
             text_box.setText(
                 "Double click on a procedure address from the "
-                + "table below to display note, tag, and "
+                + "table below to display notes, tags, and "
                 + "similarity information."
             )
             layout.addWidget(text_box)
@@ -829,6 +837,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             )
         elif isinstance(item.parent(), ProcNotesNode):
             item_type = "Notes"
+            text = text.split("\n")[0]
             self.show_popup(
                 listing_item=item,
                 text=text,
@@ -896,55 +905,60 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         item = index.model().itemFromIndex(index)
         type_str = index.parent().data()
 
-        try:
-            if type_str == "Notes":
-                api_call = ctmfiles.delete_procedure_genomics_note
-                response = api_call(
-                    binary_id=item.binary_id,
-                    note_id=item.node_id,
-                    rva=item.rva,
-                    force=True,
-                    no_links=True,
-                    async_req=True,
-                )
-            elif type_str == "Tags":
-                api_call = ctmfiles.delete_procedure_genomics_tag_by_id
-                response = api_call(
-                    binary_id=item.binary_id,
-                    rva=item.rva,
-                    tag_id=item.node_id,
-                    force=True,
-                    no_links=True,
-                    async_req=True,
-                )
-            response = response.get()
-        except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print(f"Could not delete {type_str} from selected procedure.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+        confirmation_popup = DeleteConfirmationPopup(self)
+        confirmation = confirmation_popup.exec_()
+        if confirmation == QtWidgets.QMessageBox.Ok:
+            try:
+                if type_str == "Notes":
+                    api_call = ctmfiles.delete_procedure_genomics_note
+                    response = api_call(
+                        binary_id=item.binary_id,
+                        note_id=item.node_id,
+                        rva=item.rva,
+                        force=True,
+                        no_links=True,
+                        async_req=True,
+                    )
+                elif type_str == "Tags":
+                    api_call = ctmfiles.delete_procedure_genomics_tag_by_id
+                    response = api_call(
+                        binary_id=item.binary_id,
+                        rva=item.rva,
+                        tag_id=item.node_id,
+                        force=True,
+                        no_links=True,
+                        async_req=True,
+                    )
+                response = response.get()
+            except ApiException as exp:
+                logger.debug(traceback.format_exc())
+                print(f"Could not delete {type_str} from selected procedure.")
+                for error in json.loads(exp.body).get("errors"):
+                    logger.info(error["reason"])
+                    print(f"{error['reason']}: {error['message']}")
 
-            return None
-        except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
-
-            return None
-        else:
-            if 200 <= response[1] <= 299:
-                item.parent().removeRow(item.row())
-                print(
-                    f"{type_str} removed from selected procedure successfully."
-                )
-            else:
-                print(f"Error deleting {type_str}.")
-                print(f"Status Code: {response[1]}")
-                # print(f"Error message: {response.errors}")
                 return None
+            except Exception as exp:
+                logger.debug(traceback.format_exc())
+                print("Unknown Error occurred")
+                print(f"<{exp.__class__}>: {str(exp)}")
+                # exit if this call fails so user can retry
+                # (this func always returns None anyway)
+
+                return None
+            else:
+                if 200 <= response[1] <= 299:
+                    item.parent().removeRow(item.row())
+                    print(
+                        f"{type_str} removed from selected procedure successfully."
+                    )
+                else:
+                    print(f"Error deleting {type_str}.")
+                    print(f"Status Code: {response[1]}")
+                    # print(f"Error message: {response.errors}")
+                    return None
+        else:
+            return None
 
     def count_tabs(self):
         """Return a count of current tabs."""
@@ -985,7 +999,7 @@ class ProcTableWidget(QtWidgets.QTableWidget):
         """Handle proc table row double clicks."""
         self.widget_parent.center_widget.create_tab(
             "Original procedure",
-            self.sha1,
+            self.widget_parent.sha1,
             item.data(1),
         )
         self.proc_tree_jump_to_hex(item.data(1).start_ea)
@@ -1109,6 +1123,11 @@ class ProcTextPopup(TextPopup):
         if self.fill_text:
             text = self.save_edit(text, self.listing_item)
             if text:
+                text=(
+                    f"{text}\n"
+                    f"    User: Current IDA User\n"
+                    f"    Create time: Current Session"
+                )
                 self.listing_item.setText(text)
                 self.listing_item.text = text
                 self.listing_item.note = text
@@ -1263,6 +1282,11 @@ class FileTextPopup(TextPopup):
             item = self.parent.list_widget.currentItem()
             text = self.save_edit(text, item)
             if text:
+                text=(
+                    f"{text}\n"
+                    f"    User: Current IDA User\n"
+                    f"    Create time: Current Session"
+                )
                 item.setText(text)
                 item.proc_node.note = text
         else:
@@ -1374,7 +1398,7 @@ class FileTextPopup(TextPopup):
                 return None
 
 
-class UploadPopup(QtWidgets.QMessageBox):
+class FileUploadPopup(QtWidgets.QMessageBox):
     """Custom popup with file and disassembly upload buttons."""
 
     def __init__(self, widget_parent):
@@ -1382,6 +1406,7 @@ class UploadPopup(QtWidgets.QMessageBox):
         self.widget_parent = widget_parent
         self.setWindowTitle("Upload")
         self.setText("Select the type of upload to perform.")
+        self.setStandardButtons(QtWidgets.QMessageBox.Cancel)
 
         # File upload button
         file_upload_button = self.addButton(
@@ -1401,7 +1426,7 @@ class UploadPopup(QtWidgets.QMessageBox):
         )
 
 
-class UnpackPopup(QtWidgets.QMessageBox):
+class FileUnpackPopup(QtWidgets.QMessageBox):
     """Custom popup with unpack and skip unpack buttons."""
 
     def __init__(self, widget_parent):
@@ -1409,6 +1434,7 @@ class UnpackPopup(QtWidgets.QMessageBox):
         self.widget_parent = widget_parent
         self.setWindowTitle("Skip unpacking?")
         self.setText("Skip unpacking the uploaded file?")
+        self.setStandardButtons(QtWidgets.QMessageBox.Cancel)
 
         # skip unpack button
         skip_button = self.addButton(
@@ -1455,3 +1481,16 @@ class FileNotFoundPopup(QtWidgets.QWidget):
         upload_button.clicked.connect(self.button_function)
 
         popup.exec_()
+
+
+class DeleteConfirmationPopup(QtWidgets.QMessageBox):
+    """Widget to display when delete is clicked."""
+
+    def __init__(self, widget_parent):
+        super().__init__()
+        self.widget_parent = widget_parent
+        self.setWindowTitle("Delete this item?")
+        self.setText("Are you sure you want to delete this item?")
+        self.setStandardButtons(
+            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
+        )

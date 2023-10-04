@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
 )
 
-from .widgets import UploadPopup, UnpackPopup, FileNotFoundPopup
+from .widgets import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
 
 class ProcsToggleLayout(QHBoxLayout):
     """Layout for procs_toggle QPushbutton widget."""
@@ -81,12 +81,12 @@ class FilesButtonsLayout(QHBoxLayout):
 
         Renders a QMessageBox with all upload buttons
         """
-        upload_popup = UploadPopup(self)
+        upload_popup = FileUploadPopup(self)
         upload_popup.exec_()
 
     def upload_file_button_click(self):
         """Display check for `skip_unpack`"""
-        unpack_popup = UnpackPopup(self)
+        unpack_popup = FileUnpackPopup(self)
         unpack_popup.exec_()
 
     def skip_unpack(self):
