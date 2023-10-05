@@ -1,4 +1,5 @@
 """Custom widgets"""
+import pprint
 from PyQt5 import QtWidgets, Qt, QtGui
 import cythereal_magic
 from cythereal_magic.rest import ApiException
@@ -281,12 +282,12 @@ class ProcRootNode(ProcTableItem):
     Has information related to its start_ea for jumping to the procedure in IDA's view.
     """
 
-    def __init__(self, node_name, full_name, start_ea, text=None):
+    def __init__(self, node_name, full_name, start_ea, tree_type=None):
         super().__init__()
         self.node_name = node_name
         self.start_ea = start_ea
         self.full_name = full_name
-        self.text = text
+        self.tree_type = tree_type
         if self.full_name is not None:
             self.setText(full_name)
         else:
@@ -479,24 +480,36 @@ class CenterProcTab(BaseCenterTab):
     def __init__(self, center_widget, item):
         super().__init__(center_widget)
 
-        self.center_widget.populate(
+        self.center_widget.populate_tab_tree(
             item, self.tab_tree, self.center_widget.sha1
         )
         self.center_widget.tabs_widget.addTab(self, item.start_ea)
 
 
-class CenterDerivedTab(BaseCenterTab):
+class CenterDerivedFileTab(BaseCenterTab):
     """
     Tab to be used within the CenterDisplayWidget.tab_bar.
     Created from a procedure NOT located within the file loaded into IDA.
     """
 
-    def __init__(self, center_widget, text):
+    def __init__(self, center_widget, item):
         super().__init__(center_widget)
 
-        # must find solution for sha1 here instead of text (arg[2])
-        self.center_widget.populate(text, self.tab_tree, text, text=text)
-        self.center_widget.tabs_widget.addTab(self, text)
+        self.center_widget.populate_tab_tree(item, self.tab_tree, "Derived file")
+        self.center_widget.tabs_widget.addTab(self, item.sha1)
+
+
+class CenterDerivedProcTab(BaseCenterTab):
+    """
+    Tab to be used within the CenterDisplayWidget.tab_bar.
+    Created from a procedure NOT located within the file loaded into IDA.
+    """
+
+    def __init__(self, center_widget, item):
+        super().__init__(center_widget)
+
+        self.center_widget.populate_tab_tree(item, self.tab_tree, "Derived procedure")
+        self.center_widget.tabs_widget.addTab(self, item.rva)
 
 
 class CenterDisplayWidget(QtWidgets.QWidget):
@@ -549,7 +562,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
     def update_tab_color(self, index):
         """Update the value stored in self.tab_color to the current tab's."""
-        self.tab_color = self.tab_bar.tabTextColor(index).value()
+        self.tab_color = self.tab_bar.tabTextColor(index)
 
     def close_tab(self, index):
         """Close one of self.tabs_widget' tabs"""
@@ -558,21 +571,20 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         if self.count_tabs() == 0:
             self.create_tab("Default tab")
 
-    def create_tab(self, tab_type, sha1=None, item=None, text=None):
+    def create_tab(self, tab_type, item=None):
         """Add a tab to self.tabs_widget"""
         if tab_type == "Original procedure":
             tab = CenterProcTab(self, item)
             self.remove_default_tab()
             if self.tab_bar.count() == 1:
-                self.tab_color = 128
+                self.tab_color.setGreen(128)
             self.add_tab_visuals(tab_type)
         elif tab_type == "Derived procedure":
-            # change to derived procedure tab
-            tab = QtWidgets.QWidget()
+            tab = CenterDerivedProcTab(self, item)
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Derived file":
-            tab = CenterDerivedTab(self, text)
+            tab = CenterDerivedFileTab(self, item)
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Default tab":
@@ -596,19 +608,27 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         if self.tabs_widget.tabText(0) == "Get started":
             self.close_tab(0)
 
-    def populate(self, item, tab_tree, sha1, text=None):
+    def populate_tab_tree(self, item, tab_tree, tree_type=None):
         """Create a ProcRootNode to display in the center widget"""
 
-        if text:
-            rootnode = ProcRootNode(text, None, None, text)
+        if tree_type == "Derived file":
+            rootnode = ProcRootNode(item.sha1, None, None, tree_type)
 
             rootnode.appendRows(
                 [
-                    ProcNotesNode(None, text, None),
-                    ProcTagsNode(None, text, None),
+                    ProcNotesNode(None, item.sha1, item.rva),
+                    ProcTagsNode(None, item.sha1, item.rva),
                 ]
             )
+        elif tree_type == "Derived procedure":
+            rootnode = ProcRootNode(item.rva, None, None, tree_type)
 
+            rootnode.appendRows(
+                [
+                    ProcNotesNode(None, item.sha1, item.rva),
+                    ProcTagsNode(None, item.sha1, item.rva),
+                ]
+            )
         else:
             # create root node
             rootnode = ProcRootNode(
@@ -623,10 +643,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
             rootnode.appendRows(
                 [
-                    ProcNotesNode(item.hard_hash, sha1, item.start_ea),
-                    ProcTagsNode(item.hard_hash, sha1, item.start_ea),
+                    ProcNotesNode(item.hard_hash, self.sha1, item.start_ea),
+                    ProcTagsNode(item.hard_hash, self.sha1, item.start_ea),
                     ProcFilesNode(item.hard_hash, item.start_ea),
-                    ProcSimilarityNode(item.hard_hash, sha1, item.start_ea),
+                    ProcSimilarityNode(item.hard_hash, self.sha1, item.start_ea),
                 ]
             )
         tab_tree.model().appendRow(rootnode)
@@ -742,6 +762,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
                             text=f"\t{proc.start_ea}",
+                            sha1=current_response_sha1,
+                            rva=proc.start_ea,
                         )
                     )
                 # Else (if) this is a new proc.binary_id:
@@ -756,6 +778,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                             ProcSimpleTextNode(
                                 hard_hash=similarityRootNode.hard_hash,
                                 text=f"Current File - {proc.binary_id}",
+                                sha1=current_response_sha1,
+                                rva=None,
                             )
                         )
                     else:
@@ -763,6 +787,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                             ProcSimpleTextNode(
                                 hard_hash=similarityRootNode.hard_hash,
                                 text=f"{proc.binary_id}",
+                                sha1=current_response_sha1,
+                                rva=None
                             )
                         )
                     # add first startEA
@@ -770,6 +796,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
                             text=f"       startEAs:{proc.start_ea}",
+                            sha1=current_response_sha1,
+                            rva=proc.start_ea,
                         )
                     )
 
@@ -788,22 +816,22 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             api_call = ctmprocs.list_procedure_files
             type_str = "Files"
             read_mask = "sha1,sha256,filenames"
-        elif node_type is ProcNotesNode and self.tab_color == 255:
+        elif node_type is ProcNotesNode and self.tab_color.red() == 255:
             api_call = ctmfiles.list_file_notes
             type_str = "File notes"
-        elif node_type is ProcNotesNode and self.tab_color == "blue":
+        elif node_type is ProcNotesNode and self.tab_color.blue() == 255:
             api_call = ctmfiles.list_procedure_genomics_notes
             type_str = "Derived proc notes"
-        elif node_type is ProcNotesNode and self.tab_color == 128:
+        elif node_type is ProcNotesNode and self.tab_color.green() == 128:
             api_call = ctmfiles.list_procedure_genomics_notes
             type_str = "Notes"
-        elif node_type is ProcTagsNode and self.tab_color == 255:
+        elif node_type is ProcTagsNode and self.tab_color.red() == 255:
             api_call = ctmfiles.list_file_tags
             type_str = "File tags"
-        elif node_type is ProcTagsNode and self.tab_color == "blue":
+        elif node_type is ProcTagsNode and self.tab_color.blue() == 255:
             api_call = ctmfiles.list_procedure_genomics_tags
             type_str = "Derived proc tags"
-        elif node_type is ProcTagsNode and self.tab_color == 128:
+        elif node_type is ProcTagsNode and self.tab_color.green() == 128:
             api_call = ctmfiles.list_procedure_genomics_tags
             type_str = "Tags"
         elif node_type is ProcSimilarityNode:
@@ -820,6 +848,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     async_req=True,
                 )
             elif type_str == "File notes":
+                print("Making file notes api call.")
                 response = api_call(
                     binary_id=node.binary_id,
                     no_links=True,
@@ -831,8 +860,21 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     no_links=True,
                     async_req=True,
                 )
+            elif type_str == "Derived proc notes":
+                response = api_call(
+                    binary_id=node.binary_id,
+                    rva=node.rva,
+                    no_links=True,
+                    async_req=True,
+                )
+            elif type_str == "Derived proc tags":
+                response = api_call(
+                    binary_id=node.binary_id,
+                    rva=node.rva,
+                    no_links=True,
+                    async_req=True,
+                )
             else:
-                print("CALL FOR", type_str)
                 response = api_call(
                     binary_id=node.binary_id,
                     rva=node.rva,
@@ -896,7 +938,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         text = item.text
 
         if isinstance(item, ProcRootNode):
-            item_type = "Proc Name"
+            if self.tab_color.red() == 255:
+                item_type = "Derived file name"
+            else:
+                item_type = "Proc Name"
             if item.full_name is not None:
                 # for a procedure with a full_name (node_name, padding, and
                 # procedure name), get the procedure_name by skipping the
@@ -913,7 +958,11 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item.parent(), ProcNotesNode):
-            item_type = "Notes"
+            print(self.tab_color.red())
+            if self.tab_color.red() == 255:
+                item_type = "Derived file note"
+            else:
+                item_type = "Notes"
             text = text.split("\n")[0]
             self.show_popup(
                 listing_item=item,
@@ -933,7 +982,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         item = index.model().itemFromIndex(index)
 
         if isinstance(item, ProcNotesNode):
-            item_type = "Notes"
+            if self.tab_color.red() == 255:
+                item_type = "Derived file note"
+            else:
+                item_type = "Notes"
             self.show_popup(
                 listing_item=item,
                 text=None,
@@ -943,7 +995,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item, ProcTagsNode):
-            item_type = "Tags"
+            if self.tab_color.red() == 255:
+                item_type = "Derived file tag"
+            else:
+                item_type = "Tags"
             self.show_popup(
                 listing_item=item,
                 text=None,
@@ -953,7 +1008,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item.parent(), ProcNotesNode):
-            item_type = "Notes"
+            if self.tab_color.red() == 255:
+                item_type = "Derived file note"
+            else:
+                item_type = "Notes"
             self.show_popup(
                 listing_item=item.parent(),
                 text=None,
@@ -963,7 +1021,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item.parent(), ProcTagsNode):
-            item_type = "Tags"
+            if self.tab_color.red() == 255:
+                item_type = "Derived file tag"
+            else:
+                item_type = "Tags"
             self.show_popup(
                 listing_item=item.parent(),
                 text=None,
@@ -987,15 +1048,25 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         if confirmation == QtWidgets.QMessageBox.Ok:
             try:
                 if type_str == "Notes":
-                    api_call = ctmfiles.delete_procedure_genomics_note
-                    response = api_call(
-                        binary_id=item.binary_id,
-                        note_id=item.node_id,
-                        rva=item.rva,
-                        force=True,
-                        no_links=True,
-                        async_req=True,
-                    )
+                    if self.tab_color.red() == 255:
+                        api_call = ctmfiles.delete_file_note
+                        response = api_call(
+                            binary_id=item.binary_id,
+                            note_id=item.node_id,
+                            force=True,
+                            no_links=True,
+                            async_req=True,
+                        )
+                    else:
+                        api_call = ctmfiles.delete_procedure_genomics_note
+                        response = api_call(
+                            binary_id=item.binary_id,
+                            note_id=item.node_id,
+                            rva=item.rva,
+                            force=True,
+                            no_links=True,
+                            async_req=True,
+                        )
                 elif type_str == "Tags":
                     api_call = ctmfiles.delete_procedure_genomics_tag_by_id
                     response = api_call(
@@ -1110,25 +1181,15 @@ class TabTreeWidget(QtWidgets.QTreeView):
         This is set to only react to double clicks on files and start_ea.
         """
         if index.parent().data() == "Similarity Locations":
-            index_text = index.data()
-            # Remove since the tree items will display with a tab char
-            # and/or spaces.
-            normalized_text = index_text.replace("\t", "")
-            normalized_text = index_text.replace(" ", "")
+            item = self.model().itemFromIndex(index)
 
             if "x" in index.data():
-                sub_string = "startEAs:"
-                if normalized_text.startswith(sub_string):
-                    normalized_text = normalized_text.split(sub_string)[1]
                 self.center_widget.create_tab(
-                    "Derived procedure", text=normalized_text
+                    "Derived procedure", item=item,
                 )
             else:
-                sub_string = "CurrentFile-"
-                if normalized_text.startswith(sub_string):
-                    normalized_text = normalized_text.split(sub_string)[1]
                 self.center_widget.create_tab(
-                    "Derived file", text=normalized_text
+                    "Derived file", item=item
                 )
 
 
@@ -1250,6 +1311,15 @@ class ProcTextPopup(TextPopup):
     def save_create(self, text):
         """API call logic for `create` submissions"""
         try:
+            if self.item_type == "Derived file note":
+                api_call = ctmfiles.create_file_note
+                response = api_call(
+                    binary_id=self.binary_id,
+                    note=text,
+                    public=False,
+                    no_links=True,
+                    async_req=True,
+                )
             if self.item_type == "Notes":
                 api_call = ctmfiles.create_procedure_genomics_note
                 response = api_call(
@@ -1273,7 +1343,7 @@ class ProcTextPopup(TextPopup):
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(
-                f"Could not update {self.item_type} from selected procedure."
+                f"Could not update {self.item_type}."
             )
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
@@ -1289,9 +1359,9 @@ class ProcTextPopup(TextPopup):
         else:
             if 200 <= response.status <= 299:
                 print(
-                    f"{self.item_type} from selected procedure created successfully."
+                    f"{self.item_type} created successfully."
                 )
-                if self.item_type == "Notes":
+                if self.item_type == "Notes" or self.item_type == "Derived file note":
                     self.listing_item.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=self.listing_item.hard_hash,
@@ -1305,7 +1375,7 @@ class ProcTextPopup(TextPopup):
                             rva=self.rva,
                         )
                     )
-                elif self.item_type == "Tags":
+                elif self.item_type == "Tags" or self.item_type == "Derived file tag":
                     self.listing_item.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=self.listing_item.hard_hash,
@@ -1325,7 +1395,19 @@ class ProcTextPopup(TextPopup):
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
         try:
-            if self.item_type == "Notes":
+            if self.item_type == "Derived file note":
+                api_call = ctmfiles.update_file_note
+                response = api_call(
+                    binary_id=self.binary_id,
+                    note_id=item.node_id,
+                    note=text,
+                    public=False,
+                    no_links=True,
+                    update_mask="note",
+                    async_req=True,
+                )
+                response = response.get()
+            elif self.item_type == "Notes":
                 api_call = ctmfiles.update_procedure_genomics_note
                 response = api_call(
                     binary_id=self.binary_id,
@@ -1346,7 +1428,7 @@ class ProcTextPopup(TextPopup):
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(
-                f"Could not update {self.item_type} from selected procedure."
+                f"Could not update {self.item_type}."
             )
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
@@ -1366,9 +1448,19 @@ class ProcTextPopup(TextPopup):
                     "Endpoints for procedure name functionality not implemented."
                 )
                 return None
+            if self.item_type == "Derived file note":
+                if 200 <= response[1] <= 299:
+                    print(
+                        f"{self.item_type} updated successfully."
+                    )
+                    return text
+                else:
+                    print(f"Error updating {self.item_type}.")
+                    print(f"Status Code: {response[1]}")
+                    return None
             if 200 <= response.status <= 299:
                 print(
-                    f"{self.item_type} from selected procedure updated successfully."
+                    f"{self.item_type} updated successfully."
                 )
                 return text
             else:
