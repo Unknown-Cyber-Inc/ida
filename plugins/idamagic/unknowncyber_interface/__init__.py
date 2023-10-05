@@ -96,7 +96,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
             list_items=[],
-            list_type="NOTES",
+            list_type="Matches",
             binary_id=self.sha1,
             widget_parent=self,
         )

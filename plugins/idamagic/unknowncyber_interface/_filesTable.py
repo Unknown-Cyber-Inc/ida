@@ -305,7 +305,7 @@ class _MAGICFormClassMethods:
         """Handle updating the list widget"""
         widget.refresh_list_data(list_items, list_type)
 
-        if "MATCHES" not in widget.label.text():
+        if "Matches" not in widget.label.text():
             widget.create_button.setEnabled(True)
         else:
             widget.create_button.setEnabled(False)

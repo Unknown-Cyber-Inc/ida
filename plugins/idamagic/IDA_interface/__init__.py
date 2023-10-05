@@ -86,7 +86,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
 
     def init_scroll_view(self):
         """Initialize individual items which will be added to the form."""
-        self.center_widget = CenterDisplayWidget(self.sha256)
+        self.center_widget = CenterDisplayWidget(self)
         self.procs_toggle_layout = ProcsToggleLayout(self)
         self.pushbutton = QPushButton("Get Procedures")
         self.pushbutton.setCheckable(False)

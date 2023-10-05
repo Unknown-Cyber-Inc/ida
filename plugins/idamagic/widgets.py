@@ -281,11 +281,12 @@ class ProcRootNode(ProcTableItem):
     Has information related to its start_ea for jumping to the procedure in IDA's view.
     """
 
-    def __init__(self, node_name, full_name, start_ea: int):
+    def __init__(self, node_name, full_name, start_ea, text=None):
         super().__init__()
         self.node_name = node_name
         self.start_ea = start_ea
         self.full_name = full_name
+        self.text = text
         if self.full_name is not None:
             self.setText(full_name)
         else:
@@ -402,13 +403,111 @@ class ProcSimilarityNode(ProcTableItem):
         self.appendRow(ProcSimpleTextNode())
 
 
+class BaseCenterTab(QtWidgets.QWidget):
+    """Base for all tabs to be used within the CenterDisplayWidget.tab_bar."""
+
+    def __init__(self, center_widget):
+        super().__init__()
+        self.center_widget = center_widget
+        layout = QtWidgets.QVBoxLayout(self)
+
+        self.tab_tree = TabTreeWidget(self.center_widget)
+        self.tab_tree.expanded.connect(self.onTreeExpand)
+        self.tab_tree.clicked.connect(self.item_selected)
+
+        layout.addWidget(self.tab_tree)
+        self.setLayout(layout)
+
+    def item_selected(self, index):
+        if index.parent().data() == None:
+            # selecting a procedure of ProcRootNode
+            self.center_widget.create_button.setEnabled(False)
+            self.center_widget.edit_button.setEnabled(True)
+            self.center_widget.delete_button.setEnabled(False)
+        elif index.data() == "Tags":
+            # selecting the ProcTagsNode
+            self.center_widget.create_button.setEnabled(True)
+            self.center_widget.edit_button.setEnabled(False)
+            self.center_widget.delete_button.setEnabled(False)
+        elif index.parent().data() == "Tags":
+            # selecting a tag node of ProcSimpleTextNode
+            self.center_widget.create_button.setEnabled(True)
+            self.center_widget.edit_button.setEnabled(False)
+            self.center_widget.delete_button.setEnabled(True)
+        elif index.data() == "Notes":
+            # selecting the ProcNotesNode
+            self.center_widget.create_button.setEnabled(True)
+            self.center_widget.edit_button.setEnabled(False)
+            self.center_widget.delete_button.setEnabled(False)
+        elif index.parent().data() == "Notes":
+            # selecting a note node of ProcSimpleTextNode
+            self.center_widget.create_button.setEnabled(True)
+            self.center_widget.edit_button.setEnabled(True)
+            self.center_widget.delete_button.setEnabled(True)
+        else:
+            # for all other nodes, disable all CRUD buttons
+            self.center_widget.create_button.setEnabled(False)
+            self.center_widget.edit_button.setEnabled(False)
+            self.center_widget.delete_button.setEnabled(False)
+
+    def onTreeExpand(self, index):
+        self.center_widget.create_button.setEnabled(False)
+        self.center_widget.edit_button.setEnabled(False)
+        self.center_widget.delete_button.setEnabled(False)
+        tab_index = self.center_widget.tabs_widget.currentIndex()
+        tab = self.center_widget.tabs_widget.widget(tab_index)
+        tab_tree = tab.findChildren(TabTreeWidget)[0]
+        item = tab_tree.model().itemFromIndex(index)
+
+        item_type = type(item)
+        if item_type is ProcFilesNode:
+            self.center_widget.populate_proc_files(item)
+        elif item_type is ProcNotesNode:
+            self.center_widget.populate_proc_notes(item)
+        elif item_type is ProcTagsNode:
+            self.center_widget.populate_proc_tags(item)
+        elif item_type is ProcSimilarityNode:
+            self.center_widget.populate_proc_similarities(item)
+
+
+class CenterProcTab(BaseCenterTab):
+    """
+    Tab to be used within the CenterDisplayWidget.tab_bar.
+    Created from a procedure located within the file loaded into IDA.
+    """
+
+    def __init__(self, center_widget, item):
+        super().__init__(center_widget)
+
+        self.center_widget.populate(
+            item, self.tab_tree, self.center_widget.sha1
+        )
+        self.center_widget.tabs_widget.addTab(self, item.start_ea)
+
+
+class CenterDerivedTab(BaseCenterTab):
+    """
+    Tab to be used within the CenterDisplayWidget.tab_bar.
+    Created from a procedure NOT located within the file loaded into IDA.
+    """
+
+    def __init__(self, center_widget, text):
+        super().__init__(center_widget)
+
+        # must find solution for sha1 here instead of text (arg[2])
+        self.center_widget.populate(text, self.tab_tree, text, text=text)
+        self.center_widget.tabs_widget.addTab(self, text)
+
+
 class CenterDisplayWidget(QtWidgets.QWidget):
     """Custom display widget for selected items"""
 
-    def __init__(self, sha256):
+    def __init__(self, widget_parent):
         super().__init__()
         self.tabs_widget: QtWidgets.QTabWidget
-        self.sha256 = sha256
+        self.widget_parent = widget_parent
+        self.sha1 = self.widget_parent.sha1
+        self.sha256 = self.widget_parent.sha256
         self.init_ui()
 
     def init_ui(self):
@@ -417,6 +516,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.tabs_widget.setTabsClosable(True)
         self.tabs_widget.setObjectName("tabs_widget")
         self.tab_bar = self.tabs_widget.tabBar()
+        self.tab_bar.currentChanged.connect(self.update_tab_color)
+        self.tab_color = None
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.tabs_widget)
@@ -431,7 +532,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.delete_button = QtWidgets.QPushButton("Delete")
         self.delete_button.setMinimumSize(30, 30)
 
-        # link button to clicked functions and set default 'enabled'
+        # link button to clicked functions and set default 'enabled' to False
         self.create_button.clicked.connect(self.on_create_click)
         self.create_button.setEnabled(False)
         self.edit_button.setEnabled(False)
@@ -446,6 +547,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.button_row.addWidget(self.delete_button)
         layout.addLayout(self.button_row)
 
+    def update_tab_color(self, index):
+        """Update the value stored in self.tab_color to the current tab's."""
+        self.tab_color = self.tab_bar.tabTextColor(index).value()
+
     def close_tab(self, index):
         """Close one of self.tabs_widget' tabs"""
         self.tabs_widget.removeTab(index)
@@ -453,30 +558,21 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         if self.count_tabs() == 0:
             self.create_tab("Default tab")
 
-    def create_tab(self, tab_type, sha1=None, item=None):
+    def create_tab(self, tab_type, sha1=None, item=None, text=None):
         """Add a tab to self.tabs_widget"""
         if tab_type == "Original procedure":
-            tab = QtWidgets.QWidget()
-            layout = QtWidgets.QVBoxLayout(tab)
-            proc_tree = ProcTreeWidget()
-
-            proc_tree.expanded.connect(self.onTreeExpand)
-            proc_tree.clicked.connect(self.item_selected)
-
-            self.populate(item, proc_tree, sha1)
-            layout.addWidget(proc_tree)
-            tab.setLayout(layout)
-
-            self.tabs_widget.addTab(tab, item.start_ea)
+            tab = CenterProcTab(self, item)
             self.remove_default_tab()
+            if self.tab_bar.count() == 1:
+                self.tab_color = 128
             self.add_tab_visuals(tab_type)
-
         elif tab_type == "Derived procedure":
-            # create derived procedure tab
+            # change to derived procedure tab
+            tab = QtWidgets.QWidget()
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Derived file":
-            # create derived file tab
+            tab = CenterDerivedTab(self, text)
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Default tab":
@@ -493,93 +589,47 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             layout.addWidget(text_box)
             tab.setLayout(layout)
             self.tabs_widget.addTab(tab, "Get started")
+        self.tab_bar.setCurrentIndex(self.tab_bar.count()-1)
 
     def remove_default_tab(self):
         """Removes the default tab if present"""
         if self.tabs_widget.tabText(0) == "Get started":
             self.close_tab(0)
 
-    def populate(self, proc, proc_tree, sha1):
+    def populate(self, item, tab_tree, sha1, text=None):
         """Create a ProcRootNode to display in the center widget"""
 
-        # create root node
-        procrootnode = ProcRootNode(
-            proc.start_ea, create_proc_name(proc), proc.start_ea
-        )
-        # populate with sub root nodes
-        if proc.strings:
-            procrootnode.appendRow(ProcListItem("Strings", proc.strings))
+        if text:
+            rootnode = ProcRootNode(text, None, None, text)
 
-        if proc.api_calls:
-            procrootnode.appendRow(ProcListItem("API Calls", proc.api_calls))
+            rootnode.appendRows(
+                [
+                    ProcNotesNode(None, text, None),
+                    ProcTagsNode(None, text, None),
+                ]
+            )
 
-        procrootnode.appendRows(
-            [
-                ProcNotesNode(proc.hard_hash, sha1, proc.start_ea),
-                ProcTagsNode(proc.hard_hash, sha1, proc.start_ea),
-                ProcFilesNode(proc.hard_hash, proc.start_ea),
-                ProcSimilarityNode(proc.hard_hash, sha1, proc.start_ea),
-            ]
-        )
-        proc_tree.model().appendRow(procrootnode)
-
-    def item_selected(self, index):
-        if index.parent().data() == None:
-            # selecting a procedure of ProcRootNode
-            self.create_button.setEnabled(False)
-            self.edit_button.setEnabled(True)
-            self.delete_button.setEnabled(False)
-        elif index.data() == "Tags":
-            # selecting the ProcTagsNode
-            self.create_button.setEnabled(True)
-            self.edit_button.setEnabled(False)
-            self.delete_button.setEnabled(False)
-        elif index.parent().data() == "Tags":
-            # selecting a tag node of ProcSimpleTextNode
-            self.create_button.setEnabled(True)
-            self.edit_button.setEnabled(False)
-            self.delete_button.setEnabled(True)
-        elif index.data() == "Notes":
-            # selecting the ProcNotesNode
-            self.create_button.setEnabled(True)
-            self.edit_button.setEnabled(False)
-            self.delete_button.setEnabled(False)
-        elif index.parent().data() == "Notes":
-            # selecting a note node of ProcSimpleTextNode
-            self.create_button.setEnabled(True)
-            self.edit_button.setEnabled(True)
-            self.delete_button.setEnabled(True)
         else:
-            # for all other nodes, disable all CRUD buttons
-            self.create_button.setEnabled(False)
-            self.edit_button.setEnabled(False)
-            self.delete_button.setEnabled(False)
+            # create root node
+            rootnode = ProcRootNode(
+                item.start_ea, create_proc_name(item), item.start_ea
+            )
+            # populate with sub root nodes
+            if item.strings:
+                rootnode.appendRow(ProcListItem("Strings", item.strings))
 
-    def onTreeExpand(self, index):
-        """What to do when a tree item is expanded.
+            if item.api_calls:
+                rootnode.appendRow(ProcListItem("API Calls", item.api_calls))
 
-        @param index: 'QModelIndex' is a pyqt object which represents where the item is in the tree.
-        This function is connected to the tree's 'expand' signal.
-        Check what type of object was expand and call the function
-        related to handling the population of that type.
-        """
-        self.create_button.setEnabled(False)
-        self.edit_button.setEnabled(False)
-        self.delete_button.setEnabled(False)
-        tab_index = self.tabs_widget.currentIndex()
-        tab = self.tabs_widget.widget(tab_index)
-        proc_tree = tab.findChildren(ProcTreeWidget)[0]
-        item = proc_tree.model().itemFromIndex(index)
-        itemType = type(item)
-
-        if itemType is ProcFilesNode:
-            self.populate_proc_files(item)
-        elif itemType is ProcNotesNode:
-            self.populate_proc_notes(item)
-        elif itemType is ProcTagsNode:
-            self.populate_proc_tags(item)
-        elif itemType is ProcSimilarityNode:
-            self.populate_proc_similarities(item)
+            rootnode.appendRows(
+                [
+                    ProcNotesNode(item.hard_hash, sha1, item.start_ea),
+                    ProcTagsNode(item.hard_hash, sha1, item.start_ea),
+                    ProcFilesNode(item.hard_hash, item.start_ea),
+                    ProcSimilarityNode(item.hard_hash, sha1, item.start_ea),
+                ]
+            )
+        tab_tree.model().appendRow(rootnode)
 
     def populate_proc_files(self, filesRootNode: ProcFilesNode):
         """populates a selected procedure's 'files' node with recieved files
@@ -682,11 +732,11 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         if not similarityRootNode.isPopulated:
             returned_vals = self.make_list_api_call(similarityRootNode)
 
-            file_sha1 = hash_file()
-
-            current_sha1 = None
+            current_response_sha1 = None
             for proc in returned_vals:
-                if current_sha1 == proc.binary_id:
+                # If we are at a proc that shares the same binary_id as the
+                # previous proc:
+                if current_response_sha1 == proc.binary_id:
                     # add additional "startEA"
                     similarityRootNode.appendRow(
                         ProcSimpleTextNode(
@@ -694,10 +744,12 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                             text=f"\t{proc.start_ea}",
                         )
                     )
+                # Else (if) this is a new proc.binary_id:
                 else:
-                    current_sha1 = proc.binary_id
+                    current_response_sha1 = proc.binary_id
+                    # If this is the file open in IDA:
                     if (
-                        file_sha1 == proc.binary_id
+                        self.sha1 == proc.binary_id
                         and similarityRootNode.rva == proc.start_ea
                     ):
                         similarityRootNode.appendRow(
@@ -736,10 +788,22 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             api_call = ctmprocs.list_procedure_files
             type_str = "Files"
             read_mask = "sha1,sha256,filenames"
-        elif node_type is ProcNotesNode:
+        elif node_type is ProcNotesNode and self.tab_color == 255:
+            api_call = ctmfiles.list_file_notes
+            type_str = "File notes"
+        elif node_type is ProcNotesNode and self.tab_color == "blue":
+            api_call = ctmfiles.list_procedure_genomics_notes
+            type_str = "Derived proc notes"
+        elif node_type is ProcNotesNode and self.tab_color == 128:
             api_call = ctmfiles.list_procedure_genomics_notes
             type_str = "Notes"
-        elif node_type is ProcTagsNode:
+        elif node_type is ProcTagsNode and self.tab_color == 255:
+            api_call = ctmfiles.list_file_tags
+            type_str = "File tags"
+        elif node_type is ProcTagsNode and self.tab_color == "blue":
+            api_call = ctmfiles.list_procedure_genomics_tags
+            type_str = "Derived proc tags"
+        elif node_type is ProcTagsNode and self.tab_color == 128:
             api_call = ctmfiles.list_procedure_genomics_tags
             type_str = "Tags"
         elif node_type is ProcSimilarityNode:
@@ -755,7 +819,20 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     no_links=True,
                     async_req=True,
                 )
+            elif type_str == "File notes":
+                response = api_call(
+                    binary_id=node.binary_id,
+                    no_links=True,
+                    async_req=True,
+                )
+            elif type_str == "File tags":
+                response = api_call(
+                    binary_id=node.binary_id,
+                    no_links=True,
+                    async_req=True,
+                )
             else:
+                print("CALL FOR", type_str)
                 response = api_call(
                     binary_id=node.binary_id,
                     rva=node.rva,
@@ -766,7 +843,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(
-                f"No {type_str.lower()} could be gathered from selected procedure."
+                f"No {type_str.lower()} could be gathered."
             )
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
@@ -781,7 +858,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         else:
             if 200 <= response.status <= 299:
                 print(
-                    f"{type_str} gathered from selected procedure successfully."
+                    f"{type_str} gathered successfully."
                 )
             else:
                 print(f"Error gathering {type_str}.")
@@ -813,7 +890,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         """Handle edit pushbutton click"""
         tab_index = self.tabs_widget.currentIndex()
         tab = self.tabs_widget.widget(tab_index)
-        proc_tree = tab.findChildren(ProcTreeWidget)[0]
+        proc_tree = tab.findChildren(TabTreeWidget)[0]
         index = proc_tree.selectedIndexes()[0]
         item = index.model().itemFromIndex(index)
         text = item.text
@@ -851,7 +928,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         """Handle edit pushbutton click"""
         tab_index = self.tabs_widget.currentIndex()
         tab = self.tabs_widget.widget(tab_index)
-        proc_tree = tab.findChildren(ProcTreeWidget)[0]
+        proc_tree = tab.findChildren(TabTreeWidget)[0]
         index = proc_tree.selectedIndexes()[0]
         item = index.model().itemFromIndex(index)
 
@@ -900,7 +977,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         """Handle delete pushbutton click"""
         tab_index = self.tabs_widget.currentIndex()
         tab = self.tabs_widget.widget(tab_index)
-        proc_tree = tab.findChildren(ProcTreeWidget)[0]
+        proc_tree = tab.findChildren(TabTreeWidget)[0]
         index = proc_tree.selectedIndexes()[0]
         item = index.model().itemFromIndex(index)
         type_str = index.parent().data()
@@ -999,8 +1076,7 @@ class ProcTableWidget(QtWidgets.QTableWidget):
         """Handle proc table row double clicks."""
         self.widget_parent.center_widget.create_tab(
             "Original procedure",
-            self.widget_parent.sha1,
-            item.data(1),
+            item=item.data(1),
         )
         self.proc_tree_jump_to_hex(item.data(1).start_ea)
 
@@ -1009,17 +1085,51 @@ class ProcTableWidget(QtWidgets.QTableWidget):
         start_ea = ida_kernwin.str2ea(start_ea)
         found_ea = ida_kernwin.jumpto(start_ea)
         if not found_ea:
-            start_ea = start_ea + self.image_base
+            start_ea = start_ea + self.widget_parent.image_base
             ida_kernwin.jumpto(start_ea)
 
 
-class ProcTreeWidget(QtWidgets.QTreeView):
-    """Custom widget to display procedure tree"""
+class TabTreeWidget(QtWidgets.QTreeView):
+    """
+    Custom widget to display procedure tree
 
-    def __init__(self):
+    widget_parent can be: CenterDisplayWidget
+    """
+
+    def __init__(self, center_widget):
         super().__init__()
         self.setHeaderHidden(True)
         self.setModel(Qt.QStandardItemModel())
+        self.center_widget = center_widget
+        self.doubleClicked.connect(self.tree_item_double_clicked)
+
+    def tree_item_double_clicked(self, index):
+        """
+        Handles when an item in the tree is double clicked.
+
+        This is set to only react to double clicks on files and start_ea.
+        """
+        if index.parent().data() == "Similarity Locations":
+            index_text = index.data()
+            # Remove since the tree items will display with a tab char
+            # and/or spaces.
+            normalized_text = index_text.replace("\t", "")
+            normalized_text = index_text.replace(" ", "")
+
+            if "x" in index.data():
+                sub_string = "startEAs:"
+                if normalized_text.startswith(sub_string):
+                    normalized_text = normalized_text.split(sub_string)[1]
+                self.center_widget.create_tab(
+                    "Derived procedure", text=normalized_text
+                )
+            else:
+                sub_string = "CurrentFile-"
+                if normalized_text.startswith(sub_string):
+                    normalized_text = normalized_text.split(sub_string)[1]
+                self.center_widget.create_tab(
+                    "Derived file", text=normalized_text
+                )
 
 
 class CustomListItem(QtWidgets.QListWidgetItem):
@@ -1123,7 +1233,7 @@ class ProcTextPopup(TextPopup):
         if self.fill_text:
             text = self.save_edit(text, self.listing_item)
             if text:
-                text=(
+                text = (
                     f"{text}\n"
                     f"    User: Current IDA User\n"
                     f"    Create time: Current Session"
@@ -1186,7 +1296,11 @@ class ProcTextPopup(TextPopup):
                         ProcSimpleTextNode(
                             hard_hash=self.listing_item.hard_hash,
                             node_id=response.resource.id,
-                            text=response.resource.note,
+                            text=(
+                                f"{text}\n"
+                                f"    User: {response.resource.username}\n"
+                                f"    Create time: {response.resource.create_time}"
+                            ),
                             binary_id=self.binary_id,
                             rva=self.rva,
                         )
@@ -1282,7 +1396,7 @@ class FileTextPopup(TextPopup):
             item = self.parent.list_widget.currentItem()
             text = self.save_edit(text, item)
             if text:
-                text=(
+                text = (
                     f"{text}\n"
                     f"    User: Current IDA User\n"
                     f"    Create time: Current Session"
@@ -1338,7 +1452,11 @@ class FileTextPopup(TextPopup):
                         CustomListItem(
                             ProcSimpleTextNode(
                                 node_id=response.resource.id,
-                                text=response.resource.note,
+                                text=(
+                                    f"{text}\n"
+                                    f"    User: {response.resource.username}\n"
+                                    f"    Create time: {response.resource.create_time}"
+                                ),
                             )
                         )
                     )
