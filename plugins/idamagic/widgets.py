@@ -333,7 +333,7 @@ class ProcListItem(ProcSimpleTextNode):
             self.appendRow(ProcSimpleTextNode(text=item))
 
 
-class ProcNotesNode(ProcTableItem):
+class TreeNotesNode(ProcTableItem):
     """Node representing the root of the "notes" category.
 
     Contains subnodes representing individual notes.
@@ -351,7 +351,7 @@ class ProcNotesNode(ProcTableItem):
         self.appendRow(ProcSimpleTextNode())
 
 
-class ProcTagsNode(ProcTableItem):
+class TreeTagsNode(ProcTableItem):
     """Node representing the root of the "tags" category.
 
     Contains subnodes representing individual tags.
@@ -426,7 +426,7 @@ class BaseCenterTab(QtWidgets.QWidget):
             self.center_widget.edit_button.setEnabled(True)
             self.center_widget.delete_button.setEnabled(False)
         elif index.data() == "Tags":
-            # selecting the ProcTagsNode
+            # selecting the TreeTagsNode
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.edit_button.setEnabled(False)
             self.center_widget.delete_button.setEnabled(False)
@@ -436,7 +436,7 @@ class BaseCenterTab(QtWidgets.QWidget):
             self.center_widget.edit_button.setEnabled(False)
             self.center_widget.delete_button.setEnabled(True)
         elif index.data() == "Notes":
-            # selecting the ProcNotesNode
+            # selecting the TreeNotesNode
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.edit_button.setEnabled(False)
             self.center_widget.delete_button.setEnabled(False)
@@ -463,9 +463,9 @@ class BaseCenterTab(QtWidgets.QWidget):
         item_type = type(item)
         if item_type is ProcFilesNode:
             self.center_widget.populate_proc_files(item)
-        elif item_type is ProcNotesNode:
+        elif item_type is TreeNotesNode:
             self.center_widget.populate_proc_notes(item)
-        elif item_type is ProcTagsNode:
+        elif item_type is TreeTagsNode:
             self.center_widget.populate_proc_tags(item)
         elif item_type is ProcSimilarityNode:
             self.center_widget.populate_proc_similarities(item)
@@ -616,8 +616,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
             rootnode.appendRows(
                 [
-                    ProcNotesNode(None, item.sha1, item.rva),
-                    ProcTagsNode(None, item.sha1, item.rva),
+                    TreeNotesNode(None, item.sha1, item.rva),
+                    TreeTagsNode(None, item.sha1, item.rva),
                 ]
             )
         elif tree_type == "Derived procedure":
@@ -625,8 +625,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
             rootnode.appendRows(
                 [
-                    ProcNotesNode(None, item.sha1, item.rva),
-                    ProcTagsNode(None, item.sha1, item.rva),
+                    TreeNotesNode(None, item.sha1, item.rva),
+                    TreeTagsNode(None, item.sha1, item.rva),
                 ]
             )
         else:
@@ -643,8 +643,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
             rootnode.appendRows(
                 [
-                    ProcNotesNode(item.hard_hash, self.sha1, item.start_ea),
-                    ProcTagsNode(item.hard_hash, self.sha1, item.start_ea),
+                    TreeNotesNode(item.hard_hash, self.sha1, item.start_ea),
+                    TreeTagsNode(item.hard_hash, self.sha1, item.start_ea),
                     ProcFilesNode(item.hard_hash, item.start_ea),
                     ProcSimilarityNode(item.hard_hash, self.sha1, item.start_ea),
                 ]
@@ -681,12 +681,12 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             filesRootNode.removeRows(0, 1)
             filesRootNode.isPopulated = True
 
-    def populate_proc_notes(self, notesRootNode: ProcNotesNode):
+    def populate_proc_notes(self, notesRootNode: TreeNotesNode):
         """populates a selected procedure's 'notes' node with recieved notes
 
         PARAMETERS
         ----------
-        notesRootNode: ProcNotesNode
+        notesRootNode: TreeNotesNode
             Represents the procedure node which is to be populated with notes.
         """
         if not notesRootNode.isPopulated:
@@ -711,12 +711,12 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             notesRootNode.removeRows(0, 1)
             notesRootNode.isPopulated = True
 
-    def populate_proc_tags(self, tagsRootNode: ProcTagsNode):
+    def populate_proc_tags(self, tagsRootNode: TreeTagsNode):
         """populates a selected procedure's 'tags' node with recieved tags
 
         PARAMETERS
         ---------
-        tagsRootNode: ProcTagsNode
+        tagsRootNode: TreeTagsNode
             Represents the procedure node which is to be populated with tags.
         """
         if not tagsRootNode.isPopulated:
@@ -816,22 +816,22 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             api_call = ctmprocs.list_procedure_files
             type_str = "Files"
             read_mask = "sha1,sha256,filenames"
-        elif node_type is ProcNotesNode and self.tab_color.red() == 255:
+        elif node_type is TreeNotesNode and self.tab_color.red() == 255:
             api_call = ctmfiles.list_file_notes
             type_str = "File notes"
-        elif node_type is ProcNotesNode and self.tab_color.blue() == 255:
+        elif node_type is TreeNotesNode and self.tab_color.blue() == 255:
             api_call = ctmfiles.list_procedure_genomics_notes
             type_str = "Derived proc notes"
-        elif node_type is ProcNotesNode and self.tab_color.green() == 128:
+        elif node_type is TreeNotesNode and self.tab_color.green() == 128:
             api_call = ctmfiles.list_procedure_genomics_notes
             type_str = "Notes"
-        elif node_type is ProcTagsNode and self.tab_color.red() == 255:
+        elif node_type is TreeTagsNode and self.tab_color.red() == 255:
             api_call = ctmfiles.list_file_tags
             type_str = "File tags"
-        elif node_type is ProcTagsNode and self.tab_color.blue() == 255:
+        elif node_type is TreeTagsNode and self.tab_color.blue() == 255:
             api_call = ctmfiles.list_procedure_genomics_tags
             type_str = "Derived proc tags"
-        elif node_type is ProcTagsNode and self.tab_color.green() == 128:
+        elif node_type is TreeTagsNode and self.tab_color.green() == 128:
             api_call = ctmfiles.list_procedure_genomics_tags
             type_str = "Tags"
         elif node_type is ProcSimilarityNode:
@@ -957,7 +957,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 rva=None,
                 item_type=item_type,
             )
-        elif isinstance(item.parent(), ProcNotesNode):
+        elif isinstance(item.parent(), TreeNotesNode):
             print(self.tab_color.red())
             if self.tab_color.red() == 255:
                 item_type = "Derived file note"
@@ -981,7 +981,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         index = proc_tree.selectedIndexes()[0]
         item = index.model().itemFromIndex(index)
 
-        if isinstance(item, ProcNotesNode):
+        if isinstance(item, TreeNotesNode):
             if self.tab_color.red() == 255:
                 item_type = "Derived file note"
             else:
@@ -994,7 +994,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 rva=item.rva,
                 item_type=item_type,
             )
-        elif isinstance(item, ProcTagsNode):
+        elif isinstance(item, TreeTagsNode):
             if self.tab_color.red() == 255:
                 item_type = "Derived file tag"
             else:
@@ -1007,7 +1007,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 rva=item.rva,
                 item_type=item_type,
             )
-        elif isinstance(item.parent(), ProcNotesNode):
+        elif isinstance(item.parent(), TreeNotesNode):
             if self.tab_color.red() == 255:
                 item_type = "Derived file note"
             else:
@@ -1020,7 +1020,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 rva=item.parent().rva,
                 item_type=item_type,
             )
-        elif isinstance(item.parent(), ProcTagsNode):
+        elif isinstance(item.parent(), TreeTagsNode):
             if self.tab_color.red() == 255:
                 item_type = "Derived file tag"
             else:
@@ -1068,15 +1068,25 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                             async_req=True,
                         )
                 elif type_str == "Tags":
-                    api_call = ctmfiles.delete_procedure_genomics_tag_by_id
-                    response = api_call(
-                        binary_id=item.binary_id,
-                        rva=item.rva,
-                        tag_id=item.node_id,
-                        force=True,
-                        no_links=True,
-                        async_req=True,
-                    )
+                    if self.tab_color.red() == 255:
+                        api_call = ctmfiles.remove_file_tag
+                        response = api_call(
+                            binary_id=item.binary_id,
+                            tag_id=item.node_id,
+                            force=True,
+                            no_links=True,
+                            async_req=True,
+                        )
+                    else:
+                        api_call = ctmfiles.delete_procedure_genomics_tag_by_id
+                        response = api_call(
+                            binary_id=item.binary_id,
+                            rva=item.rva,
+                            tag_id=item.node_id,
+                            force=True,
+                            no_links=True,
+                            async_req=True,
+                        )
                 response = response.get()
             except ApiException as exp:
                 logger.debug(traceback.format_exc())
@@ -1320,7 +1330,15 @@ class ProcTextPopup(TextPopup):
                     no_links=True,
                     async_req=True,
                 )
-            if self.item_type == "Notes":
+            elif self.item_type == "Derived file tag":
+                api_call = ctmfiles.create_file_tag
+                response = api_call(
+                    binary_id=self.binary_id,
+                    name=text,
+                    no_links=True,
+                    async_req=True,
+                )
+            elif self.item_type == "Notes":
                 api_call = ctmfiles.create_procedure_genomics_note
                 response = api_call(
                     binary_id=self.binary_id,
@@ -1406,7 +1424,6 @@ class ProcTextPopup(TextPopup):
                     update_mask="note",
                     async_req=True,
                 )
-                response = response.get()
             elif self.item_type == "Notes":
                 api_call = ctmfiles.update_procedure_genomics_note
                 response = api_call(
@@ -1419,12 +1436,12 @@ class ProcTextPopup(TextPopup):
                     update_mask="note",
                     async_req=True,
                 )
-                response = response.get()
             elif self.item_type == "Proc Name" == "PROCEDURE NAME":
                 api_call = print(
                     "API call not implemented for procedure name EDIT, faux call made instead."
                 )
                 response = api_call()
+            response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(
