@@ -7,17 +7,11 @@ information of the current file from unknowncyber.
 
 import cythereal_magic
 import ida_nalt
-import ida_kernwin
 import os
 
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QPushButton,
-    QHBoxLayout,
-    QSpacerItem,
-    QSizePolicy,
-    QTableWidget,
-    QAbstractItemView,
     QWidget,
 )
 from idamagic.helpers import to_bool
@@ -32,7 +26,6 @@ HOT_RELOAD = to_bool(os.getenv("HOT_RELOAD"))
 class MAGICPluginScrClass(QWidget, _ScrClassMethods):
     """
     Plugin Scroll UI Object.
-    Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
     """
 
     def __init__(self, title, magic_api_client):

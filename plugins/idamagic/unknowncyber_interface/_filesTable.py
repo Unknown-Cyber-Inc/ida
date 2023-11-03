@@ -13,8 +13,11 @@ from ..helpers import (
     parse_binary,
     getUnixFileType,
     encode_loaded_file,
+    get_file_architecture,
+    get_input_file_path,
 )
 from ..widgets import FileSimpleTextNode
+from ..helpers import create_idb_file
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
@@ -205,7 +208,19 @@ class _MAGICFormClassMethods:
         self.list_widget.disable_tab_bar()
         self.files_buttons_layout.show_file_not_found_popup()
 
-    def upload_file(self, skip_unpack):
+    def upload_idb(self):
+        idb = create_idb_file()
+        self.upload_file(idb, skip_unpack=None)
+
+    def upload_binary(self, skip_unpack):
+        try:
+            binary_path = get_input_file_path()
+        except Exception:
+            print(f"Binary file not found at path: {get_input_file_path()}.")
+            print("To upload this binary, move to this file path.")
+        self.upload_file(binary_path, skip_unpack)
+
+    def upload_file(self, file_path, skip_unpack):
         """Upload file button click behavior
 
         POST to upload_file
@@ -213,7 +228,7 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
-        filedata = encode_loaded_file()
+        filedata = encode_loaded_file(file_path)
 
         try:
             response = api_call(
@@ -258,43 +273,6 @@ class _MAGICFormClassMethods:
             else:
                 print("Error During Upload.")
                 print(f"Status Code: {response.status}")
-
-    def upload_disassembled_click(self):
-        """Upload editted binaries button behavior"""
-        zip_path = parse_binary()
-        api_call = self.ctmfiles.upload_disassembly
-
-        try:
-            _, status, _ = api_call(
-                filedata=zip_path,
-                filetype=getUnixFileType(),
-                no_links=True,
-                binary_id=self.sha1,
-            )
-        except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print("Disassembly upload failed.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
-        except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
-            return None
-        else:
-            if 200 <= status <= 299:
-                self.file_exists = True
-                self.sha1 = hash_file()
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
-                print("Upload Successful.")
-            else:
-                print("Error uploading disassembled binary.")
-                print(f"Status Code: {status}")
 
     def update_list_widget(
         self,

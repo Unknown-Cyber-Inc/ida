@@ -1,11 +1,9 @@
 """Custom widgets"""
-import pprint
 from PyQt5 import QtWidgets, Qt, QtGui
 import cythereal_magic
 from cythereal_magic.rest import ApiException
 from .helpers import (
     create_proc_name,
-    hash_file,
 )
 import json
 import traceback
@@ -38,7 +36,7 @@ class BaseListWidget(QtWidgets.QWidget):
         self.popup = popup
         self.name = None
 
-        # create, link to signals, and disable buttons
+        # create CRUD buttons
         self.create_button = QtWidgets.QPushButton("Create")
         self.edit_button = QtWidgets.QPushButton("Edit")
         self.delete_button = QtWidgets.QPushButton("Delete")
@@ -815,7 +813,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         if node_type is ProcFilesNode:
             api_call = ctmprocs.list_procedure_files
             type_str = "Files"
-            read_mask = "sha1,sha256,filenames"
+            read_mask = "sha1,sha256,filename"
         elif node_type is TreeNotesNode and self.tab_color.red() == 255:
             api_call = ctmfiles.list_file_notes
             type_str = "File notes"
@@ -1635,28 +1633,28 @@ class FileUploadPopup(QtWidgets.QMessageBox):
         self.setText("Select the type of upload to perform.")
         self.setStandardButtons(QtWidgets.QMessageBox.Cancel)
 
-        # File upload button
-        file_upload_button = self.addButton(
-            "File", QtWidgets.QMessageBox.ActionRole
+        # idb upload button
+        idb_upload_button = self.addButton(
+            "IDB", QtWidgets.QMessageBox.ActionRole
         )
-        file_upload_button.setEnabled(True)
-        file_upload_button.clicked.connect(
-            self.widget_parent.upload_file_button_click
+        idb_upload_button.setEnabled(True)
+        idb_upload_button.clicked.connect(
+            self.widget_parent.upload_idb_button_click
         )
-        # Disassembly upload button
+        # Binary upload button
         binary_upload_button = self.addButton(
-            "Disassembly", QtWidgets.QMessageBox.ActionRole
+            "Binary", QtWidgets.QMessageBox.ActionRole
         )
         binary_upload_button.setEnabled(True)
         binary_upload_button.clicked.connect(
-            self.widget_parent.layout_parent.upload_disassembled_click
+            self.widget_parent.upload_binary_button_click
         )
 
 
 class FileUnpackPopup(QtWidgets.QMessageBox):
     """Custom popup with unpack and skip unpack buttons."""
 
-    def __init__(self, widget_parent):
+    def __init__(self, widget_parent, file_type):
         super().__init__()
         self.widget_parent = widget_parent
         self.setWindowTitle("Skip unpacking?")
@@ -1668,14 +1666,18 @@ class FileUnpackPopup(QtWidgets.QMessageBox):
             "YES, skip unpacking", QtWidgets.QMessageBox.ActionRole
         )
         skip_button.setEnabled(True)
-        skip_button.clicked.connect(self.widget_parent.skip_unpack)
-
         # unpack button
         unpack_button = self.addButton(
             "NO, unpack file", QtWidgets.QMessageBox.ActionRole
         )
         unpack_button.setEnabled(True)
-        unpack_button.clicked.connect(self.widget_parent.unpack)
+
+        if file_type == "binary":
+            skip_button.clicked.connect(self.widget_parent.binary_skip_unpack)
+            unpack_button.clicked.connect(self.widget_parent.binary_unpack)
+        elif file_type == "idb":
+            skip_button.clicked.connect(self.widget_parent.idb_skip_unpack)
+            unpack_button.clicked.connect(self.widget_parent.idb_unpack)
 
 
 class FileNotFoundPopup(QtWidgets.QWidget):

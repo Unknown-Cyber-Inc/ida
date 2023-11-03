@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
 
 from .widgets import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
 
+
 class ProcsToggleLayout(QHBoxLayout):
     """Layout for procs_toggle QPushbutton widget."""
 
@@ -84,19 +85,32 @@ class FilesButtonsLayout(QHBoxLayout):
         upload_popup = FileUploadPopup(self)
         upload_popup.exec_()
 
-    def upload_file_button_click(self):
+    def upload_binary_button_click(self):
         """Display check for `skip_unpack`"""
-        unpack_popup = FileUnpackPopup(self)
+        unpack_popup = FileUnpackPopup(self, "binary")
         unpack_popup.exec_()
 
-    def skip_unpack(self):
-        """Set skip_unpack arg to True. Send upload_file request method."""
-        self.layout_parent.upload_file(skip_unpack=True)
+    def upload_idb_button_click(self):
+        """Calls file upload passing in IDB file."""
+        unpack_popup = FileUnpackPopup(self, "idb")
+        unpack_popup.exec_()
 
-    def unpack(self):
+    def binary_skip_unpack(self):
+        """Set skip_unpack arg to True. Send upload_file request method."""
+        self.layout_parent.upload_binary(skip_unpack=True)
+
+    def binary_unpack(self):
         """Set skip_unpack arg to False. Send upload_file request method."""
-        self.layout_parent.upload_file(skip_unpack=False)
+        self.layout_parent.upload_binary(skip_unpack=False)
+
+    def idb_skip_unpack(self):
+        """Set skip_unpack arg to True. Send upload_file request method."""
+        self.layout_parent.upload_binary(skip_unpack=True)
+
+    def idb_unpack(self):
+        """Set skip_unpack arg to False. Send upload_file request method."""
+        self.layout_parent.upload_binary(skip_unpack=False)
 
     def show_file_not_found_popup(self):
         """Handles displaying the FileNotFound popup."""
-        FileNotFoundPopup(self.upload_file_button_click)
+        FileNotFoundPopup(self.main_upload_button_click)
