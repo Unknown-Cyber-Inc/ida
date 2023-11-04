@@ -71,7 +71,6 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
         self.parent.setLayout(self.main_layout)
-        # self.parent.setMaximumWidth(500)
 
     def OnClose(self, form):
         """

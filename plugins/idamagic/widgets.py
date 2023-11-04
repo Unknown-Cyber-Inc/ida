@@ -492,7 +492,7 @@ class CenterDerivedFileTab(BaseCenterTab):
         super().__init__(center_widget)
 
         self.center_widget.populate_tab_tree(item, self.tab_tree, "Derived file")
-        self.center_widget.tabs_widget.addTab(self, item.sha1)
+        self.center_widget.tabs_widget.addTab(self, item.binary_id)
 
 
 class CenterDerivedProcTab(BaseCenterTab):
@@ -607,12 +607,12 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         """Create a ProcRootNode to display in the center widget"""
 
         if tree_type == "Derived file":
-            rootnode = ProcRootNode(item.sha1, None, None, tree_type)
+            rootnode = ProcRootNode(item.binary_id, None, None, tree_type)
 
             rootnode.appendRows(
                 [
-                    TreeNotesNode(None, item.sha1, item.rva),
-                    TreeTagsNode(None, item.sha1, item.rva),
+                    TreeNotesNode(None, item.binary_id, item.rva),
+                    TreeTagsNode(None, item.binary_id, item.rva),
                 ]
             )
         elif tree_type == "Derived procedure":
@@ -620,8 +620,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
             rootnode.appendRows(
                 [
-                    TreeNotesNode(None, item.sha1, item.rva),
-                    TreeTagsNode(None, item.sha1, item.rva),
+                    TreeNotesNode(None, item.binary_id, item.rva),
+                    TreeTagsNode(None, item.binary_id, item.rva),
                 ]
             )
         else:

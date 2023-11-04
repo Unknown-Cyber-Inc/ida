@@ -10,7 +10,7 @@ import hashlib
 
 from cythereal_magic.rest import ApiException
 from ..helpers import (
-    encode_loaded_file,
+    encode_file,
     get_linked_binary_expected_path,
 )
 from ..widgets import FileSimpleTextNode
@@ -36,7 +36,10 @@ class _MAGICFormClassMethods:
         self.check_idb_uploaded()
         if self.file_exists:
             self.make_list_api_call("Matches")
-
+            self.list_widget.enable_tab_bar()
+            self.list_widget.binary_id = self.hashes["version_sha1"]
+        else:
+            self.process_file_nonexistent()
     #
     # methods for connecting pyqt signals
     #
@@ -141,14 +144,14 @@ class _MAGICFormClassMethods:
                 return None
             if 200 <= response.status <= 299:
                 print(f"{list_type} gathered from File successfully.")
+                if list_type == "Notes":
+                    self.populate_file_notes(response.resources)
+                elif list_type == "Tags":
+                    self.populate_file_tags(response.resources)
             else:
                 print(f"Error gathering {list_type}.")
                 print(f"Status Code: {response.status}")
                 print(f"Error message: {response.errors}")
-        if list_type == "Notes":
-            self.populate_file_notes(response.resources)
-        elif list_type == "Tags":
-            self.populate_file_tags(response.resources)
 
     def set_version_sha1(self, sha1):
         """
@@ -170,8 +173,10 @@ class _MAGICFormClassMethods:
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print("Previous IDB upload match failed.")
-            linked_uploaded = self.check_linked_binary_uploaded()
+            print(
+                "Previous IDB upload match failed. Checking for binary or it's child content files."
+            )
+            linked_uploaded = self.check_linked_binary_object_exists()
             if not linked_uploaded:
                 self.set_version_sha1(self.hashes["loaded_sha1"])
                 for error in json.loads(exp.body).get("errors"):
@@ -192,16 +197,14 @@ class _MAGICFormClassMethods:
                 print(
                     "IDB, original file, nor other IDB's from original file uploaded yet."
                 )
-                self.process_file_nonexistent()
                 return None
             else:
                 print("Error with file GET.")
                 print(f"Status Code: {response.status}")
                 print(f"Error message: {response.errors}")
-                self.process_file_nonexistent()
                 return None
 
-    def check_linked_binary_uploaded(self):
+    def check_linked_binary_object_exists(self):
         """
         Call the api at `get_file` to check for the real IDB-linked binary's
           pervious upload with IDA hash md5.
@@ -209,9 +212,11 @@ class _MAGICFormClassMethods:
         If content children, return the sha1 of the most recent.
         """
         try:
+            print("ida md5:", self.hashes["ida_md5"])
             md5 = self.hashes["ida_md5"]
+            read_mask = "sha1,sha256,md5"
             response = self.ctmfiles.get_file(
-                binary_id=md5, no_links=True, async_req=True
+                binary_id=md5, no_links=True, read_mask=read_mask, async_req=True
             )
             response = response.get()
         except ApiException as exp:
@@ -230,10 +235,21 @@ class _MAGICFormClassMethods:
         # if content_child:
         #     self.set_version_sha1(content_child.sha1)
         #     self.file_exists = True
-        # if self.verify_linked_binary_sha1(response.resource):
+        #     return True
+        # elif self.verify_linked_binary_sha1(response.resource):
         #     self.set_version_sha1(response.resource.sha1)
         #     self.file_exists = True
         #     return True
+
+        # REMOVE THESE LINES ONCE THE ABOVE IS UNCOMMENTED
+        if response.resource.md5 and response.resource.sha256:
+            print("resource md5:", response.resource.md5)
+            print("resource sha256:", response.resource.sha256)
+            if self.verify_linked_binary_sha1(response.resource):
+                self.set_version_sha1(response.resource.sha1)
+                print("version_sha1", self.hashes["version_sha1"])
+                self.file_exists = True
+                return True
         return False
 
     def get_latest_content_child(self, file):
@@ -250,7 +266,7 @@ class _MAGICFormClassMethods:
         Verify the sha1 of the returned file is not a hash of the md5 + sha256.
         If it is, it will not have any genomics attached.
         """
-        sha1_prestring = f"{file.md5 + file.sha256}"
+        sha1_prestring = (file.md5 + file.sha256).encode('utf-8')
         sha1 = hashlib.sha1(sha1_prestring).hexdigest()
 
         try:
@@ -293,7 +309,7 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
-        filedata = encode_loaded_file(file_path)
+        filedata = encode_file(file_path)
 
         try:
             response = api_call(
@@ -325,6 +341,7 @@ class _MAGICFormClassMethods:
                 self.file_exists = True
                 # TODO: Change this to the sha1 of the parent RegularFile
                 self.hashes["version_sha1"] = response.resources[0].sha1
+                self.list_widget.binary_id = self.hashes["version_sha1"]
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
@@ -333,6 +350,7 @@ class _MAGICFormClassMethods:
                 self.file_exists = True
                 # TODO: Change this to the sha1 of the parent RegularFile
                 self.hashes["version_sha1"] = response.resources[0].sha1
+                self.list_widget.binary_id = self.hashes["version_sha1"]
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
