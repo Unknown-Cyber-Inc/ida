@@ -289,9 +289,9 @@ class _MAGICFormClassMethods:
         self.list_widget.disable_tab_bar()
         self.files_buttons_layout.show_file_not_found_popup()
 
-    def upload_idb(self):
+    def upload_idb(self, skip_unpack):
         idb = create_idb_file()
-        self.upload_file(idb, skip_unpack=None)
+        self.upload_file(idb, skip_unpack)
 
     def upload_binary(self, skip_unpack):
         try:
@@ -346,6 +346,7 @@ class _MAGICFormClassMethods:
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("File previously uploaded and available.")
+                print("File hash:", self.hashes["version_sha1"])
             elif response.status >= 201 and response.status <= 299:
                 self.file_exists = True
                 # TODO: Change this to the sha1 of the parent RegularFile
