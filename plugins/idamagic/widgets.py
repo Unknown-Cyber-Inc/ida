@@ -516,7 +516,6 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
         self.sha1 = self.widget_parent.hashes["version_sha1"]
-        self.sha256 = self.widget_parent.hashes["version_sha256"]
         self.init_ui()
 
     def init_ui(self):
@@ -661,7 +660,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             for file in returned_vals:
                 sha1 = file.sha1
 
-                if file.sha256 != self.sha256:
+                if file.sha1 != self.sha1:
                     filename = sha1
                     if file.filenames:
                         filename = file.filenames[0]

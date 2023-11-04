@@ -226,14 +226,14 @@ class _MAGICFormClassMethods:
             print("Unknown Error occurred")
             print(f"<{exp.__class__}>: {str(exp)}")
             return False
-        content_child = self.get_latest_content_child(response.resource)
-        if content_child:
-            self.set_version_sha1(content_child.sha1)
-            self.file_exists = True
-        if self.verify_linked_binary_sha1(response.resource):
-            self.set_version_sha1(response.resource.sha1)
-            self.file_exists = True
-            return True
+        # content_child = self.get_latest_content_child(response.resource)
+        # if content_child:
+        #     self.set_version_sha1(content_child.sha1)
+        #     self.file_exists = True
+        # if self.verify_linked_binary_sha1(response.resource):
+        #     self.set_version_sha1(response.resource.sha1)
+        #     self.file_exists = True
+        #     return True
         return False
 
     def get_latest_content_child(self, file):
@@ -241,7 +241,7 @@ class _MAGICFormClassMethods:
         Check the file object for any content children.
         If they exist, return the most recent one.
         """
-        if file.content_children:
+        if file.get("content_children", None):
             return file.content_children[-1]
         return None
 
@@ -323,6 +323,7 @@ class _MAGICFormClassMethods:
         else:
             if response.status == 200:
                 self.file_exists = True
+                # TODO: Change this to the sha1 of the parent RegularFile
                 self.hashes["version_sha1"] = response.resources[0].sha1
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
@@ -330,6 +331,7 @@ class _MAGICFormClassMethods:
                 print("File previously uploaded and available.")
             elif response.status >= 201 and response.status <= 299:
                 self.file_exists = True
+                # TODO: Change this to the sha1 of the parent RegularFile
                 self.hashes["version_sha1"] = response.resources[0].sha1
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
