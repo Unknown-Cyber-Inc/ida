@@ -1,12 +1,13 @@
 """Main interface. Used to hold sub-interfaces."""
 
 import ida_kernwin
+import ida_nalt
 import logging
 import os
 
 from PyQt5 import QtWidgets
 
-from ..helpers import to_bool
+from ..helpers import to_bool, get_all_idb_hashes
 from ..IDA_interface import MAGICPluginScrClass
 from ..unknowncyber_interface import MAGICPluginFormClass
 
@@ -27,6 +28,15 @@ class MAGICMainClass(ida_kernwin.PluginForm):
     ):
         """Initialize main plugin and attach sub-plugins."""
         super().__init__()
+        loaded_hashes = get_all_idb_hashes()
+        self.hashes = {
+            "loaded_sha1": loaded_hashes.get("sha1", None),
+            "loaded_sha256": loaded_hashes.get("sha256", None),
+            "loaded_md5": loaded_hashes.get("md5", None),
+            "version_sha1": None,
+            "ida_sha256": ida_nalt.retrieve_input_file_sha256().hex(),
+            "ida_md5": ida_nalt.retrieve_input_file_md5().hex(),
+        }
 
         self.title = main_title
         self.api_client = magic_api_client
@@ -36,11 +46,11 @@ class MAGICMainClass(ida_kernwin.PluginForm):
 
         # create File widget
         self.unknown_plugin = MAGICPluginFormClass(
-            "Unknown Cyber MAGIC", self.api_client
+            "Unknown Cyber MAGIC", self.api_client, self.hashes
         )
         # create Procedure widget
         self.ida_plugin = MAGICPluginScrClass(
-            "MAGIC Genomics", self.api_client
+            "MAGIC Genomics", self.api_client, self.hashes
         )
 
         # set layout for main plugin
@@ -52,7 +62,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         self.Show()
 
         if not autoinst:
-            self.parent.parent().parent().setSizes([800, 1])
+            self.parent.parent().parent().setSizes([1000, 1])
 
     def OnCreate(self, form):
         """
@@ -61,7 +71,6 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
         self.parent.setLayout(self.main_layout)
-        # self.parent.setMaximumWidth(400)
 
     def OnClose(self, form):
         """

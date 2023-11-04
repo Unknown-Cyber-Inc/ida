@@ -61,8 +61,6 @@ class _ScrClassMethods:
 
         GET from procedures and list all procedures associated with file.
         """
-
-        # explicitly stating readmask to not request extraneous info
         genomics_read_mask = (
             "cfg,start_ea,is_library,status,procedure_hash,"
             + "occurrence_count,strings,api_calls,procedure_name"
@@ -71,7 +69,7 @@ class _ScrClassMethods:
 
         try:
             response = self.ctmfiles.list_file_genomics(
-                binary_id=self.sha1,
+                binary_id=self.hashes["version_sha1"],
                 read_mask=genomics_read_mask,
                 order_by=order_by,
                 no_links=True,
@@ -97,8 +95,9 @@ class _ScrClassMethods:
         else:
             if 200 <= response.status <= 299:
                 print("Procedures gathered successfully.")
-                # on a successful call, populate table
                 self.populate_proc_table(response.resource)
+                if self.hashes["version_sha1"] != self.hashes["loaded_sha1"]:
+                    self.sync_warning.show()
             else:
                 print("Error gathering Procedures.")
                 print(f"Status Code: {response.status}")

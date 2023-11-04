@@ -7,20 +7,16 @@ information of the current file from unknowncyber.
 
 import cythereal_magic
 import ida_nalt
-import os
-
 from PyQt5.QtWidgets import (
+    QLabel,
     QVBoxLayout,
     QPushButton,
     QWidget,
 )
-from idamagic.helpers import to_bool
+
 from ..widgets import CenterDisplayWidget, ProcTableWidget
-from ..helpers import hash_linked_binary_file
 from ..layouts import ProcsToggleLayout
 from ._procTree import _ScrClassMethods
-
-HOT_RELOAD = to_bool(os.getenv("HOT_RELOAD"))
 
 
 class MAGICPluginScrClass(QWidget, _ScrClassMethods):
@@ -28,20 +24,20 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
     Plugin Scroll UI Object.
     """
 
-    def __init__(self, title, magic_api_client):
+    def __init__(self, title, magic_api_client, hashes):
         """Initialializes the formtype some UI elements may not be loaded in this case,
             which may cause issues.
         Additionally, sets a few member variables necessary to the function of the plugin.
         A few are variables which are determined by IDA.
         """
         super().__init__()
-        self.sha1 = hash_linked_binary_file()
-        self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
+        self.hashes = hashes
         self.baseRVA = ida_nalt.get_imagebase()
         self.image_base = None
         self.title: str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
         self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
+        self.sync_warning = QLabel
         # dict solutions to jump from IDA ea to plugin procedure
         self.procedureEADict = {}
         self.procedureEADict_unbased = {}
@@ -63,9 +59,6 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         )
         self.plugin_hook.hook()
 
-        # if HOT_RELOAD:
-        #     self.pushbutton_click()
-
     """
     functions for building and displaying pyqt.
     """
@@ -84,6 +77,14 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.pushbutton = QPushButton("Get Procedures")
         self.pushbutton.setCheckable(False)
         self.pushbutton.clicked.connect(self.pushbutton_click)
+        self.sync_warning = QLabel(
+            "Procedures below are not derived from the currently" +
+            "loaded IDB. As such, they may not be synced with the IDA views. Upload" +
+            "this IDB to remedy this."
+            )
+        self.sync_warning.setWordWrap(True)
+        self.sync_warning.setStyleSheet("color: red;")
+        self.sync_warning.hide()
         self.proc_table = ProcTableWidget(self)
 
     def populate_scroll_view(self):
@@ -97,6 +98,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.layout.addWidget(self.center_widget)
         self.layout.addLayout(self.procs_toggle_layout)
         self.layout.addWidget(self.pushbutton)
+        self.layout.addWidget(self.sync_warning)
         self.layout.addWidget(self.proc_table)
 
         # set widget's layout based on the above items

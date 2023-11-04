@@ -6,11 +6,11 @@ import logging
 import json
 import os
 import traceback
+import hashlib
 
 from cythereal_magic.rest import ApiException
 from ..helpers import (
-    hash_linked_binary_file,
-    encode_loaded_file,
+    encode_file,
     get_linked_binary_expected_path,
 )
 from ..widgets import FileSimpleTextNode
@@ -33,10 +33,13 @@ class _MAGICFormClassMethods:
         """
         Helper, initialize and populate items in analysis tab widget
         """
-        self.check_file_exists()
+        self.check_idb_uploaded()
         if self.file_exists:
             self.make_list_api_call("Matches")
-
+            self.list_widget.enable_tab_bar()
+            self.list_widget.binary_id = self.hashes["version_sha1"]
+        else:
+            self.process_file_nonexistent()
     #
     # methods for connecting pyqt signals
     #
@@ -74,7 +77,7 @@ class _MAGICFormClassMethods:
         """Populates the File list 'Matches' tab with recieved matches"""
         matches = []
         for match in list_items:
-            if match["sha1"] != self.sha1:
+            if match["sha1"] != self.hashes["version_sha1"]:
                 filename = f"sha1: {match['sha1']}"
             else:
                 filename = f"Current file - sha1: {match['sha1']}"
@@ -105,14 +108,14 @@ class _MAGICFormClassMethods:
         try:
             if list_type != "Notes":
                 response = api_call(
-                    binary_id=self.sha1,
+                    binary_id=self.hashes["version_sha1"],
                     expand_mask=expand_mask,
                     no_links=True,
                     async_req=True,
                 )
             else:
                 response = api_call(
-                    binary_id=self.sha1, no_links=True, async_req=True
+                    binary_id=self.hashes["version_sha1"], no_links=True, async_req=True
                 )
             response = response.get()
         except ApiException as exp:
@@ -141,64 +144,145 @@ class _MAGICFormClassMethods:
                 return None
             if 200 <= response.status <= 299:
                 print(f"{list_type} gathered from File successfully.")
+                if list_type == "Notes":
+                    self.populate_file_notes(response.resources)
+                elif list_type == "Tags":
+                    self.populate_file_tags(response.resources)
             else:
                 print(f"Error gathering {list_type}.")
                 print(f"Status Code: {response.status}")
                 print(f"Error message: {response.errors}")
-        if list_type == "Notes":
-            self.populate_file_notes(response.resources)
-        elif list_type == "Tags":
-            self.populate_file_tags(response.resources)
 
-    def check_file_exists(self):
-        """Call the api at `get_file`
-
-        Return the sha1 of the file if it exists.
+    def set_version_sha1(self, sha1):
         """
+        Set the hash for "version" sha1
+        """
+        self.hashes["version_sha1"] = sha1
+
+    def check_idb_uploaded(self):
+        """
+        Call the api at `get_file` to check for idb's pervious upload.
+        If not, check for original binary's pervious upload.
+        """
+        self.file_exists = False
         try:
-            self.sha1 = hash_linked_binary_file()
+            sha1 = self.hashes["loaded_sha1"]
             response = self.ctmfiles.get_file(
-                binary_id=self.sha1, no_links=True, async_req=True
+                binary_id=sha1, no_links=True, async_req=True
             )
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print("File GET request failed.")
-            self.file_exists = False
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
-            self.process_file_nonexistent()
-            return None
+            print(
+                "Previous IDB upload match failed. Checking for binary or it's child content files."
+            )
+            linked_uploaded = self.check_linked_binary_object_exists()
+            if not linked_uploaded:
+                self.set_version_sha1(self.hashes["loaded_sha1"])
+                for error in json.loads(exp.body).get("errors"):
+                    logger.info(error["reason"])
+                    print(f"{error['reason']}: {error['message']}")
         except Exception as exp:
             logger.debug(traceback.format_exc())
             print("Unknown Error occurred")
             print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
             return None
         else:
             if 200 <= response.status <= 299:
-                print("File uploaded previously.")
+                print("IDB uploaded previously.")
                 self.file_exists = True
                 self.list_widget.enable_tab_bar()
-            elif response.status == 404:
-                print("File not yet uploaded.")
-                self.file_exists = False
-                self.process_file_nonexistent()
-                return None
-            elif response.status == 403:
-                print("Access denied to existing file.")
-                # setting file_exists to false so that they are not given
-                # any of the values for that file (notes, tags, etc.)
-                self.file_exists = False
-                self.process_file_nonexistent()
+                self.set_version_sha1(response.resource.sha1)
+            elif response.status == 404 or response.status == 403:
+                print(
+                    "IDB, original file, nor other IDB's from original file uploaded yet."
+                )
                 return None
             else:
                 print("Error with file GET.")
                 print(f"Status Code: {response.status}")
                 print(f"Error message: {response.errors}")
                 return None
+
+    def check_linked_binary_object_exists(self):
+        """
+        Call the api at `get_file` to check for the real IDB-linked binary's
+          pervious upload with IDA hash md5.
+        If not, check for any content file children in response.
+        If content children, return the sha1 of the most recent.
+        """
+        try:
+            print("ida md5:", self.hashes["ida_md5"])
+            md5 = self.hashes["ida_md5"]
+            read_mask = "sha1,sha256,md5"
+            response = self.ctmfiles.get_file(
+                binary_id=md5, no_links=True, read_mask=read_mask, async_req=True
+            )
+            response = response.get()
+        except ApiException as exp:
+            logger.debug(traceback.format_exc())
+            print("IDB-linked binary nor any IDBs from this binary uploaded yet.")
+            for error in json.loads(exp.body).get("errors"):
+                logger.info(error["reason"])
+                print(f"{error['reason']}: {error['message']}")
+            return False
+        except Exception as exp:
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+            return False
+        # content_child = self.get_latest_content_child(response.resource)
+        # if content_child:
+        #     self.set_version_sha1(content_child.sha1)
+        #     self.file_exists = True
+        #     return True
+        # elif self.verify_linked_binary_sha1(response.resource):
+        #     self.set_version_sha1(response.resource.sha1)
+        #     self.file_exists = True
+        #     return True
+
+        # REMOVE THESE LINES ONCE THE ABOVE IS UNCOMMENTED
+        if response.resource.md5 and response.resource.sha256:
+            print("resource md5:", response.resource.md5)
+            print("resource sha256:", response.resource.sha256)
+            if self.verify_linked_binary_sha1(response.resource):
+                self.set_version_sha1(response.resource.sha1)
+                print("version_sha1", self.hashes["version_sha1"])
+                self.file_exists = True
+                return True
+        return False
+
+    def get_latest_content_child(self, file):
+        """
+        Check the file object for any content children.
+        If they exist, return the most recent one.
+        """
+        if file.get("content_children", None):
+            return file.content_children[-1]
+        return None
+
+    def verify_linked_binary_sha1(self, file):
+        """
+        Verify the sha1 of the returned file is not a hash of the md5 + sha256.
+        If it is, it will not have any genomics attached.
+        """
+        sha1_prestring = (file.md5 + file.sha256).encode('utf-8')
+        sha1 = hashlib.sha1(sha1_prestring).hexdigest()
+
+        try:
+            response = self.ctmfiles.get_file(
+                binary_id=sha1, no_links=True, async_req=True
+            )
+            response = response.get()
+        except ApiException:
+            logger.debug(traceback.format_exc())
+            print("Linked binary previously uploaded.")
+            return True
+        except Exception as exp:
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+        return False
 
     def process_file_nonexistent(self):
         """Disables FileListWidget's tabbar and displays FileNotFound popup."""
@@ -225,7 +309,7 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
-        filedata = encode_loaded_file(file_path)
+        filedata = encode_file(file_path)
 
         try:
             response = api_call(
@@ -255,14 +339,18 @@ class _MAGICFormClassMethods:
         else:
             if response.status == 200:
                 self.file_exists = True
-                self.sha1 = response.resources[0].sha1
+                # TODO: Change this to the sha1 of the parent RegularFile
+                self.hashes["version_sha1"] = response.resources[0].sha1
+                self.list_widget.binary_id = self.hashes["version_sha1"]
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("File previously uploaded and available.")
             elif response.status >= 201 and response.status <= 299:
                 self.file_exists = True
-                self.sha1 = response.resources[0].sha1
+                # TODO: Change this to the sha1 of the parent RegularFile
+                self.hashes["version_sha1"] = response.resources[0].sha1
+                self.list_widget.binary_id = self.hashes["version_sha1"]
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)

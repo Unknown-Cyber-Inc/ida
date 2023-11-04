@@ -251,14 +251,13 @@ class FileSimpleTextNode(Qt.QStandardItem):
     """Node which contains only simple text information"""
 
     def __init__(
-        self, node_id="", text="", sha1="", binary_id="", uploaded=False
+        self, node_id="", text="", binary_id="", uploaded=False
     ):
         super().__init__()
         self.setEditable(False)
         self.setText(text)
         self.text = text
         self.node_id = node_id
-        self.sha1 = sha1
         self.binary_id = binary_id
         self.uploaded = uploaded
 
@@ -296,14 +295,13 @@ class ProcSimpleTextNode(ProcTableItem):
     """Node which contains only simple text information"""
 
     def __init__(
-        self, hard_hash="", node_id="", text="", sha1="", binary_id="", rva=""
+        self, hard_hash="", node_id="", text="", binary_id="", rva=""
     ):
         super().__init__()
         self.setText(text)
         self.text = text
         self.node_id = node_id
         self.hard_hash = hard_hash
-        self.sha1 = sha1
         self.binary_id = binary_id
         self.rva = rva
 
@@ -494,7 +492,7 @@ class CenterDerivedFileTab(BaseCenterTab):
         super().__init__(center_widget)
 
         self.center_widget.populate_tab_tree(item, self.tab_tree, "Derived file")
-        self.center_widget.tabs_widget.addTab(self, item.sha1)
+        self.center_widget.tabs_widget.addTab(self, item.binary_id)
 
 
 class CenterDerivedProcTab(BaseCenterTab):
@@ -517,8 +515,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         super().__init__()
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
-        self.sha1 = self.widget_parent.sha1
-        self.sha256 = self.widget_parent.sha256
+        self.sha1 = self.widget_parent.hashes["version_sha1"]
         self.init_ui()
 
     def init_ui(self):
@@ -610,12 +607,12 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         """Create a ProcRootNode to display in the center widget"""
 
         if tree_type == "Derived file":
-            rootnode = ProcRootNode(item.sha1, None, None, tree_type)
+            rootnode = ProcRootNode(item.binary_id, None, None, tree_type)
 
             rootnode.appendRows(
                 [
-                    TreeNotesNode(None, item.sha1, item.rva),
-                    TreeTagsNode(None, item.sha1, item.rva),
+                    TreeNotesNode(None, item.binary_id, item.rva),
+                    TreeTagsNode(None, item.binary_id, item.rva),
                 ]
             )
         elif tree_type == "Derived procedure":
@@ -623,8 +620,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
             rootnode.appendRows(
                 [
-                    TreeNotesNode(None, item.sha1, item.rva),
-                    TreeTagsNode(None, item.sha1, item.rva),
+                    TreeNotesNode(None, item.binary_id, item.rva),
+                    TreeTagsNode(None, item.binary_id, item.rva),
                 ]
             )
         else:
@@ -663,7 +660,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             for file in returned_vals:
                 sha1 = file.sha1
 
-                if file.sha256 != self.sha256:
+                if file.sha1 != self.sha1:
                     filename = sha1
                     if file.filenames:
                         filename = file.filenames[0]
@@ -672,7 +669,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
                 # build a fileNode
                 filesRootNode.appendRow(
-                    ProcSimpleTextNode(text=filename, sha1=sha1)
+                    ProcSimpleTextNode(text=filename, binary_id=sha1)
                 )
 
             # remove the empty init child
@@ -760,7 +757,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
                             text=f"\t{proc.start_ea}",
-                            sha1=current_response_sha1,
+                            binary_id=current_response_sha1,
                             rva=proc.start_ea,
                         )
                     )
@@ -776,7 +773,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                             ProcSimpleTextNode(
                                 hard_hash=similarityRootNode.hard_hash,
                                 text=f"Current File - {proc.binary_id}",
-                                sha1=current_response_sha1,
+                                binary_id=current_response_sha1,
                                 rva=None,
                             )
                         )
@@ -785,7 +782,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                             ProcSimpleTextNode(
                                 hard_hash=similarityRootNode.hard_hash,
                                 text=f"{proc.binary_id}",
-                                sha1=current_response_sha1,
+                                binary_id=current_response_sha1,
                                 rva=None
                             )
                         )
@@ -794,7 +791,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
                             text=f"       startEAs:{proc.start_ea}",
-                            sha1=current_response_sha1,
+                            binary_id=current_response_sha1,
                             rva=proc.start_ea,
                         )
                     )
