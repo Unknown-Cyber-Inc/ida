@@ -9,12 +9,9 @@ import traceback
 
 from cythereal_magic.rest import ApiException
 from ..helpers import (
-    hash_file,
-    parse_binary,
-    getUnixFileType,
+    hash_linked_binary_file,
     encode_loaded_file,
-    get_file_architecture,
-    get_input_file_path,
+    get_linked_binary_expected_path,
 )
 from ..widgets import FileSimpleTextNode
 from ..helpers import create_idb_file
@@ -159,7 +156,7 @@ class _MAGICFormClassMethods:
         Return the sha1 of the file if it exists.
         """
         try:
-            self.sha1 = hash_file()
+            self.sha1 = hash_linked_binary_file()
             response = self.ctmfiles.get_file(
                 binary_id=self.sha1, no_links=True, async_req=True
             )
@@ -214,9 +211,9 @@ class _MAGICFormClassMethods:
 
     def upload_binary(self, skip_unpack):
         try:
-            binary_path = get_input_file_path()
+            binary_path = get_linked_binary_expected_path()
         except Exception:
-            print(f"Binary file not found at path: {get_input_file_path()}.")
+            print(f"Binary file not found at path: {get_linked_binary_expected_path()}.")
             print("To upload this binary, move to this file path.")
         self.upload_file(binary_path, skip_unpack)
 

@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
 )
 from idamagic.helpers import to_bool
 from ..widgets import CenterDisplayWidget, ProcTableWidget
-from ..helpers import hash_file
+from ..helpers import hash_linked_binary_file
 from ..layouts import ProcsToggleLayout
 from ._procTree import _ScrClassMethods
 
@@ -35,7 +35,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         A few are variables which are determined by IDA.
         """
         super().__init__()
-        self.sha1 = hash_file()
+        self.sha1 = hash_linked_binary_file()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.baseRVA = ida_nalt.get_imagebase()
         self.image_base = None
