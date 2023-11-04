@@ -7,9 +7,7 @@ Will likely be broken into components as the insides of the form grow.
 """
 
 import cythereal_magic
-import ida_nalt
 import logging
-from ..helpers import hash_linked_binary_file
 
 from PyQt5.QtWidgets import (
     QPushButton,
@@ -37,7 +35,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
     # functions for PluginForm object functionality.
     #
 
-    def __init__(self, title, magic_api_client):
+    def __init__(self, title, magic_api_client, hashes):
         """Initialializes the form object
 
         Additionally, sets a few member variables necessary to the function of the plugin.
@@ -49,10 +47,8 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.title: str = title
         self.file_exists = False
         self.file_type = None
-        self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
-        self.md5 = ida_nalt.retrieve_input_file_md5().hex()
+        self.hashes = hashes
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
-        self.sha1 = hash_linked_binary_file()
 
         # main pyqt widgets used
         self.layout: QVBoxLayout
@@ -97,7 +93,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.list_widget = FileListWidget(
             list_items=[],
             list_type="Matches",
-            binary_id=self.sha1,
+            binary_id=self.hashes["version_sha1"],
             widget_parent=self,
         )
 

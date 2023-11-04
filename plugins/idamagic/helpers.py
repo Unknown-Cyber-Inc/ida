@@ -50,11 +50,44 @@ def encode_loaded_file(file_path):
 
 
 def gen_random_idb_filename(length=15):
-    """Generates a random filename of default length 10"""
+    """Generates a random filename of default length 15"""
     chars = string.ascii_letters + string.digits
     rand_filename = "".join(random.choice(chars) for i in range(length))
 
     return f"{rand_filename}.i64"
+
+
+def get_all_idb_hashes():
+    """Hash loaded idb.
+
+    Returns
+    -------
+    dict
+        The hashes of the IDB in hexadecimal format.
+    """
+    path = get_idb_path()
+    sha1 = hashlib.sha1()
+    sha256 = hashlib.sha256()
+    md5 = hashlib.md5()
+
+    try:
+        with open(path, "rb") as f:
+            while True:
+                block = f.read(2**10)  # Magic number: one-megabyte blocks.
+                if not block:
+                    break
+                sha1.update(block)
+                sha256.update(block)
+                md5.update(block)
+
+            return {
+                "sha1": sha1.hexdigest(),
+                "sha256": sha256.hexdigest(),
+                "md5": md5.hexdigest(),
+            }
+    except FileNotFoundError:
+        print("IDB is not accessible. Place loaded IDB file at the expected path:", path)
+        return None
 
 
 def get_file_architecture():
@@ -117,12 +150,12 @@ def get_linked_binary_name():
         return idc.GetInputFile()
 
 
-def get_loaded_idb_name():
+def get_idb_name():
     """Get the name of the input .idb file being analyzed."""
     return os.path.basename(idc.get_idb_path())
 
 
-def get_loaded_idb_path():
+def get_idb_path():
     """Get the full path of the input .idb file being analyzed."""
     return idc.get_idb_path()
 
@@ -148,62 +181,6 @@ def hash_byte_string(byte_string, hashtype="sha1"):
     digest.update(byte_string)
 
     return digest.hexdigest()
-
-
-def hash_linked_binary_file(hashtype="sha1"):
-    """Hash uploaded file.
-
-    Returns
-    -------
-    str
-        The hash of the file in hexadecimal format.
-    """
-    hash_func = getattr(hashlib, hashtype.lower())
-    digest = hash_func()
-
-    try:
-        with open(get_linked_binary_expected_path(), "rb") as f:
-            while True:
-                block = f.read(2**10)  # Magic number: one-megabyte blocks.
-                if not block:
-                    break
-                digest.update(block)
-
-            return digest.hexdigest()
-    except FileNotFoundError:
-        print(
-            "Original binary not accessible."
-            + " Place binary in the directory containing the loaded idb file"
-        )
-        return None
-
-
-def hash_nonloaded_file(path, hashtype="sha1"):
-    """Hash a file that is not currently loaded.
-
-    Returns
-    -------
-    str
-        The hash of the file in hexadecimal format.
-    """
-    hash_func = getattr(hashlib, hashtype.lower())
-    digest = hash_func()
-
-    try:
-        with open(path, "rb") as f:
-            while True:
-                block = f.read(2**10)  # Magic number: one-megabyte blocks.
-                if not block:
-                    break
-                digest.update(block)
-
-            return digest.hexdigest()
-    except FileNotFoundError:
-        print(
-            "Original binary not accessible."
-            + " Place binary in the directory containing the loaded idb file"
-        )
-        return None
 
 
 def to_bool(param, default=False):

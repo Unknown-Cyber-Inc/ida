@@ -71,7 +71,7 @@ class _ScrClassMethods:
 
         try:
             response = self.ctmfiles.list_file_genomics(
-                binary_id=self.sha1,
+                binary_id=self.hashes["version_sha1"],
                 read_mask=genomics_read_mask,
                 order_by=order_by,
                 no_links=True,
