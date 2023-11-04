@@ -5,8 +5,7 @@ Contains IDA UI hooks for the plugin widgets.
 import ida_kernwin
 import logging
 
-from idamagic.unknowncyber_interface import MAGICPluginFormClass
-from idamagic.IDA_interface import MAGICPluginScrClass
+from PyQt5 import QtWidgets
 from idamagic.main_interface import MAGICMainClass
 
 logger = logging.getLogger(__name__)
@@ -37,6 +36,7 @@ def register_autoinst_hooks(
         """
         Same as above but for the main widget
         """
+
         def create_desktop_widget(self, ttl, cfg):
             if ttl == name:
                 MAGICWidgetPage = form_type(name, api_client, autoinst=True)
@@ -48,7 +48,6 @@ def register_autoinst_hooks(
         MAGIC_main_inst_auto_hook.hook()
 
 
-
 class PluginScrHooks(ida_kernwin.UI_Hooks):
     """Hooks necessary for the functionality of the procedure widget form (IDA_interface)
 
@@ -57,33 +56,34 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
     Since this class is for use by IDA_interface only, "self" refers to type MAGICPluginScrClass.
     """
 
-    def __init__(self, proc_tree, procedureEADict, procWidgetParent, *args):
+    def __init__(
+        self, proc_table, procedureEADict, procedureEADict_unbased, *args
+    ):
         super().__init__(*args)
-        # needs to be able to access the proc_tree view once generated
-        self.procWidgetParent = procWidgetParent
-        self.proc_tree = proc_tree
+        # needs to be able to access the proc_table view once generated
+        self.proc_table = proc_table
         self.procedureEADict = procedureEADict
+        self.procedureEADict_unbased = procedureEADict_unbased
 
     def screen_ea_changed(self, ea, prev_ea):
         eaKey = ida_kernwin.ea2str(ea).split(":")[1]
         eaKey = int(eaKey, 16)
         if eaKey in self.procedureEADict:
-            procedureQIndexItem = self.procedureEADict[eaKey].index()
-            self.proc_tree.setCurrentIndex(
-                procedureQIndexItem
-            )  # highlight and select it
-            if not self.proc_tree.isExpanded(
-                procedureQIndexItem
-            ):  # do not expand before checking if expanded, see proc_tree_jump_to_hex for info
-                self.proc_tree.expand(procedureQIndexItem)
-                print(procedureQIndexItem)
-            # 3 is an enum telling the widget to open with the item in the center
-            self.proc_tree.scrollTo(
-                procedureQIndexItem, 3
-            )  # jump to and center it
+            procedureItemRow = self.procedureEADict[eaKey]
+            row = procedureItemRow
+            self.proc_table.setCurrentCell(row, 0)
+            item_to_scroll_to = self.proc_table.item(row, 0)
+            self.proc_table.scrollToItem(
+                item_to_scroll_to, QtWidgets.QAbstractItemView.PositionAtTop
+            )
+        elif eaKey in self.procedureEADict_unbased:
+            procedureItemRow = self.procedureEADict_unbased[eaKey]
+            row = procedureItemRow
+            self.proc_table.setCurrentCell(row, 0)
+            item_to_scroll_to = self.proc_table.item(row, 0)
+            self.proc_table.scrollToItem(
+                item_to_scroll_to, QtWidgets.QAbstractItemView.PositionAtTop
+            )
 
-    # this object will not have "parent" until all UI objects are loaded
-    # additionally, this 'ready_to_run' will only occur once on initialization
     def ready_to_run(self, *args):
-        # self.procWidgetParent.parent().parent().setSizes([100, 1])
         return

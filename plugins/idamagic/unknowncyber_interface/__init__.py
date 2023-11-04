@@ -8,19 +8,24 @@ Will likely be broken into components as the insides of the form grow.
 
 import cythereal_magic
 import ida_nalt
-import ida_kernwin
 import logging
-from ..helpers import hash_file
+from ..helpers import hash_linked_binary_file
 
-from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import (
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+)
 
 from ._filesTable import _MAGICFormClassMethods
 from ..widgets import FileListWidget
+from ..layouts import FilesButtonsLayout
 
 logger = logging.getLogger(__name__)
 
 
-class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
+class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
     """
     Plugin UI object.
     Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
@@ -44,22 +49,19 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         self.title: str = title
         self.file_exists = False
         self.file_type = None
-        self.sha1 = hash_file()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
+        self.sha1 = hash_linked_binary_file()
 
         # main pyqt widgets used
-        self.t1: QtWidgets.QLabel
-        self.upload_button: QtWidgets.QPushButton
-
+        self.layout: QVBoxLayout
+        self.files_toggle: QPushButton
+        self.upload_button: QPushButton
+        self.files_buttons_layout: QHBoxLayout
         self.list_widget: FileListWidget
 
         self.load_files_view()
-
-    #
-    # functions for building and displaying pyqt.
-    #
 
     def load_files_view(self):
         """
@@ -73,14 +75,13 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         After individual form items are initialized, populate the form with them.
         """
         # Create layout object
-        self.layout = QtWidgets.QVBoxLayout()
+        self.layout = QVBoxLayout()
 
         # adding widgets to layout, order here matters
-        self.layout.addWidget(self.t1)
-        self.layout.addWidget(self.upload_button)
+        self.layout.addLayout(self.files_buttons_layout)
         self.layout.addWidget(self.list_widget)
 
-        # set main widget's layout based on the above items
+        # set main files widget's layout based on the above items
         self.setLayout(self.layout)
 
     def init_files_view(self):
@@ -90,35 +91,15 @@ class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
         # Personalizing QT items, in decending order of appearance.
         # NOTE! Upon display, actual arrangement is solely determined by
         #       the order widgets are ADDED to the layout.
-        self.t1 = QtWidgets.QLabel("<font color=red>Files</font>")
+        self.files_buttons_layout = FilesButtonsLayout(self)
 
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
             list_items=[],
-            list_type="NOTES",
+            list_type="Matches",
             binary_id=self.sha1,
-            parent=self,
-        )
-        self.list_widget.list_widget_tab_bar.currentChanged.connect(
-            self.tab_changed
+            widget_parent=self,
         )
 
         # help create items, add to tab widget
         self.init_and_populate()
-
-    def tab_changed(self, index):
-        """Tab change behavior
-
-           Index here is used to access the tab position.
-           [NoteTab, TagsTab, MatchesTab]
-        """
-        if index == 0:
-            self.make_list_api_call("Notes")
-        elif index == 1:
-            self.make_list_api_call("Tags")
-        elif index == 2:
-            self.make_list_api_call("Matches")
-
-    #
-    # functions for connecting pyqt signals
-    #
