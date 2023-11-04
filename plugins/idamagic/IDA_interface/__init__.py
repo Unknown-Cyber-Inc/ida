@@ -8,6 +8,7 @@ information of the current file from unknowncyber.
 import cythereal_magic
 import ida_nalt
 from PyQt5.QtWidgets import (
+    QLabel,
     QVBoxLayout,
     QPushButton,
     QWidget,
@@ -36,6 +37,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.title: str = title
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
         self.ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
+        self.sync_warning = QLabel
         # dict solutions to jump from IDA ea to plugin procedure
         self.procedureEADict = {}
         self.procedureEADict_unbased = {}
@@ -75,6 +77,14 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.pushbutton = QPushButton("Get Procedures")
         self.pushbutton.setCheckable(False)
         self.pushbutton.clicked.connect(self.pushbutton_click)
+        self.sync_warning = QLabel(
+            "Procedures below are not derived from the currently" +
+            "loaded IDB. As such, they may not be synced with the IDA views. Upload" +
+            "this IDB to remedy this."
+            )
+        self.sync_warning.setWordWrap(True)
+        self.sync_warning.setStyleSheet("color: red;")
+        self.sync_warning.hide()
         self.proc_table = ProcTableWidget(self)
 
     def populate_scroll_view(self):
@@ -88,6 +98,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.layout.addWidget(self.center_widget)
         self.layout.addLayout(self.procs_toggle_layout)
         self.layout.addWidget(self.pushbutton)
+        self.layout.addWidget(self.sync_warning)
         self.layout.addWidget(self.proc_table)
 
         # set widget's layout based on the above items
