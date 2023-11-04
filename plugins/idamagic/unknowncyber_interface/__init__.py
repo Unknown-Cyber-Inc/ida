@@ -1,5 +1,5 @@
 """
-Main pluginform object at the highest level.
+Pluginform object.
 
 This is the scaffolding of the form object which will be displayed to the viewer.
 Contains ida_kernwin.PluginForm and also ida_kernwin.Choose.
@@ -10,25 +10,27 @@ import cythereal_magic
 import ida_nalt
 import ida_kernwin
 import logging
+from ..helpers import hash_file
 
 from PyQt5 import QtWidgets
 
 from ._filesTable import _MAGICFormClassMethods
+from ..widgets import FileListWidget
 
 logger = logging.getLogger(__name__)
 
 
-class MAGICPluginFormClass(ida_kernwin.PluginForm, _MAGICFormClassMethods):
+class MAGICPluginFormClass(QtWidgets.QWidget, _MAGICFormClassMethods):
     """
-    Highest level of the plugin UI object.
+    Plugin UI object.
     Inherits ida_kernwin.PluginForm which wraps IDA's Form object as a PyQt object.
 
     Populate_pluginform_with_pyqt_widgets.py code was used to create the basics of the plugin.
     """
 
-    """
-    functions for PluginForm object functionality.
-    """
+    #
+    # functions for PluginForm object functionality.
+    #
 
     def __init__(self, title, magic_api_client):
         """Initialializes the form object
@@ -40,62 +42,24 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm, _MAGICFormClassMethods):
 
         # non pyqt attrs
         self.title: str = title
+        self.file_exists = False
+        self.file_type = None
+        self.sha1 = hash_file()
         self.sha256 = ida_nalt.retrieve_input_file_sha256().hex()
         self.md5 = ida_nalt.retrieve_input_file_md5().hex()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
 
-        self.parent: QtWidgets.QWidget  # overarching pyqt widget of this form
-
         # main pyqt widgets used
         self.t1: QtWidgets.QLabel
-        self.t2: QtWidgets.QLabel
-        self.pushbutton: QtWidgets.QPushButton
-        self.tab_tables: QtWidgets.QTabWidget
-        self.textbrowser: QtWidgets.QTextEdit
+        self.upload_button: QtWidgets.QPushButton
 
-        # pyqt widgets in tab_tables
-        # analysis tab
-        self.files_analysis_tab: QtWidgets.QWidget
-        self.files_analysis_tab_table: QtWidgets.QTableWidget
-
-        # show widget on creation of new form
-        self.Show()
-
-    def OnCreate(self, form):
-        """
-        Called when the widget is created.
-        """
-        # Convert form to PyQt obj
-        self.parent = self.FormToPyQtWidget(form)
+        self.list_widget: FileListWidget
 
         self.load_files_view()
 
-    def OnClose(self, form):
-        """
-        Called when the widget is closed.
-        """
-        return
-
-    def Show(self):
-        """
-        Take created widget object and display it on IDA's GUI
-        """
-        # show with intrinsic title, specific options
-        return super().Show(
-            self.title,
-            options=(
-                # for some reason the options appear to only work
-                # once after resetting desktop in IDA
-                ida_kernwin.PluginForm.WOPN_TAB
-                | ida_kernwin.PluginForm.WOPN_RESTORE
-                | ida_kernwin.PluginForm.WCLS_CLOSE_LATER
-                | ida_kernwin.PluginForm.WCLS_SAVE
-            ),
-        )
-
-    """
-    functions for building and displaying pyqt.
-    """
+    #
+    # functions for building and displaying pyqt.
+    #
 
     def load_files_view(self):
         """
@@ -109,52 +73,52 @@ class MAGICPluginFormClass(ida_kernwin.PluginForm, _MAGICFormClassMethods):
         After individual form items are initialized, populate the form with them.
         """
         # Create layout object
-        layout = QtWidgets.QVBoxLayout()
+        self.layout = QtWidgets.QVBoxLayout()
 
         # adding widgets to layout, order here matters
-        layout.addWidget(self.t1)
-        layout.addWidget(self.t2)
-        layout.addWidget(self.pushbutton)
-        layout.addWidget(self.tab_tables)
-        layout.addWidget(self.textbrowser)
+        self.layout.addWidget(self.t1)
+        self.layout.addWidget(self.upload_button)
+        self.layout.addWidget(self.list_widget)
 
         # set main widget's layout based on the above items
-        self.parent.setLayout(layout)
+        self.setLayout(self.layout)
 
     def init_files_view(self):
         """
         Initialize individual items which will be added to the form.
         """
-        # personalizing QT items, in order of appearance (order is set by layout though)
-        self.t1 = QtWidgets.QLabel(
-            "Lorem Ipsum <font color=red>Cythereal</font>"
+        # Personalizing QT items, in decending order of appearance.
+        # NOTE! Upon display, actual arrangement is solely determined by
+        #       the order widgets are ADDED to the layout.
+        self.t1 = QtWidgets.QLabel("<font color=red>Files</font>")
+
+        # create main tab bar widget and its tabs
+        self.list_widget = FileListWidget(
+            list_items=[],
+            list_type="NOTES",
+            binary_id=self.sha1,
+            parent=self,
         )
-        self.t2 = QtWidgets.QLabel("Lorem Ipsum <font color=blue>MAGIC</font>")
+        self.list_widget.list_widget_tab_bar.currentChanged.connect(
+            self.tab_changed
+        )
 
-        self.pushbutton = QtWidgets.QPushButton("request files")
-        self.pushbutton.setCheckable(False)
+        # help create items, add to tab widget
+        self.init_and_populate()
 
-        # create overarching tab widget
-        self.tab_tables = QtWidgets.QTabWidget()
-        # help create items in analysis tab, add to tab widget
-        self.init_and_populate_files_analysis_tab()
+    def tab_changed(self, index):
+        """Tab change behavior
 
-        self.textbrowser = QtWidgets.QTextEdit()
-        self.textbrowser.setReadOnly(True)
-
-        # connecting events to items if necessary, in order of appearance
-        self.pushbutton.clicked.connect(self.pushbutton_click)
-
-    """
-    functions for connecting pyqt signals
-    """
-
-    def pushbutton_click(self):
+           Index here is used to access the tab position.
+           [NoteTab, TagsTab, MatchesTab]
         """
-        User clicks "get resources" button, call cythereal API and populate tables.
+        if index == 0:
+            self.make_list_api_call("Notes")
+        elif index == 1:
+            self.make_list_api_call("Tags")
+        elif index == 2:
+            self.make_list_api_call("Matches")
 
-        Provide information through textbox
-        """
-        self.textbrowser.clear()
-
-        self.get_and_populate_tables()
+    #
+    # functions for connecting pyqt signals
+    #

@@ -4,8 +4,8 @@ Required entrypoint by IDA.
 All IDA python files placed in the plugin folder must contain a unique definition to PLUGIN_ENTRY(),
 which returns the plugin class that tells IDA what to do with it during certain events.
 """
-
-from idamagic import magic
+import importlib
+import idamagic
 
 
 def PLUGIN_ENTRY():
@@ -14,4 +14,5 @@ def PLUGIN_ENTRY():
 
     @return ida_idaapi.plugin_t: plugin object
     """
-    return magic()
+    importlib.reload(idamagic)
+    return idamagic.magic()

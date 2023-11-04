@@ -28,6 +28,9 @@ COPY --chown=unknowncyber plugins /home/unknowncyber/.idapro/plugins
 
 COPY --chown=unknowncyber setup.cfg pyproject.toml .
 RUN set -x \
+    && apt update \
+    && apt install -y --no-install-recommends \
+        git \
     && mkdir -m 777 plugins \
     && runuser -l unknowncyber -c 'python -m pip install --user --disable-pip-version-check --no-cache-dir .[dev]' \
     && rm -rf plugins setup.cfg pyproject.toml build /var/lib/apt/lists/* \

@@ -16,6 +16,7 @@ from ida_kernwin import find_widget, is_idaq, close_widget
 from .helpers import to_bool
 from .unknowncyber_interface import MAGICPluginFormClass
 from .IDA_interface import MAGICPluginScrClass
+from .main_interface import MAGICMainClass
 from .hooks import register_autoinst_hooks
 
 # load_dotenv sources the below environment variables from .env
@@ -27,6 +28,7 @@ logging.basicConfig(level=os.getenv("IDA_LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
 # Ida plugin constants
+MAIN_PLUGIN_NAME = "UnknownCyber Magic Plugin"
 PLUGIN_NAME = "Unknown Cyber MAGIC"
 PLUGIN_HOTKEY = "Ctrl-Shift-A"
 PLUGIN_COMMENT = "IDA interface for Unknown Cyber MAGIC"
@@ -57,9 +59,12 @@ class magic(ida_idaapi.plugin_t):
     else:
         flags = ida_idaapi.PLUGIN_FIX
 
+    main_widget = MAGICMainClass
+    syncscroll = MAGICPluginScrClass
     form = MAGICPluginFormClass
 
     # required or otherwise handled by IDA
+    main_name = MAIN_PLUGIN_NAME
     wanted_name = PLUGIN_NAME
     wanted_hotkey = PLUGIN_HOTKEY
     comment = PLUGIN_COMMENT
@@ -85,24 +90,27 @@ class magic(ida_idaapi.plugin_t):
 
         logger.debug(logger)
 
-        self.api_client = unknowncyber.ApiClient()  # Create API client to be used by plugin
+        self.api_client = (
+            unknowncyber.ApiClient()
+        )  # Create API client to be used by plugin
 
         if HOT_RELOAD:
             logger.info("MAGIC plugin is hot reloadable")
             ida_idaapi.require(
-                "idamagic.unknowncyber_interface"
+                "idamagic.main_interface"
             )  # reloads the module so we can make changes without restarting IDA
+            ida_idaapi.require("idamagic.unknowncyber_interface")
             ida_idaapi.require("idamagic.IDA_interface")
             ida_idaapi.require("idamagic.hooks")
             return ida_idaapi.PLUGIN_OK
 
-        # check if our widget is registered with IDA
-        # if found, display it
-        # if not found, register it
-        self.form = register_autoinst_hooks(self.wanted_name, self.api_client, MAGICPluginFormClass)
-        self.syncscroll = register_autoinst_hooks(SCROLLWIDGET_TITLE,
-                                                  self.api_client,
-                                                  MAGICPluginScrClass)
+        # # check if our widget is registered with IDA
+        # # if found, display it
+        # # if not found, register it
+        self.main_widget = register_autoinst_hooks(
+            self.main_name, self.api_client, MAGICMainClass
+        )
+        self.main_widget.parent.setMaximumSize(400)
 
         return ida_idaapi.PLUGIN_KEEP
 
@@ -117,19 +125,14 @@ class magic(ida_idaapi.plugin_t):
         # close and reopen the widget
         if HOT_RELOAD:
             logger.debug("Reloading MAGIC")
-            close_widget(find_widget(self.wanted_name), 0)
-            close_widget(find_widget(SCROLLWIDGET_TITLE), 0)
+            close_widget(find_widget(self.main_name), 0)
 
         # if IDA widget with our title does not exist,
         # create it and populate it. Do nothing otherwise.
-        if find_widget(self.wanted_name) is None:
-            logger.debug("Creating MAGIC plugin form")
-            self.form = MAGICPluginFormClass(self.wanted_name, self.api_client)
-        if find_widget(SCROLLWIDGET_TITLE) is None:
-            logger.debug("Creating MAGIC plugin sync scroll")
-            self.syncscroll = MAGICPluginScrClass(
-                SCROLLWIDGET_TITLE, self.api_client,
-            )
+        if find_widget(self.main_name) is None:
+            logger.debug("Creating MAGIC main form")
+            self.main_widget = MAGICMainClass(self.main_name, self.api_client)
+            # self.main_widget.parent.parent().setMaximumWidth(400)
 
     def term(self):
         """
