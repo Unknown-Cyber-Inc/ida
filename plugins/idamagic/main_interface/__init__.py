@@ -62,13 +62,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         self.Show()
 
         if not autoinst:
-            self.parent.parent().parent().setSizes([800, 1])
-
-    def set_loaded_hashes(self):
-        """
-        Set the values of the set of loaded idb's hashes.
-        """
-
+            self.parent.parent().parent().setSizes([1000, 1])
 
     def OnCreate(self, form):
         """
@@ -77,7 +71,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
         self.parent.setLayout(self.main_layout)
-        # self.parent.setMaximumWidth(400)
+        # self.parent.setMaximumWidth(500)
 
     def OnClose(self, form):
         """
