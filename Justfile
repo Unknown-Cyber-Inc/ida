@@ -30,6 +30,20 @@ format:="'%4s"+gold+"%-20s"+reset+"%s\\n' ''"
 build +V:
     docker-buildx build --build-arg IDA_KEYLESS=$ida_keyless --build-arg IDA_PASSWORD=$ida_pass -t unknowncyber/ida:{{V}} -f docker/Dockerfile .
 
+# Rebuilds the python distribution tarball
+redist:
+    pip install pip-tools
+    pip-compile requirements.in || echo "Run manually"
+    python3.7 -m venv --copies redist-env
+    source ./redist-env/bin/activate
+    pip download -d dependencies -r requirements.txt
+    mkdir -p dist
+    tar -czvf dist/uc-ida-plugin.tgz dependencies/*
+    #pip install .
+    #pip install wheel setuptools build
+    #python -m build
+    rm -rf redist-env
+
 # Cleans out the old docker images that are no longer in use
 clean:
     @docker system prune

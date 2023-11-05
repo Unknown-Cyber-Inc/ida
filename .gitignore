@@ -10,3 +10,10 @@ proccache64.lst
 # python files
 .python-version
 *__pycache__
+
+build/
+dist/
+redist-env/
+dependencies/
+
+*.egg*
