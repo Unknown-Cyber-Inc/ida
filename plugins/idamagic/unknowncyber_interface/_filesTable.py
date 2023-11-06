@@ -179,7 +179,7 @@ class _MAGICFormClassMethods:
             print(
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
-            linked_uploaded = self.check_linked_binary_object_exists(read_mask, expand_mask)
+            linked_uploaded = self.check_linked_binary_object_exists()
             if not linked_uploaded:
                 self.set_version_sha1(self.hashes["loaded_sha1"])
                 for error in json.loads(exp.body).get("errors"):
@@ -197,13 +197,14 @@ class _MAGICFormClassMethods:
                 self.list_widget.enable_tab_bar()
                 self.set_version_sha1(response.resource.sha1)
 
-    def check_linked_binary_object_exists(self, read_mask, expand_mask):
+    def check_linked_binary_object_exists(self):
         """
         Call the api at `get_file` to check for the real IDB-linked binary's
           pervious upload with IDA hash md5.
         If not, check for any content file children in response.
         If content children, return the sha1 of the most recent.
         """
+        read_mask = "sha1,md5,sha256"
         try:
             print("ida md5:", self.hashes["ida_md5"])
             md5 = self.hashes["ida_md5"]
@@ -211,7 +212,7 @@ class _MAGICFormClassMethods:
                 binary_id=md5,
                 no_links=True,
                 read_mask=read_mask,
-                expand_mask=expand_mask,
+                # expand_mask=expand_mask,
                 async_req=True
             )
             response = response.get()
