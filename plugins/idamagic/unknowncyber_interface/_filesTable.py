@@ -5,6 +5,7 @@ Methods and classes in the MAGICPluginFormClass related to populating the files 
 import logging
 import json
 import os
+# import shutil
 import traceback
 import hashlib
 
@@ -148,10 +149,6 @@ class _MAGICFormClassMethods:
                     self.populate_file_notes(response.resources)
                 elif list_type == "Tags":
                     self.populate_file_tags(response.resources)
-            else:
-                print(f"Error gathering {list_type}.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")
 
     def set_version_sha1(self, sha1):
         """
@@ -165,10 +162,16 @@ class _MAGICFormClassMethods:
         If not, check for original binary's pervious upload.
         """
         self.file_exists = False
+        read_mask = "sha1,children.*"
+        expand_mask = "children"
         try:
             sha1 = self.hashes["loaded_sha1"]
             response = self.ctmfiles.get_file(
-                binary_id=sha1, no_links=True, async_req=True
+                binary_id=sha1,
+                no_links=True,
+                read_mask=read_mask,
+                expand_mask=expand_mask,
+                async_req=True
             )
             response = response.get()
         except ApiException as exp:
@@ -176,7 +179,7 @@ class _MAGICFormClassMethods:
             print(
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
-            linked_uploaded = self.check_linked_binary_object_exists()
+            linked_uploaded = self.check_linked_binary_object_exists(read_mask, expand_mask)
             if not linked_uploaded:
                 self.set_version_sha1(self.hashes["loaded_sha1"])
                 for error in json.loads(exp.body).get("errors"):
@@ -193,18 +196,8 @@ class _MAGICFormClassMethods:
                 self.file_exists = True
                 self.list_widget.enable_tab_bar()
                 self.set_version_sha1(response.resource.sha1)
-            elif response.status == 404 or response.status == 403:
-                print(
-                    "IDB, original file, nor other IDB's from original file uploaded yet."
-                )
-                return None
-            else:
-                print("Error with file GET.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")
-                return None
 
-    def check_linked_binary_object_exists(self):
+    def check_linked_binary_object_exists(self, read_mask, expand_mask):
         """
         Call the api at `get_file` to check for the real IDB-linked binary's
           pervious upload with IDA hash md5.
@@ -214,9 +207,12 @@ class _MAGICFormClassMethods:
         try:
             print("ida md5:", self.hashes["ida_md5"])
             md5 = self.hashes["ida_md5"]
-            read_mask = "sha1,sha256,md5"
             response = self.ctmfiles.get_file(
-                binary_id=md5, no_links=True, read_mask=read_mask, async_req=True
+                binary_id=md5,
+                no_links=True,
+                read_mask=read_mask,
+                expand_mask=expand_mask,
+                async_req=True
             )
             response = response.get()
         except ApiException as exp:
@@ -243,11 +239,10 @@ class _MAGICFormClassMethods:
 
         # REMOVE THESE LINES ONCE THE ABOVE IS UNCOMMENTED
         if response.resource.md5 and response.resource.sha256:
-            print("resource md5:", response.resource.md5)
-            print("resource sha256:", response.resource.sha256)
+            print("original md5:", response.resource.md5)
+            print("original sha256:", response.resource.sha256)
             if self.verify_linked_binary_sha1(response.resource):
                 self.set_version_sha1(response.resource.sha1)
-                print("version_sha1", self.hashes["version_sha1"])
                 self.file_exists = True
                 return True
         return False
@@ -257,8 +252,8 @@ class _MAGICFormClassMethods:
         Check the file object for any content children.
         If they exist, return the most recent one.
         """
-        if file.get("content_children", None):
-            return file.content_children[-1]
+        if file.get("children", None):
+            return file.children[-1]
         return None
 
     def verify_linked_binary_sha1(self, file):
@@ -284,10 +279,30 @@ class _MAGICFormClassMethods:
             print(f"<{exp.__class__}>: {str(exp)}")
         return False
 
+    def get_linked_binary_and_children(self, file):
+        """
+        Return a list of children files linked to the original binary.
+        """
+        for parent in file.parents:
+            if parent.sha1 == self.hashes["ida_md5"]:
+                self.content_versions["Original File"] = parent.sha1
+        for child in file.children:
+            self.content_versions[child.service_data.task_trace.timestamp] = child.sha1
+
     def process_file_nonexistent(self):
         """Disables FileListWidget's tabbar and displays FileNotFound popup."""
         self.list_widget.disable_tab_bar()
         self.files_buttons_layout.show_file_not_found_popup()
+
+    # def create_temp_file(self, file_path):
+    #     """
+    #     Package a file into a temp file for upload.
+    #     """
+    #     temp_filename = "temp_" + os.path.basename(file_path)
+    #     temp_path = os.path.join(os.getcwd(), temp_filename)
+    #     with open(temp_path, "wb") as outfile, open(file_path, "rb") as infile:
+    #         shutil.copyfileobj(infile, outfile)
+    #     return temp_path
 
     def upload_idb(self, skip_unpack):
         idb = create_idb_file()
@@ -309,6 +324,7 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
+        # temp_file_path = self.create_temp_file(file_path)
         filedata = encode_file(file_path)
 
         try:
@@ -356,9 +372,8 @@ class _MAGICFormClassMethods:
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("Upload Successful.")
-            else:
-                print("Error During Upload.")
-                print(f"Status Code: {response.status}")
+        # finally:
+        #     os.remove(temp_file_path)
 
     def update_list_widget(
         self,

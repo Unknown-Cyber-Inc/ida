@@ -1,6 +1,7 @@
 """Custom layouts used for widgets."""
 
 from PyQt5.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QPushButton,
     QSpacerItem,
@@ -57,6 +58,14 @@ class FilesButtonsLayout(QHBoxLayout):
     def __init__(self, layout_parent):
         super().__init__()
         self.layout_parent = layout_parent
+
+        self.dropdown = QComboBox()
+
+        self.dropdown.addItem("Option 1")
+        self.dropdown.addItem("Option 2")
+        self.dropdown.addItem("Option 3")
+        self.dropdown.addItem("Option 4")
+
         self.files_toggle = QPushButton("Hide Files Section")
         self.files_toggle.setSizePolicy(
             QSizePolicy.MinimumExpanding,
@@ -69,6 +78,7 @@ class FilesButtonsLayout(QHBoxLayout):
             QSizePolicy.Fixed,
         )
         self.upload_button.clicked.connect(self.main_upload_button_click)
+        self.addWidget(self.dropdown)
         self.addWidget(self.files_toggle)
         self.addWidget(self.upload_button)
 
