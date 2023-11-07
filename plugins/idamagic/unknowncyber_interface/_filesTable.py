@@ -13,7 +13,7 @@ from cythereal_magic.rest import ApiException
 from ..helpers import (
     encode_file,
     get_linked_binary_expected_path,
-    parse_timestamp,
+    # parse_timestamp,
 )
 from ..widgets import FileSimpleTextNode
 from ..helpers import create_idb_file
