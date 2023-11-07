@@ -36,6 +36,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
             "version_hash": None,
             "ida_sha256": ida_nalt.retrieve_input_file_sha256().hex(),
             "ida_md5": ida_nalt.retrieve_input_file_md5().hex(),
+            "upload_hash": None,
         }
 
         self.title = main_title

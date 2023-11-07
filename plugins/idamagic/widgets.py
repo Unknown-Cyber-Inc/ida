@@ -1756,3 +1756,17 @@ class DeleteConfirmationPopup(QtWidgets.QMessageBox):
         self.setStandardButtons(
             QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
         )
+
+
+class StatusPopup(QtWidgets.QMessageBox):
+    """Popup to display uploaded file status"""
+
+    def __init__(self, resource, widget_parent):
+        super(StatusPopup, self).__init__(parent=widget_parent)
+        self.widget_parent = widget_parent
+        self.setWindowTitle("Upload Status")
+        new_text = ("Status: " + str(resource.status).capitalize()
+                    + "\n\n" + str(resource.pipeline)
+        )
+        self.setText(new_text)
+        self.setStandardButtons(QtWidgets.QMessageBox.Ok)

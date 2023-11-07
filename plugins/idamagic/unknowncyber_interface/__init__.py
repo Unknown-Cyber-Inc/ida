@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
 )
 
 from ._filesTable import _MAGICFormClassMethods
-from ..widgets import FileListWidget
+from ..widgets import FileListWidget, StatusPopup
 from ..layouts import FilesButtonsLayout
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,9 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.layout: QVBoxLayout
         self.loaded_md5: QLabel
         self.linked_md5: QLabel
+        self.status_label: QLabel
+        self.status_button: QPushButton
+        self.status_popup: StatusPopup
         self.files_toggle: QPushButton
         self.upload_button: QPushButton
         self.files_buttons_layout: FilesButtonsLayout
@@ -83,6 +86,8 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # adding widgets to layout, order here matters
         self.layout.addWidget(self.loaded_md5)
         self.layout.addWidget(self.linked_md5)
+        self.layout.addWidget(self.status_label)
+        self.layout.addWidget(self.status_button)
         self.layout.addLayout(self.files_buttons_layout)
         self.layout.addWidget(self.list_widget)
 
@@ -100,6 +105,10 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.loaded_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.linked_md5 = QLabel(f"Binary hash: {self.hashes['ida_md5']}")
         self.linked_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.status_label = QLabel("Upload Processing Status: Upload a file to track it's status.")
+        self.status_button = QPushButton("Check Upload Status")
+        self.status_button.clicked.connect(self.get_file_status)
+        self.status_popup = None
         self.files_buttons_layout = FilesButtonsLayout(self)
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
@@ -119,3 +128,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
                 self.files_buttons_layout.dropdown.addItem(
                     key, value
                 )
+
+    def set_status_label(self, status):
+        """Set the color of the status button according to the input status."""
+        self.status_label.setText(f"Upload Processing Status: {str(status).capitalize()}")

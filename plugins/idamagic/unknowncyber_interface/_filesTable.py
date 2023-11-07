@@ -14,7 +14,7 @@ from ..helpers import (
     encode_file,
     get_linked_binary_expected_path,
 )
-from ..widgets import FileSimpleTextNode
+from ..widgets import FileSimpleTextNode, StatusPopup
 from ..helpers import create_idb_file
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
@@ -372,6 +372,9 @@ class _MAGICFormClassMethods:
             if response.status == 200:
                 self.file_exists = True
                 self.set_version_hash(response.resources[0].sha1)
+                self.hashes["upload_hash"] = response.resources[0].sha1
+                self.status_button.setEnabled(True)
+                self.set_status_label("pending")
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
@@ -379,12 +382,45 @@ class _MAGICFormClassMethods:
             elif response.status >= 201 and response.status <= 299:
                 self.file_exists = True
                 self.set_version_hash(response.resources[0].sha1)
+                self.hashes["upload_hash"] = response.resources[0].sha1
+                self.status_button.setEnabled(True)
+                self.set_status_label("pending")
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("Upload Successful.")
         # finally:
         #     os.remove(temp_file_path)
+
+    def get_file_status(self):
+        """Get the status of an uploaded file."""
+        read_mask = "status,pipeline"
+        try:
+            response = self.ctmfiles.get_file(
+                binary_id=self.hashes["upload_hash"],
+                no_links=True,
+                read_mask=read_mask,
+                async_req=True
+            )
+            response = response.get()
+        except ApiException as exp:
+            logger.debug(traceback.format_exc())
+            for error in json.loads(exp.body).get("errors"):
+                logger.info(error["reason"])
+                print(f"{error['reason']}: {error['message']}")
+            self.set_status_label("api failure")
+            return None
+        except Exception as exp:
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+            self.set_status_label("api failure")
+            return None
+        else:
+            if 200 <= response.status <= 299:
+                self.set_status_label(response.resource.status)
+                self.status_popup = StatusPopup(response.resource, self)
+                self.status_popup.show()
 
     def update_list_widget(
         self,
