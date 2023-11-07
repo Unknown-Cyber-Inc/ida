@@ -6,6 +6,7 @@ Contains ida_kernwin.PluginForm and also ida_kernwin.Choose.
 Will likely be broken into components as the insides of the form grow.
 """
 
+from collections import OrderedDict
 import cythereal_magic
 import logging
 
@@ -51,7 +52,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.file_exists = False
         self.file_type = None
         self.hashes = hashes
-        self.content_versions = dict
+        self.content_versions = OrderedDict()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
 
         # main pyqt widgets used
@@ -110,13 +111,12 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # help create items, add to tab widget
         self.init_and_populate()
 
-    def populate_versions(self, versions):
+    def populate_dropdown(self):
         """
         Populate the dropdown with the returned original binary and content file versions
         """
-        self.content_versions = dict()
-        for version in versions:
-            if version.md5:
-                self.file_buttons_layout.dropdown.addItem(
-                    version.upload_date, version.md5
+        if len(self.content_versions) > 0:
+            for key, value in self.content_versions.items():
+                self.files_buttons_layout.dropdown.addItem(
+                    key, value
                 )

@@ -13,6 +13,7 @@ from cythereal_magic.rest import ApiException
 from ..helpers import (
     encode_file,
     get_linked_binary_expected_path,
+    parse_timestamp,
 )
 from ..widgets import FileSimpleTextNode
 from ..helpers import create_idb_file
@@ -179,7 +180,8 @@ class _MAGICFormClassMethods:
             print(
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
-            linked_uploaded = self.check_linked_binary_object_exists()
+            self.file_exists = False
+            linked_uploaded = self.check_linked_binary_object_exists(False)
             if not linked_uploaded:
                 self.set_version_sha1(self.hashes["loaded_sha1"])
                 for error in json.loads(exp.body).get("errors"):
@@ -195,24 +197,26 @@ class _MAGICFormClassMethods:
                 print("IDB uploaded previously.")
                 self.file_exists = True
                 self.list_widget.enable_tab_bar()
-                self.set_version_sha1(response.resource.sha1)
+                original_exists = self.check_linked_binary_object_exists(True)
+                if not original_exists:
+                    self.set_version_sha1(response.resource.sha1)
 
-    def check_linked_binary_object_exists(self):
+    def check_linked_binary_object_exists(self, idb_uploaded):
         """
         Call the api at `get_file` to check for the real IDB-linked binary's
           pervious upload with IDA hash md5.
         If not, check for any content file children in response.
         If content children, return the sha1 of the most recent.
         """
-        read_mask = "sha1,md5,sha256"
+        read_mask = "*,children.*"
+        expand_mask = "children"
         try:
-            print("ida md5:", self.hashes["ida_md5"])
             md5 = self.hashes["ida_md5"]
             response = self.ctmfiles.get_file(
                 binary_id=md5,
                 no_links=True,
                 read_mask=read_mask,
-                # expand_mask=expand_mask,
+                expand_mask=expand_mask,
                 async_req=True
             )
             response = response.get()
@@ -228,34 +232,20 @@ class _MAGICFormClassMethods:
             print("Unknown Error occurred")
             print(f"<{exp.__class__}>: {str(exp)}")
             return False
-        # content_child = self.get_latest_content_child(response.resource)
-        # if content_child:
-        #     self.set_version_sha1(content_child.sha1)
-        #     self.file_exists = True
-        #     return True
-        # elif self.verify_linked_binary_sha1(response.resource):
-        #     self.set_version_sha1(response.resource.sha1)
-        #     self.file_exists = True
-        #     return True
-
-        # REMOVE THESE LINES ONCE THE ABOVE IS UNCOMMENTED
-        if response.resource.md5 and response.resource.sha256:
-            print("original md5:", response.resource.md5)
-            print("original sha256:", response.resource.sha256)
-            if self.verify_linked_binary_sha1(response.resource):
+        print("IDB-Linked Binary Found. Checking for content-children.")
+        self.populate_content_versions(response.resource)
+        if not idb_uploaded:
+            content_child_sha1 = list(self.content_versions.items())[-1][-1]
+            if content_child_sha1:
+                self.set_version_sha1(content_child_sha1)
+                self.file_exists = True
+                return True
+            elif self.verify_linked_binary_sha1(response.resource):
+                print("No content-children found. Updating version_sha1 to linked-binary's")
                 self.set_version_sha1(response.resource.sha1)
                 self.file_exists = True
                 return True
-        return False
-
-    def get_latest_content_child(self, file):
-        """
-        Check the file object for any content children.
-        If they exist, return the most recent one.
-        """
-        if file.get("children", None):
-            return file.children[-1]
-        return None
+            return False
 
     def verify_linked_binary_sha1(self, file):
         """
@@ -280,15 +270,27 @@ class _MAGICFormClassMethods:
             print(f"<{exp.__class__}>: {str(exp)}")
         return False
 
-    def get_linked_binary_and_children(self, file):
+    def populate_content_versions(self, file):
         """
-        Return a list of children files linked to the original binary.
+        Takes a file object in the form of an api response.resource from `get_file`.
+        If this file object has children files with a sha1, timestamp, and service
+          name of "<SOME NAME FOR IDA IDB CONTENTS>", add it to the `content_versions`
+          dict.
+        Call `populate_versions` to process `content_versions` and add items to the
+          dropdown.
         """
-        for parent in file.parents:
-            if parent.sha1 == self.hashes["ida_md5"]:
-                self.content_versions["Original File"] = parent.sha1
+        self.content_versions["Original File"] = self.hashes["ida_md5"]
         for child in file.children:
-            self.content_versions[child.service_data.task_trace.timestamp] = child.sha1
+            if child.get('sha1'):
+                print("THIS CHILD HAS A SHA1:", child)
+            sha1 = child.get('sha1')
+            service_data = child.get("service_data", {})
+            task_trace = service_data.get("task_trace", {})
+            timestamp = task_trace.get("timestamp", {})
+            if sha1 and timestamp:
+                print("GOLDEN CHILD FOUND: ", child)
+                self.content_versions[timestamp] = sha1
+        self.populate_dropdown()
 
     def process_file_nonexistent(self):
         """Disables FileListWidget's tabbar and displays FileNotFound popup."""
