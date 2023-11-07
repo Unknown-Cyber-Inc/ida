@@ -61,7 +61,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.linked_md5: QLabel
         self.files_toggle: QPushButton
         self.upload_button: QPushButton
-        self.files_buttons_layout: QHBoxLayout
+        self.files_buttons_layout: FilesButtonsLayout
         self.list_widget: FileListWidget
 
         self.load_files_view()

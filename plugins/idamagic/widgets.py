@@ -185,6 +185,7 @@ class FileListWidget(BaseListWidget):
         """Handle delete pushbutton click"""
         confirmation_popup = DeleteConfirmationPopup(self)
         confirmation = confirmation_popup.exec_()
+        print("DELETING FOR HASH:", self.binary_id)
         if confirmation == QtWidgets.QMessageBox.Ok:
             item = self.list_widget.currentItem()
             if self.list_widget_tab_bar.isTabVisible(0):
@@ -1495,7 +1496,7 @@ class FileTextPopup(TextPopup):
 
     def save_create(self, text):
         """API call logic for `create` submissions"""
-        if self.list_widget_tab_bar.isTabVisible(0):
+        if self.parent.list_widget_tab_bar.isTabVisible(0):
             type_str = "Notes"
         elif self.parent.list_widget_tab_bar.isTabVisible(1):
             type_str = "Tags"
@@ -1565,7 +1566,7 @@ class FileTextPopup(TextPopup):
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
-        if self.list_widget_tab_bar.isTabVisible(0):
+        if self.parent.list_widget_tab_bar.isTabVisible(0):
             type_str = "Notes"
         elif self.parent.list_widget_tab_bar.isTabVisible(1):
             type_str = "Tags"

@@ -47,6 +47,7 @@ class _MAGICFormClassMethods:
 
     def populate_file_notes(self, list_items):
         """Populates the File list 'Notes' tab with recieved notes"""
+        print("POPULATING FILE NOTES FOR BINARY WITH HASH:", self.hashes["ida_md5"])
         notes = []
         # start adding note information
         for note in list_items:
@@ -64,6 +65,7 @@ class _MAGICFormClassMethods:
 
     def populate_file_tags(self, list_items):
         """Populates the File list 'Tags' tab with recieved tags"""
+        print("POPULATING FILE TAGS FOR BINARY WITH HASH:", self.hashes["ida_md5"])
         tags = []
         for tag in list_items:
             tags.append(
@@ -76,9 +78,10 @@ class _MAGICFormClassMethods:
 
     def populate_file_matches(self, list_items):
         """Populates the File list 'Matches' tab with recieved matches"""
+        print("POPULATING FILE MATCHES FOR HASH:", self.hashes["version_hash"])
         matches = []
         for match in list_items:
-            if match["sha1"] != self.hashes["ida_md5"]:
+            if match["sha1"] != self.hashes["version_hash"]:
                 filename = f"sha1: {match['sha1']}"
             else:
                 filename = f"Current file - sha1: {match['sha1']}"
@@ -107,9 +110,16 @@ class _MAGICFormClassMethods:
             expand_mask = "matches"
 
         try:
-            if list_type != "Notes":
+            if list_type == "Tags":
                 response = api_call(
                     binary_id=self.hashes["ida_md5"],
+                    expand_mask=expand_mask,
+                    no_links=True,
+                    async_req=True,
+                )
+            elif list_type == "Matches":
+                response = api_call(
+                    binary_id=self.hashes["version_hash"],
                     expand_mask=expand_mask,
                     no_links=True,
                     async_req=True,
@@ -237,6 +247,8 @@ class _MAGICFormClassMethods:
         if not idb_uploaded:
             content_child_sha1 = list(self.content_versions.items())[-1][-1]
             if content_child_sha1:
+                count = self.files_buttons_layout.dropdown.count()
+                self.files_buttons_layout.dropdown.setCurrentIndex(count-1)
                 self.set_version_hash(content_child_sha1)
                 self.file_exists = True
                 return True
