@@ -1412,11 +1412,16 @@ class ProcTextPopup(TextPopup):
                     update_mask="note",
                     async_req=True,
                 )
-            elif self.item_type == "Proc Name" == "PROCEDURE NAME":
-                api_call = print(
-                    "API call not implemented for procedure name EDIT, faux call made instead."
+            elif self.item_type == "Proc Name":
+                api_call = ctmfiles.update_procedure_genomics
+                response = api_call(
+                    binary_id=self.binary_id,
+                    rva=self.rva,
+                    procedure_name=text,
+                    update_mask="procedure_name",
+                    no_links=True,
+                    async_req=True,
                 )
-                response = api_call()
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
