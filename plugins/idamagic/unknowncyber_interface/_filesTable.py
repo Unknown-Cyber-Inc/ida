@@ -60,7 +60,7 @@ class _MAGICFormClassMethods:
                     ),
                 )
             )
-        self.update_list_widget(self.list_widget, notes, "Notes")
+        self.update_list_widget(self.list_widget, notes)
 
     def populate_file_tags(self, list_items):
         """Populates the File list 'Tags' tab with recieved tags"""
@@ -72,7 +72,7 @@ class _MAGICFormClassMethods:
                     text=tag.name,
                 )
             )
-        self.update_list_widget(self.list_widget, tags, "Tags")
+        self.update_list_widget(self.list_widget, tags)
 
     def populate_file_matches(self, list_items):
         """Populates the File list 'Matches' tab with recieved matches"""
@@ -91,7 +91,7 @@ class _MAGICFormClassMethods:
                 )
             )
         self.list_widget.list_widget.clear()
-        self.update_list_widget(self.list_widget, matches, "Matches")
+        self.update_list_widget(self.list_widget, matches)
 
     def make_list_api_call(self, list_type):
         """Make api call and handle exceptions"""
@@ -378,13 +378,7 @@ class _MAGICFormClassMethods:
         self,
         widget,
         list_items,
-        list_type,
     ):
         """Handle updating the list widget"""
-        widget.refresh_list_data(list_items, list_type)
-
-        if "Matches" not in widget.label.text():
-            widget.create_button.setEnabled(True)
-        else:
-            widget.create_button.setEnabled(False)
+        widget.refresh_list_data(list_items)
         widget.update()

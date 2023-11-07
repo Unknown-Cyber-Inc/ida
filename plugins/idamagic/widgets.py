@@ -23,13 +23,11 @@ class BaseListWidget(QtWidgets.QWidget):
     """Base widget for lists"""
 
     def __init__(
-        self, list_items, list_type="", parent=None, binary_id=None, popup=None
+        self, list_items, parent=None, binary_id=None, popup=None
     ):
         super().__init__(parent)
 
-        self.list_type = list_type
         self.list_items = list_items
-        self.label = QtWidgets.QLabel(list_type)
         self.list_widget_tab_bar = QtWidgets.QTabBar()
         self.list_widget = QtWidgets.QListWidget()
         self.binary_id = binary_id
@@ -45,11 +43,11 @@ class BaseListWidget(QtWidgets.QWidget):
 
     def init_ui(self):
         "Create widget and handle behavior"
-        self.create_button.clicked.connect(self.on_create_click)
         self.create_button.setEnabled(False)
         self.edit_button.setEnabled(False)
-        self.edit_button.clicked.connect(self.on_edit_click)
         self.delete_button.setEnabled(False)
+        self.create_button.clicked.connect(self.on_create_click)
+        self.edit_button.clicked.connect(self.on_edit_click)
         self.delete_button.clicked.connect(self.on_delete_click)
 
         # create button row for create/edit/delete buttons
@@ -60,7 +58,6 @@ class BaseListWidget(QtWidgets.QWidget):
 
         # create layout and add sub-widgets
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.label)
         layout.addWidget(self.list_widget_tab_bar)
         layout.addWidget(self.list_widget)
         layout.addLayout(self.button_row)
@@ -89,12 +86,11 @@ class FileListWidget(BaseListWidget):
     """Custom widget to display notes/tags/matches for a file."""
 
     def __init__(
-        self, list_items, list_type="", binary_id=None, widget_parent=None
+        self, list_items, binary_id=None, widget_parent=None
     ):
         self.popup = None
         super().__init__(
             list_items=list_items,
-            list_type=list_type,
             parent=widget_parent,
             binary_id=binary_id,
             popup=self.popup,
@@ -117,12 +113,17 @@ class FileListWidget(BaseListWidget):
         Index here is used to access the tab position.
         [<NoteTab>, <TagsTab>, <MatchesTab>]
         """
+        self.edit_button.setEnabled(False)
+        self.delete_button.setEnabled(False)
         if index == 0:
             self.widget_parent.make_list_api_call("Notes")
+            self.create_button.setEnabled(True)
         elif index == 1:
             self.widget_parent.make_list_api_call("Tags")
+            self.create_button.setEnabled(True)
         elif index == 2:
             self.widget_parent.make_list_api_call("Matches")
+            self.create_button.setEnabled(False)
 
     def disable_tab_bar(self):
         self.list_widget_tab_bar.setTabEnabled(0, False)
@@ -140,26 +141,18 @@ class FileListWidget(BaseListWidget):
         # get selected items
         selected_items = self.list_widget.selectedItems()
 
-        # check if any items were selected
-        if selected_items and "Tags" in self.label.text():
-            create.setEnabled(True)
-            edit.setEnabled(False)
-            delete.setEnabled(True)
-        elif selected_items and "Notes" in self.label.text():
-            create.setEnabled(True)
+        # Check if Notes (0) or  Tags (1) tab is visible.
+        if selected_items and self.list_widget_tab_bar.isTabVisible(0):
             edit.setEnabled(True)
             delete.setEnabled(True)
-        else:
-            create.setEnabled(False)
-            edit.setEnabled(False)
-            delete.setEnabled(False)
+        elif selected_items and self.list_widget_tab_bar.isTabVisible(1):
+            delete.setEnabled(True)
 
-    def refresh_list_data(self, list_items, list_type):
+    def refresh_list_data(self, list_items):
         """Clear and repopulate list model"""
 
         # update list items and type
         self.list_items = list_items
-        self.list_type = list_type
 
         # clear items
         self.list_widget.clear()
@@ -167,9 +160,6 @@ class FileListWidget(BaseListWidget):
         # add new items
         for item in self.list_items:
             self.list_widget.addItem(CustomListItem(item))
-
-        # update label
-        self.label.setText(self.list_type)
 
     def show_popup(self, text):
         """Handle showing edit popup"""
@@ -197,7 +187,10 @@ class FileListWidget(BaseListWidget):
         confirmation = confirmation_popup.exec_()
         if confirmation == QtWidgets.QMessageBox.Ok:
             item = self.list_widget.currentItem()
-            type_str = self.label.text()
+            if self.list_widget_tab_bar.isTabVisible(0):
+                type_str = "Notes"
+            elif self.list_widget_tab_bar.isTabVisible(1):
+                type_str = "Tags"
             try:
                 if "Notes" in type_str:
                     api_call = ctmfiles.delete_file_note
@@ -416,36 +409,25 @@ class BaseCenterTab(QtWidgets.QWidget):
         self.setLayout(layout)
 
     def item_selected(self, index):
+        self.center_widget.create_button.setEnabled(False)
+        self.center_widget.edit_button.setEnabled(False)
+        self.center_widget.delete_button.setEnabled(False)
+
         if index.parent().data() == None:
             # selecting a procedure of ProcRootNode
-            self.center_widget.create_button.setEnabled(False)
             self.center_widget.edit_button.setEnabled(True)
-            self.center_widget.delete_button.setEnabled(False)
-        elif index.data() == "Tags":
-            # selecting the TreeTagsNode
+        elif index.data() == "Tags" or index.data() == "Notes":
+            # selecting the TreeTagsNode or TreeNotesNode
             self.center_widget.create_button.setEnabled(True)
-            self.center_widget.edit_button.setEnabled(False)
-            self.center_widget.delete_button.setEnabled(False)
         elif index.parent().data() == "Tags":
             # selecting a tag node of ProcSimpleTextNode
             self.center_widget.create_button.setEnabled(True)
-            self.center_widget.edit_button.setEnabled(False)
             self.center_widget.delete_button.setEnabled(True)
-        elif index.data() == "Notes":
-            # selecting the TreeNotesNode
-            self.center_widget.create_button.setEnabled(True)
-            self.center_widget.edit_button.setEnabled(False)
-            self.center_widget.delete_button.setEnabled(False)
         elif index.parent().data() == "Notes":
             # selecting a note node of ProcSimpleTextNode
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.edit_button.setEnabled(True)
             self.center_widget.delete_button.setEnabled(True)
-        else:
-            # for all other nodes, disable all CRUD buttons
-            self.center_widget.create_button.setEnabled(False)
-            self.center_widget.edit_button.setEnabled(False)
-            self.center_widget.delete_button.setEnabled(False)
 
     def onTreeExpand(self, index):
         self.center_widget.create_button.setEnabled(False)
@@ -541,11 +523,11 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.delete_button.setMinimumSize(30, 30)
 
         # link button to clicked functions and set default 'enabled' to False
-        self.create_button.clicked.connect(self.on_create_click)
         self.create_button.setEnabled(False)
         self.edit_button.setEnabled(False)
-        self.edit_button.clicked.connect(self.on_edit_click)
         self.delete_button.setEnabled(False)
+        self.create_button.clicked.connect(self.on_create_click)
+        self.edit_button.clicked.connect(self.on_edit_click)
         self.delete_button.clicked.connect(self.on_delete_click)
 
         # create button row for create/edit/delete buttons
@@ -1513,9 +1495,12 @@ class FileTextPopup(TextPopup):
 
     def save_create(self, text):
         """API call logic for `create` submissions"""
-        parent_label = self.parent.label.text()
+        if self.list_widget_tab_bar.isTabVisible(0):
+            type_str = "Notes"
+        elif self.parent.list_widget_tab_bar.isTabVisible(1):
+            type_str = "Tags"
         try:
-            if "Notes" in parent_label:
+            if "Notes" in type_str:
                 api_call = ctmfiles.create_file_note
                 response = api_call(
                     binary_id=self.parent.binary_id,
@@ -1524,7 +1509,7 @@ class FileTextPopup(TextPopup):
                     no_links=True,
                     async_req=True,
                 )
-            elif "Tags" in parent_label:
+            elif "Tags" in type_str:
                 api_call = ctmfiles.create_file_tag
                 response = api_call(
                     binary_id=self.parent.binary_id,
@@ -1535,7 +1520,7 @@ class FileTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not create {parent_label} for File.")
+            print(f"Could not create {type_str} for File.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -1549,7 +1534,7 @@ class FileTextPopup(TextPopup):
             return None
         else:
             if 200 <= response.status <= 299:
-                if "Notes" in parent_label:
+                if "Notes" in type_str:
                     self.parent.list_widget.addItem(
                         CustomListItem(
                             ProcSimpleTextNode(
@@ -1562,7 +1547,7 @@ class FileTextPopup(TextPopup):
                             )
                         )
                     )
-                elif "Tags" in parent_label:
+                elif "Tags" in type_str:
                     self.parent.list_widget.addItem(
                         CustomListItem(
                             ProcSimpleTextNode(
@@ -1571,18 +1556,21 @@ class FileTextPopup(TextPopup):
                             )
                         )
                     )
-                print(f"{parent_label} for File created successfully.")
+                print(f"{type_str} for File created successfully.")
                 return text
             else:
-                print(f"Error updating {parent_label}.")
+                print(f"Error updating {type_str}.")
                 print(f"Status Code: {response.status}")
                 return None
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
-        parent_label = self.parent.label.text()
+        if self.list_widget_tab_bar.isTabVisible(0):
+            type_str = "Notes"
+        elif self.parent.list_widget_tab_bar.isTabVisible(1):
+            type_str = "Tags"
         try:
-            if "Notes" in self.parent.label.text():
+            if "Notes" in type_str:
                 api_call = ctmfiles.update_file_note
                 response = api_call(
                     binary_id=self.parent.binary_id,
@@ -1596,7 +1584,7 @@ class FileTextPopup(TextPopup):
                 response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not update File {parent_label}.")
+            print(f"Could not update File {type_str}.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -1610,10 +1598,10 @@ class FileTextPopup(TextPopup):
             return None
         else:
             if 200 <= response[1] <= 299:
-                print(f"File {parent_label} updated successfully.")
+                print(f"File {type_str} updated successfully.")
                 return text
             else:
-                print(f"Error updating {parent_label}.")
+                print(f"Error updating {type_str}.")
                 print(f"Status Code: {response[1]}")
                 return None
 
