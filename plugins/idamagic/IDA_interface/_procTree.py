@@ -32,8 +32,8 @@ class _ScrClassMethods:
                 proc_name,
                 str(proc.occurrence_count),
                 proc.status,
-                ("notes - 0" if not proc.notes else len(proc.notes)),
-                ("tags - 0" if not proc.tags else len(proc.tags)),
+                ("0" if not proc.notes else str(len(proc.notes))),
+                ("0" if not proc.tags else str(len(proc.tags))),
             ]
             # insert blank row
             self.proc_table.insertRow(self.proc_table.rowCount())
@@ -62,7 +62,7 @@ class _ScrClassMethods:
         GET from procedures and list all procedures associated with file.
         """
         genomics_read_mask = (
-            "cfg,start_ea,is_library,status,procedure_hash,"
+            "cfg,start_ea,is_library,status,procedure_hash,notes,tags,"
             + "occurrence_count,strings,api_calls,procedure_name"
         )
         order_by = "start_ea"
@@ -73,7 +73,7 @@ class _ScrClassMethods:
                 read_mask=genomics_read_mask,
                 order_by=order_by,
                 no_links=True,
-                page_size=250,
+                page_size=900,
                 async_req=True,
             )
             response = response.get()
