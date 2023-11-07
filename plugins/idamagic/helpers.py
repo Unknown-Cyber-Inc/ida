@@ -1,4 +1,5 @@
 """Helper functions"""
+from datetime import datetime
 import os
 import hashlib
 import logging
@@ -58,12 +59,12 @@ def gen_random_idb_filename(length=15):
 
 
 def get_all_idb_hashes():
-    """Hash loaded idb.
+    """Hash loaded idb's contents.
 
     Returns
     -------
     dict
-        The hashes of the IDB in hexadecimal format.
+        The hashes of the IDB's contents in hexadecimal format.
     """
     byte_string = convert_to_py_bytes()
     sha1 = hashlib.sha1()

@@ -6,6 +6,7 @@ Contains ida_kernwin.PluginForm and also ida_kernwin.Choose.
 Will likely be broken into components as the insides of the form grow.
 """
 
+from collections import OrderedDict
 import cythereal_magic
 import logging
 
@@ -51,6 +52,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.file_exists = False
         self.file_type = None
         self.hashes = hashes
+        self.content_versions = OrderedDict()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
 
         # main pyqt widgets used
@@ -59,7 +61,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.linked_md5: QLabel
         self.files_toggle: QPushButton
         self.upload_button: QPushButton
-        self.files_buttons_layout: QHBoxLayout
+        self.files_buttons_layout: FilesButtonsLayout
         self.list_widget: FileListWidget
 
         self.load_files_view()
@@ -102,9 +104,18 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
             list_items=[],
-            list_type="Matches",
-            binary_id=self.hashes["version_sha1"],
+            binary_id=self.hashes["version_hash"],
             widget_parent=self,
         )
         # help create items, add to tab widget
         self.init_and_populate()
+
+    def populate_dropdown(self):
+        """
+        Populate the dropdown with the returned original binary and content file versions
+        """
+        if len(self.content_versions) > 0:
+            for key, value in self.content_versions.items():
+                self.files_buttons_layout.dropdown.addItem(
+                    key, value
+                )
