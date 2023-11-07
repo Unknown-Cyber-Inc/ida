@@ -1,5 +1,6 @@
 """Custom widgets"""
 from PyQt5 import QtWidgets, Qt, QtGui
+from PyQt5.QtWidgets import QTableWidgetItem
 import cythereal_magic
 from cythereal_magic.rest import ApiException
 from .helpers import (
@@ -273,12 +274,24 @@ class ProcRootNode(ProcTableItem):
     Has information related to its start_ea for jumping to the procedure in IDA's view.
     """
 
-    def __init__(self, node_name, full_name, start_ea, tree_type=None):
+    def __init__(
+            self,
+            node_name,
+            full_name,
+            start_ea,
+            tree_type=None,
+            binary_id=None,
+            rva=None,
+            table_row=None,
+        ):
         super().__init__()
         self.node_name = node_name
         self.start_ea = start_ea
         self.full_name = full_name
         self.tree_type = tree_type
+        self.binary_id = binary_id
+        self.rva = rva
+        self.table_row = table_row
         if self.full_name is not None:
             self.setText(full_name)
         else:
@@ -414,7 +427,9 @@ class BaseCenterTab(QtWidgets.QWidget):
         self.center_widget.edit_button.setEnabled(False)
         self.center_widget.delete_button.setEnabled(False)
 
-        if index.parent().data() == None:
+        tab_index = self.center_widget.tabs_widget.currentIndex()
+        tab_color = self.center_widget.tabs_widget.tabBar().tabTextColor(tab_index)
+        if index.parent().data() is None and tab_color.green() == 128:
             # selecting a procedure of ProcRootNode
             self.center_widget.edit_button.setEnabled(True)
         elif index.data() == "Tags" or index.data() == "Notes":
@@ -456,11 +471,11 @@ class CenterProcTab(BaseCenterTab):
     Created from a procedure located within the file loaded into IDA.
     """
 
-    def __init__(self, center_widget, item):
+    def __init__(self, center_widget, item, table_row):
         super().__init__(center_widget)
 
         self.center_widget.populate_tab_tree(
-            item, self.tab_tree, self.center_widget.sha1
+            item, self.tab_tree, self.center_widget.sha1, table_row
         )
         self.center_widget.tabs_widget.addTab(self, item.start_ea)
 
@@ -549,10 +564,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         if self.count_tabs() == 0:
             self.create_tab("Default tab")
 
-    def create_tab(self, tab_type, item=None):
+    def create_tab(self, tab_type, item=None, table_row=None):
         """Add a tab to self.tabs_widget"""
         if tab_type == "Original procedure":
-            tab = CenterProcTab(self, item)
+            tab = CenterProcTab(self, item, table_row)
             self.remove_default_tab()
             if self.tab_bar.count() == 1:
                 self.tab_color.setGreen(128)
@@ -586,7 +601,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         if self.tabs_widget.tabText(0) == "Get started":
             self.close_tab(0)
 
-    def populate_tab_tree(self, item, tab_tree, tree_type=None):
+    def populate_tab_tree(self, item, tab_tree, tree_type=None, table_row=None):
         """Create a ProcRootNode to display in the center widget"""
 
         if tree_type == "Derived file":
@@ -599,7 +614,14 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 ]
             )
         elif tree_type == "Derived procedure":
-            rootnode = ProcRootNode(item.rva, None, None, tree_type)
+            rootnode = ProcRootNode(
+                item.rva,
+                None,
+                None,
+                tree_type,
+                item.binary_id,
+                item.rva
+            )
 
             rootnode.appendRows(
                 [
@@ -610,7 +632,13 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         else:
             # create root node
             rootnode = ProcRootNode(
-                item.start_ea, create_proc_name(item), item.start_ea
+                item.start_ea,
+                create_proc_name(item),
+                item.start_ea,
+                tree_type="Procedure",
+                binary_id=item.binary_id,
+                rva=item.start_ea,
+                table_row=table_row,
             )
             # populate with sub root nodes
             if item.strings:
@@ -893,6 +921,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         binary_id=None,
         rva=None,
         item_type=None,
+        table_row=None,
     ):
         """Handle showing edit popup"""
         self.popup = ProcTextPopup(
@@ -902,6 +931,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             binary_id=binary_id,
             rva=rva,
             item_type=item_type,
+            table_row=table_row,
+            proc_table=self.widget_parent.proc_table
         )
         self.popup.show()
 
@@ -930,7 +961,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 listing_item=item,
                 text=text,
                 parent=item.parent(),
-                binary_id=None,
+                binary_id=self.sha1,
                 rva=None,
                 item_type=item_type,
             )
@@ -1134,6 +1165,7 @@ class ProcTableWidget(QtWidgets.QTableWidget):
         self.widget_parent.center_widget.create_tab(
             "Original procedure",
             item=item.data(1),
+            table_row=item.row(),
         )
         self.proc_tree_jump_to_hex(item.data(1).start_ea)
 
@@ -1144,6 +1176,11 @@ class ProcTableWidget(QtWidgets.QTableWidget):
         if not found_ea:
             start_ea = start_ea + self.widget_parent.image_base
             ida_kernwin.jumpto(start_ea)
+
+    def reset_table(self):
+        """Reset the table data, replacing the header labels."""
+        self.clearContents()
+        self.setRowCount(0)
 
 
 class TabTreeWidget(QtWidgets.QTreeView):
@@ -1260,6 +1297,8 @@ class ProcTextPopup(TextPopup):
         binary_id=None,
         rva=None,
         item_type=None,
+        table_row=None,
+        proc_table=None,
     ):
         """Init method"""
         super().__init__(fill_text, parent)
@@ -1268,6 +1307,8 @@ class ProcTextPopup(TextPopup):
         self.binary_id = binary_id
         self.rva = rva
         self.item_type = item_type
+        self.table_row = table_row
+        self.proc_table = proc_table
 
     def on_cancel_click(self):
         """When edit popup's cancel button is clicked"""
@@ -1277,9 +1318,18 @@ class ProcTextPopup(TextPopup):
         """When edit popup's save button is clicked"""
         text = self.text_area.toPlainText()
 
-        if self.fill_text:
+        if self.fill_text or self.item_type == "Proc Name":
             text = self.save_edit(text, self.listing_item)
-            if text:
+            if self.item_type == "Proc Name":
+                self.listing_item.setText(self.listing_item.rva + " - " + text)
+                table_item = self.proc_table.item(self.listing_item.table_row, 0)
+                data = table_item.data(1)
+                data.procedure_name = text
+                updated_item = QTableWidgetItem(data.start_ea + " - " + text)
+                self.proc_table.setItem(self.listing_item.table_row, 0, updated_item)
+                table_item = self.proc_table.item(self.listing_item.table_row, 0)
+                table_item.setData(1, data)
+            elif text:
                 text = (
                     f"{text}\n"
                     f"    User: Current IDA User\n"
@@ -1412,11 +1462,16 @@ class ProcTextPopup(TextPopup):
                     update_mask="note",
                     async_req=True,
                 )
-            elif self.item_type == "Proc Name" == "PROCEDURE NAME":
-                api_call = print(
-                    "API call not implemented for procedure name EDIT, faux call made instead."
+            elif self.item_type == "Proc Name":
+                api_call = ctmfiles.update_file_procedure_genomics
+                response = api_call(
+                    binary_id=self.binary_id,
+                    rva=item.rva,
+                    procedure_name=text,
+                    update_mask="procedure_name",
+                    no_links=True,
+                    async_req=True,
                 )
-                response = api_call()
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
@@ -1435,12 +1490,6 @@ class ProcTextPopup(TextPopup):
             # (this func always returns None anyway)
             return None
         else:
-            # remove this block once endpoint implemented
-            if self.item_type == "PROCEDURE NAME":
-                print(
-                    "Endpoints for procedure name functionality not implemented."
-                )
-                return None
             if self.item_type == "Derived file note":
                 if 200 <= response[1] <= 299:
                     print(
