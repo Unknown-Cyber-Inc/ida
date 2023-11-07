@@ -13,7 +13,6 @@ from cythereal_magic.rest import ApiException
 from ..helpers import (
     encode_file,
     get_linked_binary_expected_path,
-    # parse_timestamp,
 )
 from ..widgets import FileSimpleTextNode
 from ..helpers import create_idb_file
@@ -39,7 +38,7 @@ class _MAGICFormClassMethods:
         if self.file_exists:
             self.make_list_api_call("Matches")
             self.list_widget.enable_tab_bar()
-            self.list_widget.binary_id = self.hashes["version_sha1"]
+            self.list_widget.binary_id = self.hashes["ida_md5"]
         else:
             self.process_file_nonexistent()
     #
@@ -79,7 +78,7 @@ class _MAGICFormClassMethods:
         """Populates the File list 'Matches' tab with recieved matches"""
         matches = []
         for match in list_items:
-            if match["sha1"] != self.hashes["version_sha1"]:
+            if match["sha1"] != self.hashes["ida_md5"]:
                 filename = f"sha1: {match['sha1']}"
             else:
                 filename = f"Current file - sha1: {match['sha1']}"
@@ -110,14 +109,14 @@ class _MAGICFormClassMethods:
         try:
             if list_type != "Notes":
                 response = api_call(
-                    binary_id=self.hashes["version_sha1"],
+                    binary_id=self.hashes["ida_md5"],
                     expand_mask=expand_mask,
                     no_links=True,
                     async_req=True,
                 )
             else:
                 response = api_call(
-                    binary_id=self.hashes["version_sha1"], no_links=True, async_req=True
+                    binary_id=self.hashes["ida_md5"], no_links=True, async_req=True
                 )
             response = response.get()
         except ApiException as exp:
@@ -151,11 +150,11 @@ class _MAGICFormClassMethods:
                 elif list_type == "Tags":
                     self.populate_file_tags(response.resources)
 
-    def set_version_sha1(self, sha1):
+    def set_version_hash(self, new_hash):
         """
-        Set the hash for "version" sha1
+        Set the hash for "version".
         """
-        self.hashes["version_sha1"] = sha1
+        self.hashes["version_hash"] = new_hash
 
     def check_idb_uploaded(self):
         """
@@ -183,7 +182,8 @@ class _MAGICFormClassMethods:
             self.file_exists = False
             linked_uploaded = self.check_linked_binary_object_exists(False)
             if not linked_uploaded:
-                self.set_version_sha1(self.hashes["loaded_sha1"])
+                self.set_version_hash(self.hashes["loaded_sha1"])
+                self.list_widget.disable_tab_bar()
                 for error in json.loads(exp.body).get("errors"):
                     logger.info(error["reason"])
                     print(f"{error['reason']}: {error['message']}")
@@ -191,6 +191,7 @@ class _MAGICFormClassMethods:
             logger.debug(traceback.format_exc())
             print("Unknown Error occurred")
             print(f"<{exp.__class__}>: {str(exp)}")
+            self.list_widget.disable_tab_bar()
             return None
         else:
             if 200 <= response.status <= 299:
@@ -199,7 +200,7 @@ class _MAGICFormClassMethods:
                 self.list_widget.enable_tab_bar()
                 original_exists = self.check_linked_binary_object_exists(True)
                 if not original_exists:
-                    self.set_version_sha1(response.resource.sha1)
+                    self.set_version_hash(response.resource.sha1)
 
     def check_linked_binary_object_exists(self, idb_uploaded):
         """
@@ -211,9 +212,8 @@ class _MAGICFormClassMethods:
         read_mask = "*,children.*"
         expand_mask = "children"
         try:
-            md5 = self.hashes["ida_md5"]
             response = self.ctmfiles.get_file(
-                binary_id=md5,
+                binary_id=self.hashes["ida_md5"],
                 no_links=True,
                 read_mask=read_mask,
                 expand_mask=expand_mask,
@@ -237,12 +237,12 @@ class _MAGICFormClassMethods:
         if not idb_uploaded:
             content_child_sha1 = list(self.content_versions.items())[-1][-1]
             if content_child_sha1:
-                self.set_version_sha1(content_child_sha1)
+                self.set_version_hash(content_child_sha1)
                 self.file_exists = True
                 return True
             elif self.verify_linked_binary_sha1(response.resource):
-                print("No content-children found. Updating version_sha1 to linked-binary's")
-                self.set_version_sha1(response.resource.sha1)
+                print("No content-children found. Updating set_version_hash to linked-binary's")
+                self.set_version_hash(response.resource.sha1)
                 self.file_exists = True
                 return True
             return False
@@ -279,17 +279,16 @@ class _MAGICFormClassMethods:
         Call `populate_versions` to process `content_versions` and add items to the
           dropdown.
         """
-        self.content_versions["Original File"] = self.hashes["ida_md5"]
+        self.content_versions["Original File"] = file.sha1
         for child in file.children:
             if child.get('sha1'):
-                print("THIS CHILD HAS A SHA1:", child)
-            sha1 = child.get('sha1')
-            service_data = child.get("service_data", {})
-            task_trace = service_data.get("task_trace", {})
-            timestamp = task_trace.get("timestamp", {})
-            if sha1 and timestamp:
-                print("GOLDEN CHILD FOUND: ", child)
-                self.content_versions[timestamp] = sha1
+                sha1 = child.get('sha1')
+                service_data = child.get("service_data", {})
+                task_trace = service_data.get("task_trace", {})
+                timestamp = task_trace.get("timestamp", {})
+                if sha1 and timestamp:
+                    print("GOLDEN CHILD FOUND: ", child)
+                    self.content_versions[timestamp] = sha1
         self.populate_dropdown()
 
     def process_file_nonexistent(self):
@@ -309,6 +308,7 @@ class _MAGICFormClassMethods:
 
     def upload_idb(self, skip_unpack):
         idb = create_idb_file()
+        print("Attempting IDB file upload.")
         self.upload_file(idb, skip_unpack)
 
     def upload_binary(self, skip_unpack):
@@ -317,6 +317,7 @@ class _MAGICFormClassMethods:
         except Exception:
             print(f"Binary file not found at path: {get_linked_binary_expected_path()}.")
             print("To upload this binary, move to this file path.")
+        print("Attempting binary file upload.")
         self.upload_file(binary_path, skip_unpack)
 
     def upload_file(self, file_path, skip_unpack):
@@ -358,19 +359,14 @@ class _MAGICFormClassMethods:
         else:
             if response.status == 200:
                 self.file_exists = True
-                # TODO: Change this to the sha1 of the parent RegularFile
-                self.hashes["version_sha1"] = response.resources[0].sha1
-                self.list_widget.binary_id = self.hashes["version_sha1"]
+                self.set_version_hash(response.resources[0].sha1)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("File previously uploaded and available.")
-                print("File hash:", self.hashes["version_sha1"])
             elif response.status >= 201 and response.status <= 299:
                 self.file_exists = True
-                # TODO: Change this to the sha1 of the parent RegularFile
-                self.hashes["version_sha1"] = response.resources[0].sha1
-                self.list_widget.binary_id = self.hashes["version_sha1"]
+                self.set_version_hash(response.resources[0].sha1)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)

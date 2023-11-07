@@ -41,7 +41,7 @@ class ProcsToggleLayout(QHBoxLayout):
         """Set widgets to `show()`"""
         self.layout_parent.pushbutton.show()
         self.layout_parent.proc_table.show()
-        if (self.layout_parent.hashes["version_sha1"] !=
+        if (self.layout_parent.hashes["version_hash"] !=
             self.layout_parent.hashes["loaded_sha1"]):
             self.layout_parent.sync_warning.show()
 
@@ -60,11 +60,6 @@ class FilesButtonsLayout(QHBoxLayout):
         self.layout_parent = layout_parent
 
         self.dropdown = QComboBox()
-
-        self.dropdown.addItem("Option 1")
-        self.dropdown.addItem("Option 2")
-        self.dropdown.addItem("Option 3")
-        self.dropdown.addItem("Option 4")
 
         self.files_toggle = QPushButton("Hide Files Section")
         self.files_toggle.setSizePolicy(

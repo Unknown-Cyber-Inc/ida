@@ -515,7 +515,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         super().__init__()
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
-        self.sha1 = self.widget_parent.hashes["version_sha1"]
+        self.sha1 = self.widget_parent.hashes["version_hash"]
         self.init_ui()
 
     def init_ui(self):
@@ -843,7 +843,6 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     async_req=True,
                 )
             elif type_str == "File notes":
-                print("Making file notes api call.")
                 response = api_call(
                     binary_id=node.binary_id,
                     no_links=True,
@@ -953,7 +952,6 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item.parent(), TreeNotesNode):
-            print(self.tab_color.red())
             if self.tab_color.red() == 255:
                 item_type = "Derived file note"
             else:

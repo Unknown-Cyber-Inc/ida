@@ -105,7 +105,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.list_widget = FileListWidget(
             list_items=[],
             list_type="Matches",
-            binary_id=self.hashes["version_sha1"],
+            binary_id=self.hashes["version_hash"],
             widget_parent=self,
         )
         # help create items, add to tab widget

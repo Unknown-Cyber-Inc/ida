@@ -165,12 +165,6 @@ def get_start_ea(obj):
         return obj.startEA
 
 
-# PRIMED FOR REMOVAL
-# def parse_timestamp(timestamp):
-#     """Convert timestamp to datetime"""
-#     return datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S.%f")
-
-
 def to_bool(param, default=False):
     """Convert a string environment variable to a boolean value.
 

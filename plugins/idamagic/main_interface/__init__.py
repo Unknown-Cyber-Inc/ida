@@ -33,7 +33,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
             "loaded_sha1": loaded_hashes.get("sha1", None),
             "loaded_sha256": loaded_hashes.get("sha256", None),
             "loaded_md5": loaded_hashes.get("md5", None),
-            "version_sha1": None,
+            "version_hash": None,
             "ida_sha256": ida_nalt.retrieve_input_file_sha256().hex(),
             "ida_md5": ida_nalt.retrieve_input_file_md5().hex(),
         }
@@ -59,10 +59,33 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         self.main_layout.addWidget(self.ida_plugin)
         self.main_widget.setLayout(self.main_layout)
 
+        self.unknown_plugin.files_buttons_layout.dropdown.currentIndexChanged.connect(
+            self.dropdown_selection_changed
+        )
+
         self.Show()
 
         if not autoinst:
             self.parent.parent().parent().setSizes([1000, 1])
+
+    def dropdown_selection_changed(self, index):
+        """
+        When dropdown selection changes, update version hashes.
+        """
+        print("version_hash BEFORE:", self.hashes["version_hash"])
+        sha1 = self.unknown_plugin.files_buttons_layout.dropdown.itemData(index)
+        self.hashes["version_hash"] = sha1
+        print("version_hash AFTER:", self.hashes["version_hash"])
+
+        self.version_hash_changed()
+
+    def version_hash_changed(self):
+        """
+        Defined behavior for when the version_hash changes.
+
+        Clear the procedure table.
+        """
+        self.ida_plugin.proc_table.clearContents()
 
     def OnCreate(self, form):
         """
