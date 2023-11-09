@@ -36,7 +36,7 @@ class _MAGICFormClassMethods:
         """
         self.check_idb_uploaded()
         if self.file_exists:
-            self.make_list_api_call("Matches")
+            self.make_list_api_call("Matches", 1)
             self.list_widget.enable_tab_bar()
             self.list_widget.binary_id = self.hashes["ida_md5"]
         else:
@@ -93,10 +93,12 @@ class _MAGICFormClassMethods:
                     )
                 )
             )
+        self.list_widget.pagination_selector.page_item_total = len(list_items)
+        self.list_widget.pagination_selector.update_next_button()
         self.list_widget.list_widget.clear()
         self.update_list_widget(self.list_widget, matches)
 
-    def make_list_api_call(self, list_type):
+    def make_list_api_call(self, list_type, page=1):
         """Make api call and handle exceptions"""
         api_call = None
 
@@ -121,6 +123,8 @@ class _MAGICFormClassMethods:
                 response = api_call(
                     binary_id=self.hashes["version_hash"],
                     expand_mask=expand_mask,
+                    page_count=page,
+                    page_size=10,
                     no_links=True,
                     async_req=True,
                 )

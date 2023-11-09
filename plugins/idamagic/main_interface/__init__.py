@@ -67,7 +67,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         self.Show()
 
         if not autoinst:
-            self.parent.parent().parent().setSizes([1000, 1])
+            self.parent.parent().parent().setSizes([1200, 1])
 
     def dropdown_selection_changed(self, index):
         """

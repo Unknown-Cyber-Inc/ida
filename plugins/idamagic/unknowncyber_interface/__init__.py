@@ -61,6 +61,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.linked_md5: QLabel
         self.status_label: QLabel
         self.status_button: QPushButton
+        self.status_layout: QHBoxLayout
         self.status_popup: StatusPopup
         self.files_toggle: QPushButton
         self.upload_button: QPushButton
@@ -86,8 +87,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # adding widgets to layout, order here matters
         self.layout.addWidget(self.loaded_md5)
         self.layout.addWidget(self.linked_md5)
-        self.layout.addWidget(self.status_label)
-        self.layout.addWidget(self.status_button)
+        self.layout.addLayout(self.status_layout)
         self.layout.addLayout(self.files_buttons_layout)
         self.layout.addWidget(self.list_widget)
 
@@ -101,13 +101,17 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # Personalizing QT items, in decending order of appearance.
         # NOTE! Upon display, actual arrangement is solely determined by
         #       the order widgets are ADDED to the layout.
-        self.loaded_md5 = QLabel(f"IDB hash: {self.hashes['loaded_md5']}")
+        self.loaded_md5 = QLabel(f"IDB md5: {self.hashes['loaded_md5']}")
         self.loaded_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.linked_md5 = QLabel(f"Binary hash: {self.hashes['ida_md5']}")
+        self.linked_md5 = QLabel(f"Binary md5: {self.hashes['ida_md5']}")
         self.linked_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status_label = QLabel("Upload Processing Status: Upload a file to track it's status.")
         self.status_button = QPushButton("Check Upload Status")
         self.status_button.clicked.connect(self.get_file_status)
+        self.status_button.setEnabled(False)
+        self.status_layout = QHBoxLayout()
+        self.status_layout.addWidget(self.status_label)
+        self.status_layout.addWidget(self.status_button)
         self.status_popup = None
         self.files_buttons_layout = FilesButtonsLayout(self)
         # create main tab bar widget and its tabs
