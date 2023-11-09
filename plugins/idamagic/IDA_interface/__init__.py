@@ -78,10 +78,8 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.pushbutton.setCheckable(False)
         self.pushbutton.clicked.connect(self.pushbutton_click)
         self.sync_warning = QLabel(
-            "Procedures below are not derived from the currently" +
-            "loaded IDB. As such, they may not be synced with the IDA views. Upload" +
-            "this IDB to remedy this."
-            )
+            "Procedures derived from file not loaded in IDA. Addresses may be out of sync."
+        )
         self.sync_warning.setWordWrap(True)
         self.sync_warning.setStyleSheet("color: red;")
         self.sync_warning.hide()

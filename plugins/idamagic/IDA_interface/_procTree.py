@@ -73,7 +73,7 @@ class _ScrClassMethods:
                 read_mask=genomics_read_mask,
                 order_by=order_by,
                 no_links=True,
-                page_size=900,
+                page_size=0,
                 async_req=True,
             )
             response = response.get()
