@@ -39,7 +39,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
     # functions for PluginForm object functionality.
     #
 
-    def __init__(self, title, magic_api_client, hashes):
+    def __init__(self, title, magic_api_client, hashes, main_interface):
         """Initialializes the form object
 
         Additionally, sets a few member variables necessary to the function of the plugin.
@@ -49,9 +49,9 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
 
         # non pyqt attrs
         self.title: str = title
-        self.file_exists = False
         self.file_type = None
         self.hashes = hashes
+        self.main_interface = main_interface
         self.content_versions = OrderedDict()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
 

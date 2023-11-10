@@ -307,6 +307,7 @@ class PaginationSelector(QtWidgets.QWidget):
         self.back_button.setEnabled(False)
         self.page_selector = QtWidgets.QLabel(f"{self.current_page}")
         self.next_button = QtWidgets.QPushButton(">")
+        self.next_button.setEnabled(False)
 
         layout.addWidget(self.first_button)
         layout.addWidget(self.back_button)

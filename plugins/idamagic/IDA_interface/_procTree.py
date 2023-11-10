@@ -61,6 +61,10 @@ class _ScrClassMethods:
 
         GET from procedures and list all procedures associated with file.
         """
+        if not self.main_interface.get_file_exists():
+            print("Upload a file or IDB first to generate procedures.")
+            return None
+
         self.proc_table.reset_table()
         genomics_read_mask = (
             "cfg,start_ea,is_library,status,procedure_hash,notes,tags,"

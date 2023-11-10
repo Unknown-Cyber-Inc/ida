@@ -35,7 +35,7 @@ class _MAGICFormClassMethods:
         Helper, initialize and populate items in analysis tab widget
         """
         self.check_idb_uploaded()
-        if self.file_exists:
+        if self.main_interface.get_file_exists():
             self.make_list_api_call("Matches", 1)
             self.list_widget.enable_tab_bar()
             self.list_widget.binary_id = self.hashes["ida_md5"]
@@ -47,7 +47,6 @@ class _MAGICFormClassMethods:
 
     def populate_file_notes(self, list_items):
         """Populates the File list 'Notes' tab with recieved notes"""
-        print("POPULATING FILE NOTES FOR BINARY WITH HASH:", self.hashes["ida_md5"])
         notes = []
         # start adding note information
         for note in list_items:
@@ -65,7 +64,6 @@ class _MAGICFormClassMethods:
 
     def populate_file_tags(self, list_items):
         """Populates the File list 'Tags' tab with recieved tags"""
-        print("POPULATING FILE TAGS FOR BINARY WITH HASH:", self.hashes["ida_md5"])
         tags = []
         for tag in list_items:
             tags.append(
@@ -78,7 +76,6 @@ class _MAGICFormClassMethods:
 
     def populate_file_matches(self, list_items):
         """Populates the File list 'Matches' tab with recieved matches"""
-        print("POPULATING FILE MATCHES FOR HASH:", self.hashes["version_hash"])
         matches = []
         for match in list_items:
             if match["sha1"] != self.hashes["version_hash"]:
@@ -175,7 +172,7 @@ class _MAGICFormClassMethods:
         Call the api at `get_file` to check for idb's pervious upload.
         If not, check for original binary's pervious upload.
         """
-        self.file_exists = False
+        self.main_interface.set_file_exists(False)
         read_mask = "sha1,children.*"
         expand_mask = "children"
         try:
@@ -193,7 +190,7 @@ class _MAGICFormClassMethods:
             print(
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
-            self.file_exists = False
+            self.main_interface.set_file_exists(False)
             linked_uploaded = self.check_linked_binary_object_exists(False)
             if not linked_uploaded:
                 self.set_version_hash(self.hashes["loaded_sha1"])
@@ -210,7 +207,7 @@ class _MAGICFormClassMethods:
         else:
             if 200 <= response.status <= 299:
                 print("IDB uploaded previously.")
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 self.list_widget.enable_tab_bar()
                 original_exists = self.check_linked_binary_object_exists(True)
                 if not original_exists:
@@ -254,12 +251,12 @@ class _MAGICFormClassMethods:
                 count = self.files_buttons_layout.dropdown.count()
                 self.files_buttons_layout.dropdown.setCurrentIndex(count-1)
                 self.set_version_hash(content_child_sha1)
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 return True
             elif self.verify_linked_binary_sha1(response.resource):
                 print("No content-children found. Updating set_version_hash to linked-binary's")
                 self.set_version_hash(response.resource.sha1)
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 return True
             return False
 
@@ -312,16 +309,6 @@ class _MAGICFormClassMethods:
         self.list_widget.disable_tab_bar()
         self.files_buttons_layout.show_file_not_found_popup()
 
-    # def create_temp_file(self, file_path):
-    #     """
-    #     Package a file into a temp file for upload.
-    #     """
-    #     temp_filename = "temp_" + os.path.basename(file_path)
-    #     temp_path = os.path.join(os.getcwd(), temp_filename)
-    #     with open(temp_path, "wb") as outfile, open(file_path, "rb") as infile:
-    #         shutil.copyfileobj(infile, outfile)
-    #     return temp_path
-
     def upload_idb(self, skip_unpack):
         idb = create_idb_file()
         print("Attempting IDB file upload.")
@@ -344,7 +331,6 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
-        # temp_file_path = self.create_temp_file(file_path)
         filedata = encode_file(file_path)
 
         try:
@@ -374,7 +360,7 @@ class _MAGICFormClassMethods:
             return None
         else:
             if response.status == 200:
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 self.set_version_hash(response.resources[0].sha1)
                 self.hashes["upload_hash"] = response.resources[0].sha1
                 self.status_button.setEnabled(True)
@@ -384,7 +370,7 @@ class _MAGICFormClassMethods:
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("File previously uploaded and available.")
             elif response.status >= 201 and response.status <= 299:
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 self.set_version_hash(response.resources[0].sha1)
                 self.hashes["upload_hash"] = response.resources[0].sha1
                 self.status_button.setEnabled(True)

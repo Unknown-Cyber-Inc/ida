@@ -24,7 +24,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
     Plugin Scroll UI Object.
     """
 
-    def __init__(self, title, magic_api_client, hashes):
+    def __init__(self, title, magic_api_client, hashes, main_interface):
         """Initialializes the formtype some UI elements may not be loaded in this case,
             which may cause issues.
         Additionally, sets a few member variables necessary to the function of the plugin.
@@ -32,6 +32,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         """
         super().__init__()
         self.hashes = hashes
+        self.main_interface = main_interface
         self.baseRVA = ida_nalt.get_imagebase()
         self.image_base = None
         self.title: str = title
@@ -78,7 +79,8 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.pushbutton.setCheckable(False)
         self.pushbutton.clicked.connect(self.pushbutton_click)
         self.sync_warning = QLabel(
-            "Procedures derived from file not loaded in IDA. Addresses may be out of sync."
+            f"Showing procedures from file with hash {self.hashes['version_hash']}. " +
+            "Addresses may be out of sync with IDA session.."
         )
         self.sync_warning.setWordWrap(True)
         self.sync_warning.setStyleSheet("color: red;")
