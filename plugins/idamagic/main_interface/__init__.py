@@ -94,6 +94,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         Clear the procedure table.
         """
         self.ida_plugin.proc_table.reset_table()
+        self.ida_plugin.center_widget.update_sha1(self.hashes["version_hash"])
         self.unknown_plugin.list_widget.list_widget.clear()
         self.unknown_plugin.list_widget.list_widget_tab_bar.setCurrentIndex(2)
         self.unknown_plugin.make_list_api_call("Matches")
