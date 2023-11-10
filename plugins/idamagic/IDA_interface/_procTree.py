@@ -61,6 +61,7 @@ class _ScrClassMethods:
 
         GET from procedures and list all procedures associated with file.
         """
+        self.proc_table.reset_table()
         genomics_read_mask = (
             "cfg,start_ea,is_library,status,procedure_hash,notes,tags,"
             + "occurrence_count,strings,api_calls,procedure_name"
