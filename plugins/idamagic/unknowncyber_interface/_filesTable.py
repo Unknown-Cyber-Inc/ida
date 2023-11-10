@@ -14,7 +14,7 @@ from ..helpers import (
     encode_file,
     get_linked_binary_expected_path,
 )
-from ..widgets import FileSimpleTextNode
+from ..widgets import FileSimpleTextNode, StatusPopup
 from ..helpers import create_idb_file
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
@@ -35,8 +35,8 @@ class _MAGICFormClassMethods:
         Helper, initialize and populate items in analysis tab widget
         """
         self.check_idb_uploaded()
-        if self.file_exists:
-            self.make_list_api_call("Matches")
+        if self.main_interface.get_file_exists():
+            self.make_list_api_call("Matches", 1)
             self.list_widget.enable_tab_bar()
             self.list_widget.binary_id = self.hashes["ida_md5"]
         else:
@@ -47,7 +47,6 @@ class _MAGICFormClassMethods:
 
     def populate_file_notes(self, list_items):
         """Populates the File list 'Notes' tab with recieved notes"""
-        print("POPULATING FILE NOTES FOR BINARY WITH HASH:", self.hashes["ida_md5"])
         notes = []
         # start adding note information
         for note in list_items:
@@ -65,7 +64,6 @@ class _MAGICFormClassMethods:
 
     def populate_file_tags(self, list_items):
         """Populates the File list 'Tags' tab with recieved tags"""
-        print("POPULATING FILE TAGS FOR BINARY WITH HASH:", self.hashes["ida_md5"])
         tags = []
         for tag in list_items:
             tags.append(
@@ -78,7 +76,6 @@ class _MAGICFormClassMethods:
 
     def populate_file_matches(self, list_items):
         """Populates the File list 'Matches' tab with recieved matches"""
-        print("POPULATING FILE MATCHES FOR HASH:", self.hashes["version_hash"])
         matches = []
         for match in list_items:
             if match["sha1"] != self.hashes["version_hash"]:
@@ -93,10 +90,12 @@ class _MAGICFormClassMethods:
                     )
                 )
             )
+        self.list_widget.pagination_selector.page_item_total = len(list_items)
+        self.list_widget.pagination_selector.update_next_button()
         self.list_widget.list_widget.clear()
         self.update_list_widget(self.list_widget, matches)
 
-    def make_list_api_call(self, list_type):
+    def make_list_api_call(self, list_type, page=1):
         """Make api call and handle exceptions"""
         api_call = None
 
@@ -121,6 +120,8 @@ class _MAGICFormClassMethods:
                 response = api_call(
                     binary_id=self.hashes["version_hash"],
                     expand_mask=expand_mask,
+                    page_count=page,
+                    page_size=10,
                     no_links=True,
                     async_req=True,
                 )
@@ -171,7 +172,7 @@ class _MAGICFormClassMethods:
         Call the api at `get_file` to check for idb's pervious upload.
         If not, check for original binary's pervious upload.
         """
-        self.file_exists = False
+        self.main_interface.set_file_exists(False)
         read_mask = "sha1,children.*"
         expand_mask = "children"
         try:
@@ -189,7 +190,7 @@ class _MAGICFormClassMethods:
             print(
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
-            self.file_exists = False
+            self.main_interface.set_file_exists(False)
             linked_uploaded = self.check_linked_binary_object_exists(False)
             if not linked_uploaded:
                 self.set_version_hash(self.hashes["loaded_sha1"])
@@ -206,7 +207,7 @@ class _MAGICFormClassMethods:
         else:
             if 200 <= response.status <= 299:
                 print("IDB uploaded previously.")
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 self.list_widget.enable_tab_bar()
                 original_exists = self.check_linked_binary_object_exists(True)
                 if not original_exists:
@@ -250,12 +251,12 @@ class _MAGICFormClassMethods:
                 count = self.files_buttons_layout.dropdown.count()
                 self.files_buttons_layout.dropdown.setCurrentIndex(count-1)
                 self.set_version_hash(content_child_sha1)
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 return True
             elif self.verify_linked_binary_sha1(response.resource):
                 print("No content-children found. Updating set_version_hash to linked-binary's")
                 self.set_version_hash(response.resource.sha1)
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 return True
             return False
 
@@ -308,16 +309,6 @@ class _MAGICFormClassMethods:
         self.list_widget.disable_tab_bar()
         self.files_buttons_layout.show_file_not_found_popup()
 
-    # def create_temp_file(self, file_path):
-    #     """
-    #     Package a file into a temp file for upload.
-    #     """
-    #     temp_filename = "temp_" + os.path.basename(file_path)
-    #     temp_path = os.path.join(os.getcwd(), temp_filename)
-    #     with open(temp_path, "wb") as outfile, open(file_path, "rb") as infile:
-    #         shutil.copyfileobj(infile, outfile)
-    #     return temp_path
-
     def upload_idb(self, skip_unpack):
         idb = create_idb_file()
         print("Attempting IDB file upload.")
@@ -340,7 +331,6 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
-        # temp_file_path = self.create_temp_file(file_path)
         filedata = encode_file(file_path)
 
         try:
@@ -370,21 +360,57 @@ class _MAGICFormClassMethods:
             return None
         else:
             if response.status == 200:
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 self.set_version_hash(response.resources[0].sha1)
+                self.hashes["upload_hash"] = response.resources[0].sha1
+                self.status_button.setEnabled(True)
+                self.set_status_label("pending")
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("File previously uploaded and available.")
             elif response.status >= 201 and response.status <= 299:
-                self.file_exists = True
+                self.main_interface.set_file_exists(True)
                 self.set_version_hash(response.resources[0].sha1)
+                self.hashes["upload_hash"] = response.resources[0].sha1
+                self.status_button.setEnabled(True)
+                self.set_status_label("pending")
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("Upload Successful.")
         # finally:
         #     os.remove(temp_file_path)
+
+    def get_file_status(self):
+        """Get the status of an uploaded file."""
+        read_mask = "status,pipeline"
+        try:
+            response = self.ctmfiles.get_file(
+                binary_id=self.hashes["upload_hash"],
+                no_links=True,
+                read_mask=read_mask,
+                async_req=True
+            )
+            response = response.get()
+        except ApiException as exp:
+            logger.debug(traceback.format_exc())
+            for error in json.loads(exp.body).get("errors"):
+                logger.info(error["reason"])
+                print(f"{error['reason']}: {error['message']}")
+            self.set_status_label("api failure")
+            return None
+        except Exception as exp:
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+            self.set_status_label("api failure")
+            return None
+        else:
+            if 200 <= response.status <= 299:
+                self.set_status_label(response.resource.status)
+                self.status_popup = StatusPopup(response.resource, self)
+                self.status_popup.show()
 
     def update_list_widget(
         self,

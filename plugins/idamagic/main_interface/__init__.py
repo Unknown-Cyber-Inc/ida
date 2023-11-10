@@ -29,6 +29,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         """Initialize main plugin and attach sub-plugins."""
         super().__init__()
         loaded_hashes = get_all_idb_hashes()
+        self.file_exists = False
         self.hashes = {
             "loaded_sha1": loaded_hashes.get("sha1", None),
             "loaded_sha256": loaded_hashes.get("sha256", None),
@@ -36,6 +37,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
             "version_hash": None,
             "ida_sha256": ida_nalt.retrieve_input_file_sha256().hex(),
             "ida_md5": ida_nalt.retrieve_input_file_md5().hex(),
+            "upload_hash": None,
         }
 
         self.title = main_title
@@ -46,11 +48,11 @@ class MAGICMainClass(ida_kernwin.PluginForm):
 
         # create File widget
         self.unknown_plugin = MAGICPluginFormClass(
-            "Unknown Cyber MAGIC", self.api_client, self.hashes
+            "Unknown Cyber MAGIC", self.api_client, self.hashes, self
         )
         # create Procedure widget
         self.ida_plugin = MAGICPluginScrClass(
-            "MAGIC Genomics", self.api_client, self.hashes
+            "MAGIC Genomics", self.api_client, self.hashes, self
         )
 
         # set layout for main plugin
@@ -66,16 +68,22 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         self.Show()
 
         if not autoinst:
-            self.parent.parent().parent().setSizes([1000, 1])
+            self.parent.parent().parent().setSizes([1200, 1])
+
+    def get_file_exists(self):
+        """Return value of self.file_exists"""
+        return self.file_exists
+
+    def set_file_exists(self, val):
+        """Set the value of self.file_exists."""
+        self.file_exists = val
 
     def dropdown_selection_changed(self, index):
         """
         When dropdown selection changes, update version hashes.
         """
-        print("version_hash BEFORE:", self.hashes["version_hash"])
         sha1 = self.unknown_plugin.files_buttons_layout.dropdown.itemData(index)
         self.hashes["version_hash"] = sha1
-        print("version_hash AFTER:", self.hashes["version_hash"])
 
         self.version_hash_changed()
 

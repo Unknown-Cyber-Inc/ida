@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
 )
 
 from ._filesTable import _MAGICFormClassMethods
-from ..widgets import FileListWidget
+from ..widgets import FileListWidget, StatusPopup
 from ..layouts import FilesButtonsLayout
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
     # functions for PluginForm object functionality.
     #
 
-    def __init__(self, title, magic_api_client, hashes):
+    def __init__(self, title, magic_api_client, hashes, main_interface):
         """Initialializes the form object
 
         Additionally, sets a few member variables necessary to the function of the plugin.
@@ -49,9 +49,9 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
 
         # non pyqt attrs
         self.title: str = title
-        self.file_exists = False
         self.file_type = None
         self.hashes = hashes
+        self.main_interface = main_interface
         self.content_versions = OrderedDict()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
 
@@ -59,6 +59,10 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.layout: QVBoxLayout
         self.loaded_md5: QLabel
         self.linked_md5: QLabel
+        self.status_label: QLabel
+        self.status_button: QPushButton
+        self.status_layout: QHBoxLayout
+        self.status_popup: StatusPopup
         self.files_toggle: QPushButton
         self.upload_button: QPushButton
         self.files_buttons_layout: FilesButtonsLayout
@@ -83,6 +87,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # adding widgets to layout, order here matters
         self.layout.addWidget(self.loaded_md5)
         self.layout.addWidget(self.linked_md5)
+        self.layout.addLayout(self.status_layout)
         self.layout.addLayout(self.files_buttons_layout)
         self.layout.addWidget(self.list_widget)
 
@@ -96,10 +101,18 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # Personalizing QT items, in decending order of appearance.
         # NOTE! Upon display, actual arrangement is solely determined by
         #       the order widgets are ADDED to the layout.
-        self.loaded_md5 = QLabel(f"IDB hash: {self.hashes['loaded_md5']}")
+        self.loaded_md5 = QLabel(f"IDB md5: {self.hashes['loaded_md5']}")
         self.loaded_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.linked_md5 = QLabel(f"Binary hash: {self.hashes['ida_md5']}")
+        self.linked_md5 = QLabel(f"Binary md5: {self.hashes['ida_md5']}")
         self.linked_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.status_label = QLabel("Upload Processing Status: Upload a file to track it's status.")
+        self.status_button = QPushButton("Check Upload Status")
+        self.status_button.clicked.connect(self.get_file_status)
+        self.status_button.setEnabled(False)
+        self.status_layout = QHBoxLayout()
+        self.status_layout.addWidget(self.status_label)
+        self.status_layout.addWidget(self.status_button)
+        self.status_popup = None
         self.files_buttons_layout = FilesButtonsLayout(self)
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
@@ -119,3 +132,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
                 self.files_buttons_layout.dropdown.addItem(
                     key, value
                 )
+
+    def set_status_label(self, status):
+        """Set the color of the status button according to the input status."""
+        self.status_label.setText(f"Upload Processing Status: {str(status).capitalize()}")

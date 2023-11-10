@@ -34,6 +34,7 @@ class BaseListWidget(QtWidgets.QWidget):
         self.binary_id = binary_id
         self.popup = popup
         self.name = None
+        self.pagination_selector = PaginationSelector(self)
 
         # create CRUD buttons
         self.create_button = QtWidgets.QPushButton("Create")
@@ -61,6 +62,7 @@ class BaseListWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.list_widget_tab_bar)
         layout.addWidget(self.list_widget)
+        layout.addWidget(self.pagination_selector)
         layout.addLayout(self.button_row)
 
         # connect item selection signal
@@ -107,6 +109,31 @@ class FileListWidget(BaseListWidget):
         self.list_widget_tab_bar.addTab("MATCHES")
         self.disable_tab_bar()
         self.list_widget_tab_bar.currentChanged.connect(self.tab_changed)
+        self.pagination_selector.first_button.clicked.connect(self.first_page)
+        self.pagination_selector.back_button.clicked.connect(self.previous_page)
+        self.pagination_selector.next_button.clicked.connect(self.next_page)
+
+    def first_page(self):
+        """Navigate to the first page."""
+        if self.pagination_selector.current_page > 1:
+            self.pagination_selector.update_page_number(1)
+            self.widget_parent.make_list_api_call("Matches", self.pagination_selector.current_page)
+            self.pagination_selector.update_next_button()
+
+    def previous_page(self):
+        """Navigate to the previous page."""
+        print("clicked previous")
+        if self.pagination_selector.current_page > 1:
+            self.pagination_selector.update_page_number(self.pagination_selector.current_page - 1)
+            self.widget_parent.make_list_api_call("Matches", self.pagination_selector.current_page)
+            self.pagination_selector.update_next_button()
+
+    def next_page(self):
+        """Navigate to the next page."""
+        print("clicked next")
+        self.pagination_selector.update_page_number(self.pagination_selector.current_page + 1)
+        self.widget_parent.make_list_api_call("Matches", self.pagination_selector.current_page)
+        self.pagination_selector.update_next_button()
 
     def tab_changed(self, index):
         """Tab change behavior
@@ -119,12 +146,15 @@ class FileListWidget(BaseListWidget):
         if index == 0:
             self.widget_parent.make_list_api_call("Notes")
             self.create_button.setEnabled(True)
+            self.pagination_selector.hide()
         elif index == 1:
             self.widget_parent.make_list_api_call("Tags")
             self.create_button.setEnabled(True)
+            self.pagination_selector.hide()
         elif index == 2:
-            self.widget_parent.make_list_api_call("Matches")
+            self.widget_parent.make_list_api_call("Matches", self.pagination_selector.current_page)
             self.create_button.setEnabled(False)
+            self.pagination_selector.show()
 
     def disable_tab_bar(self):
         self.list_widget_tab_bar.setTabEnabled(0, False)
@@ -143,10 +173,10 @@ class FileListWidget(BaseListWidget):
         selected_items = self.list_widget.selectedItems()
 
         # Check if Notes (0) or  Tags (1) tab is visible.
-        if selected_items and self.list_widget_tab_bar.isTabVisible(0):
+        if selected_items and self.list_widget_tab_bar.currentIndex() == 0:
             edit.setEnabled(True)
             delete.setEnabled(True)
-        elif selected_items and self.list_widget_tab_bar.isTabVisible(1):
+        elif selected_items and self.list_widget_tab_bar.currentIndex() == 1:
             delete.setEnabled(True)
 
     def refresh_list_data(self, list_items):
@@ -189,9 +219,9 @@ class FileListWidget(BaseListWidget):
         print("DELETING FOR HASH:", self.binary_id)
         if confirmation == QtWidgets.QMessageBox.Ok:
             item = self.list_widget.currentItem()
-            if self.list_widget_tab_bar.isTabVisible(0):
+            if self.list_widget_tab_bar.currentIndex() == 0:
                 type_str = "Notes"
-            elif self.list_widget_tab_bar.isTabVisible(1):
+            elif self.list_widget_tab_bar.currentIndex() == 1:
                 type_str = "Tags"
             try:
                 if "Notes" in type_str:
@@ -256,6 +286,54 @@ class FileSimpleTextNode(Qt.QStandardItem):
         self.binary_id = binary_id
         self.uploaded = uploaded
 
+
+class PaginationSelector(QtWidgets.QWidget):
+    """Widget for page selection."""
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        self.current_page = 1
+        self.page_item_total = None
+        self.initUI()
+
+    def initUI(self):
+        """Populate ui."""
+        layout = QtWidgets.QHBoxLayout()
+        layout.addStretch()
+
+        self.first_button = QtWidgets.QPushButton("<<")
+        self.first_button.setEnabled(False)
+        self.back_button = QtWidgets.QPushButton("<")
+        self.back_button.setEnabled(False)
+        self.page_selector = QtWidgets.QLabel(f"{self.current_page}")
+        self.next_button = QtWidgets.QPushButton(">")
+        self.next_button.setEnabled(False)
+
+        layout.addWidget(self.first_button)
+        layout.addWidget(self.back_button)
+        layout.addWidget(self.page_selector)
+        layout.addWidget(self.next_button)
+
+        self.setLayout(layout)
+
+    def update_page_number(self, number):
+        """Update page number."""
+        self.current_page = number
+        self.page_selector.setText(f"{self.current_page}")
+
+        if self.current_page == 1:
+            self.first_button.setEnabled(False)
+            self.back_button.setEnabled(False)
+        else:
+            self.first_button.setEnabled(True)
+            self.back_button.setEnabled(True)
+
+    def update_next_button(self):
+        """Enable/disable the next button based on item count on page."""
+        if self.page_item_total <=1 or not self.page_item_total:
+            self.next_button.setEnabled(False)
+        else:
+            self.next_button.setEnabled(True)
 
 class ProcTableItem(Qt.QStandardItem):
     """Generic form of items on the procs table.
@@ -1545,9 +1623,11 @@ class FileTextPopup(TextPopup):
 
     def save_create(self, text):
         """API call logic for `create` submissions"""
-        if self.parent.list_widget_tab_bar.isTabVisible(0):
+        if self.parent.list_widget_tab_bar.currentIndex() == 0:
+            print("NOTE IS VISIBLE")
             type_str = "Notes"
-        elif self.parent.list_widget_tab_bar.isTabVisible(1):
+        elif self.parent.list_widget_tab_bar.currentIndex() == 1:
+            print("TAG IS VISIBLE")
             type_str = "Tags"
         try:
             if "Notes" in type_str:
@@ -1615,9 +1695,9 @@ class FileTextPopup(TextPopup):
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
-        if self.parent.list_widget_tab_bar.isTabVisible(0):
+        if self.parent.list_widget_tab_bar.currentIndex() == 0:
             type_str = "Notes"
-        elif self.parent.list_widget_tab_bar.isTabVisible(1):
+        elif self.parent.list_widget_tab_bar.currentIndex() == 1:
             type_str = "Tags"
         try:
             if "Notes" in type_str:
@@ -1756,3 +1836,17 @@ class DeleteConfirmationPopup(QtWidgets.QMessageBox):
         self.setStandardButtons(
             QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
         )
+
+
+class StatusPopup(QtWidgets.QMessageBox):
+    """Popup to display uploaded file status"""
+
+    def __init__(self, resource, widget_parent):
+        super(StatusPopup, self).__init__(parent=widget_parent)
+        self.widget_parent = widget_parent
+        self.setWindowTitle("Upload Status")
+        new_text = ("Status: " + str(resource.status).capitalize()
+                    + "\n\n" + str(resource.pipeline)
+        )
+        self.setText(new_text)
+        self.setStandardButtons(QtWidgets.QMessageBox.Ok)
