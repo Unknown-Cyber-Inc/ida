@@ -631,6 +631,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.button_row.addWidget(self.delete_button)
         layout.addLayout(self.button_row)
 
+    def update_sha1(self, hash):
+        """Update the has for center display widget."""
+        self.sha1 = hash
+
     def update_tab_color(self, index):
         """Update the value stored in self.tab_color to the current tab's."""
         self.tab_color = self.tab_bar.tabTextColor(index)
