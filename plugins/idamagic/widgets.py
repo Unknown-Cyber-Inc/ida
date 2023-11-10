@@ -173,10 +173,10 @@ class FileListWidget(BaseListWidget):
         selected_items = self.list_widget.selectedItems()
 
         # Check if Notes (0) or  Tags (1) tab is visible.
-        if selected_items and self.list_widget_tab_bar.isTabVisible(0):
+        if selected_items and self.list_widget_tab_bar.currentIndex() == 0:
             edit.setEnabled(True)
             delete.setEnabled(True)
-        elif selected_items and self.list_widget_tab_bar.isTabVisible(1):
+        elif selected_items and self.list_widget_tab_bar.currentIndex() == 1:
             delete.setEnabled(True)
 
     def refresh_list_data(self, list_items):
@@ -219,9 +219,9 @@ class FileListWidget(BaseListWidget):
         print("DELETING FOR HASH:", self.binary_id)
         if confirmation == QtWidgets.QMessageBox.Ok:
             item = self.list_widget.currentItem()
-            if self.list_widget_tab_bar.isTabVisible(0):
+            if self.list_widget_tab_bar.currentIndex() == 0:
                 type_str = "Notes"
-            elif self.list_widget_tab_bar.isTabVisible(1):
+            elif self.list_widget_tab_bar.currentIndex() == 1:
                 type_str = "Tags"
             try:
                 if "Notes" in type_str:
@@ -1622,9 +1622,11 @@ class FileTextPopup(TextPopup):
 
     def save_create(self, text):
         """API call logic for `create` submissions"""
-        if self.parent.list_widget_tab_bar.isTabVisible(0):
+        if self.parent.list_widget_tab_bar.currentIndex() == 0:
+            print("NOTE IS VISIBLE")
             type_str = "Notes"
-        elif self.parent.list_widget_tab_bar.isTabVisible(1):
+        elif self.parent.list_widget_tab_bar.currentIndex() == 1:
+            print("TAG IS VISIBLE")
             type_str = "Tags"
         try:
             if "Notes" in type_str:
@@ -1692,9 +1694,9 @@ class FileTextPopup(TextPopup):
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
-        if self.parent.list_widget_tab_bar.isTabVisible(0):
+        if self.parent.list_widget_tab_bar.currentIndex() == 0:
             type_str = "Notes"
-        elif self.parent.list_widget_tab_bar.isTabVisible(1):
+        elif self.parent.list_widget_tab_bar.currentIndex() == 1:
             type_str = "Tags"
         try:
             if "Notes" in type_str:
