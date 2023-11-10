@@ -1845,8 +1845,9 @@ class StatusPopup(QtWidgets.QMessageBox):
         super(StatusPopup, self).__init__(parent=widget_parent)
         self.widget_parent = widget_parent
         self.setWindowTitle("Upload Status")
-        new_text = ("Status: " + str(resource.status).capitalize()
-                    + "\n\n" + str(resource.pipeline)
+        new_text = (
+            "File md5: " + self.widget_parent.hashes["upload_hash"] + "\n\nStatus: "
+            + str(resource.status).capitalize() + "\n\n\n" + str(resource.pipeline)
         )
         self.setText(new_text)
         self.setStandardButtons(QtWidgets.QMessageBox.Ok)
