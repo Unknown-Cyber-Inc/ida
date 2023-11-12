@@ -136,6 +136,7 @@ class _MAGICFormClassMethods:
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
+            self.populate_file_matches(list())
         except Exception as exp:
             logger.debug(traceback.format_exc())
             print("Unknown Error occurred")
@@ -220,7 +221,7 @@ class _MAGICFormClassMethods:
         If not, check for any content file children in response.
         If content children, return the sha1 of the most recent.
         """
-        read_mask = "*,children.*"
+        read_mask = "*,children.*,object_class,upload_time"
         expand_mask = "children"
         try:
             response = self.ctmfiles.get_file(
@@ -296,10 +297,11 @@ class _MAGICFormClassMethods:
         for child in file.children:
             if child.get('sha1'):
                 sha1 = child.get('sha1')
+                service_name = child.get("service_name", None)
                 service_data = child.get("service_data", {})
-                task_trace = service_data.get("task_trace", {})
-                timestamp = task_trace.get("timestamp", {})
-                if sha1 and timestamp:
+                timestamp = service_data.get("time", None)
+                obj_type = service_data.get("type", None)
+                if timestamp and obj_type == "disasm-contents" and service_name == "webRequestHandler":
                     print("GOLDEN CHILD FOUND: ", child)
                     self.content_versions[timestamp] = sha1
         self.populate_dropdown()
