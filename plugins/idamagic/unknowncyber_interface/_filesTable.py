@@ -303,7 +303,6 @@ class _MAGICFormClassMethods:
                 timestamp = service_data.get("time", None)
                 obj_type = service_data.get("type", None)
                 if timestamp and obj_type == "disasm-contents" and service_name == "webRequestHandler":
-                    print("GOLDEN CHILD FOUND: ", child)
                     self.content_versions[timestamp] = sha1
         self.populate_dropdown()
 
