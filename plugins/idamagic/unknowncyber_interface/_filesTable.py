@@ -136,6 +136,7 @@ class _MAGICFormClassMethods:
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
+            self.populate_file_matches(list())
         except Exception as exp:
             logger.debug(traceback.format_exc())
             print("Unknown Error occurred")
@@ -220,7 +221,7 @@ class _MAGICFormClassMethods:
         If not, check for any content file children in response.
         If content children, return the sha1 of the most recent.
         """
-        read_mask = "*,children.*"
+        read_mask = "*,children.*, children"
         expand_mask = "children"
         try:
             response = self.ctmfiles.get_file(
