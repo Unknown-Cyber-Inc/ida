@@ -1404,6 +1404,7 @@ class ProcTextPopup(TextPopup):
             text = self.save_edit(text, self.listing_item)
             if self.item_type == "Proc Name":
                 self.listing_item.setText(self.listing_item.rva + " - " + text)
+                self.listing_item.full_name = self.listing_item.rva + " - " + text
                 table_item = self.proc_table.item(self.listing_item.table_row, 0)
                 data = table_item.data(1)
                 data.procedure_name = text
