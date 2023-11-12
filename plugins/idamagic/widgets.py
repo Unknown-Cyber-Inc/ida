@@ -23,9 +23,7 @@ ctmprocs = cythereal_magic.ProceduresApi(magic_api_client)
 class BaseListWidget(QtWidgets.QWidget):
     """Base widget for lists"""
 
-    def __init__(
-        self, list_items, parent=None, binary_id=None, popup=None
-    ):
+    def __init__(self, list_items, parent=None, binary_id=None, popup=None):
         super().__init__(parent)
 
         self.list_items = list_items
@@ -88,9 +86,7 @@ class BaseListWidget(QtWidgets.QWidget):
 class FileListWidget(BaseListWidget):
     """Custom widget to display notes/tags/matches for a file."""
 
-    def __init__(
-        self, list_items, binary_id=None, widget_parent=None
-    ):
+    def __init__(self, list_items, binary_id=None, widget_parent=None):
         self.popup = None
         super().__init__(
             list_items=list_items,
@@ -110,29 +106,41 @@ class FileListWidget(BaseListWidget):
         self.disable_tab_bar()
         self.list_widget_tab_bar.currentChanged.connect(self.tab_changed)
         self.pagination_selector.first_button.clicked.connect(self.first_page)
-        self.pagination_selector.back_button.clicked.connect(self.previous_page)
+        self.pagination_selector.back_button.clicked.connect(
+            self.previous_page
+        )
         self.pagination_selector.next_button.clicked.connect(self.next_page)
 
     def first_page(self):
         """Navigate to the first page."""
         if self.pagination_selector.current_page > 1:
             self.pagination_selector.update_page_number(1)
-            self.widget_parent.make_list_api_call("Matches", self.pagination_selector.current_page)
+            self.widget_parent.make_list_api_call(
+                "Matches", self.pagination_selector.current_page
+            )
             self.pagination_selector.update_next_button()
 
     def previous_page(self):
         """Navigate to the previous page."""
         print("clicked previous")
         if self.pagination_selector.current_page > 1:
-            self.pagination_selector.update_page_number(self.pagination_selector.current_page - 1)
-            self.widget_parent.make_list_api_call("Matches", self.pagination_selector.current_page)
+            self.pagination_selector.update_page_number(
+                self.pagination_selector.current_page - 1
+            )
+            self.widget_parent.make_list_api_call(
+                "Matches", self.pagination_selector.current_page
+            )
             self.pagination_selector.update_next_button()
 
     def next_page(self):
         """Navigate to the next page."""
         print("clicked next")
-        self.pagination_selector.update_page_number(self.pagination_selector.current_page + 1)
-        self.widget_parent.make_list_api_call("Matches", self.pagination_selector.current_page)
+        self.pagination_selector.update_page_number(
+            self.pagination_selector.current_page + 1
+        )
+        self.widget_parent.make_list_api_call(
+            "Matches", self.pagination_selector.current_page
+        )
         self.pagination_selector.update_next_button()
 
     def tab_changed(self, index):
@@ -152,7 +160,9 @@ class FileListWidget(BaseListWidget):
             self.create_button.setEnabled(True)
             self.pagination_selector.hide()
         elif index == 2:
-            self.widget_parent.make_list_api_call("Matches", self.pagination_selector.current_page)
+            self.widget_parent.make_list_api_call(
+                "Matches", self.pagination_selector.current_page
+            )
             self.create_button.setEnabled(False)
             self.pagination_selector.show()
 
@@ -275,9 +285,7 @@ class FileListWidget(BaseListWidget):
 class FileSimpleTextNode(Qt.QStandardItem):
     """Node which contains only simple text information"""
 
-    def __init__(
-        self, node_id="", text="", binary_id="", uploaded=False
-    ):
+    def __init__(self, node_id="", text="", binary_id="", uploaded=False):
         super().__init__()
         self.setEditable(False)
         self.setText(text)
@@ -289,6 +297,7 @@ class FileSimpleTextNode(Qt.QStandardItem):
 
 class PaginationSelector(QtWidgets.QWidget):
     """Widget for page selection."""
+
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
@@ -330,10 +339,11 @@ class PaginationSelector(QtWidgets.QWidget):
 
     def update_next_button(self):
         """Enable/disable the next button based on item count on page."""
-        if self.page_item_total <=1 or not self.page_item_total:
+        if self.page_item_total <= 1 or not self.page_item_total:
             self.next_button.setEnabled(False)
         else:
             self.next_button.setEnabled(True)
+
 
 class ProcTableItem(Qt.QStandardItem):
     """Generic form of items on the procs table.
@@ -353,15 +363,15 @@ class ProcRootNode(ProcTableItem):
     """
 
     def __init__(
-            self,
-            node_name,
-            full_name,
-            start_ea,
-            tree_type=None,
-            binary_id=None,
-            rva=None,
-            table_row=None,
-        ):
+        self,
+        node_name,
+        full_name,
+        start_ea,
+        tree_type=None,
+        binary_id=None,
+        rva=None,
+        table_row=None,
+    ):
         super().__init__()
         self.node_name = node_name
         self.start_ea = start_ea
@@ -506,7 +516,9 @@ class BaseCenterTab(QtWidgets.QWidget):
         self.center_widget.delete_button.setEnabled(False)
 
         tab_index = self.center_widget.tabs_widget.currentIndex()
-        tab_color = self.center_widget.tabs_widget.tabBar().tabTextColor(tab_index)
+        tab_color = self.center_widget.tabs_widget.tabBar().tabTextColor(
+            tab_index
+        )
         if index.parent().data() is None and tab_color.green() == 128:
             # selecting a procedure of ProcRootNode
             self.center_widget.edit_button.setEnabled(True)
@@ -567,7 +579,9 @@ class CenterDerivedFileTab(BaseCenterTab):
     def __init__(self, center_widget, item):
         super().__init__(center_widget)
 
-        self.center_widget.populate_tab_tree(item, self.tab_tree, "Derived file")
+        self.center_widget.populate_tab_tree(
+            item, self.tab_tree, "Derived file"
+        )
         self.center_widget.tabs_widget.addTab(self, item.binary_id)
 
 
@@ -580,7 +594,9 @@ class CenterDerivedProcTab(BaseCenterTab):
     def __init__(self, center_widget, item):
         super().__init__(center_widget)
 
-        self.center_widget.populate_tab_tree(item, self.tab_tree, "Derived procedure")
+        self.center_widget.populate_tab_tree(
+            item, self.tab_tree, "Derived procedure"
+        )
         self.center_widget.tabs_widget.addTab(self, item.rva)
 
 
@@ -676,14 +692,16 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             layout.addWidget(text_box)
             tab.setLayout(layout)
             self.tabs_widget.addTab(tab, "Get started")
-        self.tab_bar.setCurrentIndex(self.tab_bar.count()-1)
+        self.tab_bar.setCurrentIndex(self.tab_bar.count() - 1)
 
     def remove_default_tab(self):
         """Removes the default tab if present"""
         if self.tabs_widget.tabText(0) == "Get started":
             self.close_tab(0)
 
-    def populate_tab_tree(self, item, tab_tree, tree_type=None, table_row=None):
+    def populate_tab_tree(
+        self, item, tab_tree, tree_type=None, table_row=None
+    ):
         """Create a ProcRootNode to display in the center widget"""
 
         if tree_type == "Derived file":
@@ -697,12 +715,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             )
         elif tree_type == "Derived procedure":
             rootnode = ProcRootNode(
-                item.rva,
-                None,
-                None,
-                tree_type,
-                item.binary_id,
-                item.rva
+                item.rva, None, None, tree_type, item.binary_id, item.rva
             )
 
             rootnode.appendRows(
@@ -734,7 +747,9 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     TreeNotesNode(item.hard_hash, self.sha1, item.start_ea),
                     TreeTagsNode(item.hard_hash, self.sha1, item.start_ea),
                     ProcFilesNode(item.hard_hash, item.start_ea),
-                    ProcSimilarityNode(item.hard_hash, self.sha1, item.start_ea),
+                    ProcSimilarityNode(
+                        item.hard_hash, self.sha1, item.start_ea
+                    ),
                 ]
             )
         tab_tree.model().appendRow(rootnode)
@@ -876,7 +891,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                                 hard_hash=similarityRootNode.hard_hash,
                                 text=f"{proc.binary_id}",
                                 binary_id=current_response_sha1,
-                                rva=None
+                                rva=None,
                             )
                         )
                     # add first startEA
@@ -971,9 +986,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(
-                f"No {type_str.lower()} could be gathered."
-            )
+            print(f"No {type_str.lower()} could be gathered.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -986,9 +999,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             return None
         else:
             if 200 <= response.status <= 299:
-                print(
-                    f"{type_str} gathered successfully."
-                )
+                print(f"{type_str} gathered successfully.")
             else:
                 print(f"Error gathering {type_str}.")
                 print(f"Status Code: {response.status}")
@@ -1014,7 +1025,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             rva=rva,
             item_type=item_type,
             table_row=table_row,
-            proc_table=self.widget_parent.proc_table
+            proc_table=self.widget_parent.proc_table,
         )
         self.popup.show()
 
@@ -1290,12 +1301,11 @@ class TabTreeWidget(QtWidgets.QTreeView):
 
             if "x" in index.data():
                 self.center_widget.create_tab(
-                    "Derived procedure", item=item,
+                    "Derived procedure",
+                    item=item,
                 )
             else:
-                self.center_widget.create_tab(
-                    "Derived file", item=item
-                )
+                self.center_widget.create_tab("Derived file", item=item)
 
 
 class CustomListItem(QtWidgets.QListWidgetItem):
@@ -1404,13 +1414,21 @@ class ProcTextPopup(TextPopup):
             text = self.save_edit(text, self.listing_item)
             if self.item_type == "Proc Name":
                 self.listing_item.setText(self.listing_item.rva + " - " + text)
-                self.listing_item.full_name = self.listing_item.rva + " - " + text
-                table_item = self.proc_table.item(self.listing_item.table_row, 0)
+                self.listing_item.full_name = (
+                    self.listing_item.rva + " - " + text
+                )
+                table_item = self.proc_table.item(
+                    self.listing_item.table_row, 0
+                )
                 data = table_item.data(1)
                 data.procedure_name = text
                 updated_item = QTableWidgetItem(data.start_ea + " - " + text)
-                self.proc_table.setItem(self.listing_item.table_row, 0, updated_item)
-                table_item = self.proc_table.item(self.listing_item.table_row, 0)
+                self.proc_table.setItem(
+                    self.listing_item.table_row, 0, updated_item
+                )
+                table_item = self.proc_table.item(
+                    self.listing_item.table_row, 0
+                )
                 table_item.setData(1, data)
             elif text:
                 text = (
@@ -1469,9 +1487,7 @@ class ProcTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(
-                f"Could not update {self.item_type}."
-            )
+            print(f"Could not update {self.item_type}.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -1485,10 +1501,11 @@ class ProcTextPopup(TextPopup):
             return None
         else:
             if 200 <= response.status <= 299:
-                print(
-                    f"{self.item_type} created successfully."
-                )
-                if self.item_type == "Notes" or self.item_type == "Derived file note":
+                print(f"{self.item_type} created successfully.")
+                if (
+                    self.item_type == "Notes"
+                    or self.item_type == "Derived file note"
+                ):
                     self.listing_item.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=self.listing_item.hard_hash,
@@ -1502,7 +1519,10 @@ class ProcTextPopup(TextPopup):
                             rva=self.rva,
                         )
                     )
-                elif self.item_type == "Tags" or self.item_type == "Derived file tag":
+                elif (
+                    self.item_type == "Tags"
+                    or self.item_type == "Derived file tag"
+                ):
                     self.listing_item.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=self.listing_item.hard_hash,
@@ -1558,9 +1578,7 @@ class ProcTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(
-                f"Could not update {self.item_type}."
-            )
+            print(f"Could not update {self.item_type}.")
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -1575,18 +1593,14 @@ class ProcTextPopup(TextPopup):
         else:
             if self.item_type == "Derived file note":
                 if 200 <= response[1] <= 299:
-                    print(
-                        f"{self.item_type} updated successfully."
-                    )
+                    print(f"{self.item_type} updated successfully.")
                     return text
                 else:
                     print(f"Error updating {self.item_type}.")
                     print(f"Status Code: {response[1]}")
                     return None
             if 200 <= response.status <= 299:
-                print(
-                    f"{self.item_type} updated successfully."
-                )
+                print(f"{self.item_type} updated successfully.")
                 return text
             else:
                 print(f"Error updating {self.item_type}.")
