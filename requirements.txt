@@ -1,4 +1,4 @@
-cythereal_magic==0.0.19
+cythereal_magic==0.0.22
 python-dotenv==0.21.1
 networkx[all]==2.6.3
 sark==8.2.0

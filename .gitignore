@@ -17,3 +17,5 @@ redist-env/
 dependencies/
 
 *.egg*
+
+unknowncyberidaplugin.zip

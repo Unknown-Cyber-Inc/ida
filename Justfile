@@ -32,17 +32,15 @@ build +V:
 
 # Rebuilds the python distribution tarball
 redist:
-    pip install pip-tools
-    pip-compile requirements.in || echo "Run manually"
-    python3.7 -m venv --copies redist-env
-    source ./redist-env/bin/activate
-    pip download -d dependencies -r requirements.txt
-    mkdir -p dist
-    tar -czvf dist/uc-ida-plugin.tgz dependencies/*
-    #pip install .
-    #pip install wheel setuptools build
-    #python -m build
-    rm -rf redist-env
+    #!/bin/bash
+    cd plugins
+    zip unknowncyberidaplugin.zip *
+    mv unknowncyberidaplugin.zip ..
+    cd ..
+    pip download -r requirements.txt -d dependencies/
+
+install: redist
+    pip install --no-index --find-links=./dependencies -r requirements.txt
 
 # Cleans out the old docker images that are no longer in use
 clean:
@@ -72,10 +70,6 @@ version *V:
     else
       echo {{VERSION}}
     fi;
-
-# Installs the required python packages
-install:
-    pip install --user -e .[DEV]
 
 # Lints the codebase with pylama
 lint:
