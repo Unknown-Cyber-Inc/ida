@@ -30,6 +30,18 @@ format:="'%4s"+gold+"%-20s"+reset+"%s\\n' ''"
 build +V:
     docker-buildx build --build-arg IDA_KEYLESS=$ida_keyless --build-arg IDA_PASSWORD=$ida_pass -t unknowncyber/ida:{{V}} -f docker/Dockerfile .
 
+# Rebuilds the python distribution tarball
+redist:
+    #!/bin/bash
+    cd plugins
+    zip unknowncyberidaplugin.zip *
+    mv unknowncyberidaplugin.zip ..
+    cd ..
+    pip download -r requirements.txt -d dependencies/
+
+install: redist
+    pip install --no-index --find-links=./dependencies -r requirements.txt
+
 # Cleans out the old docker images that are no longer in use
 clean:
     @docker system prune
@@ -58,10 +70,6 @@ version *V:
     else
       echo {{VERSION}}
     fi;
-
-# Installs the required python packages
-install:
-    pip install --user -e .[DEV]
 
 # Lints the codebase with pylama
 lint:
