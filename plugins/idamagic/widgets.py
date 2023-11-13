@@ -591,7 +591,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         super().__init__()
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
-        self.sha1 = self.widget_parent.hashes["version_hash"]
+        self.sha1 = self.widget_parent.main_interface.hashes["version_hash"]
         self.init_ui()
 
     def init_ui(self):
@@ -1851,7 +1851,7 @@ class StatusPopup(QtWidgets.QMessageBox):
         self.widget_parent = widget_parent
         self.setWindowTitle("Upload Status")
         new_text = (
-            "File md5: " + self.widget_parent.hashes["upload_hash"] + "\n\nStatus: "
+            "File md5: " + self.widget_parent.main_interface.hashes["upload_hash"] + "\n\nStatus: "
             + str(resource.status).capitalize() + "\n\n\n" + str(resource.pipeline)
         )
         self.setText(new_text)

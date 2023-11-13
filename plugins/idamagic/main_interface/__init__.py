@@ -48,12 +48,13 @@ class MAGICMainClass(ida_kernwin.PluginForm):
 
         # create File widget
         self.unknown_plugin = MAGICPluginFormClass(
-            "Unknown Cyber MAGIC", self.api_client, self.hashes, self
+            "Unknown Cyber MAGIC", self.api_client, self
         )
         # create Procedure widget
         self.ida_plugin = MAGICPluginScrClass(
-            "MAGIC Genomics", self.api_client, self.hashes, self
+            "MAGIC Genomics", self.api_client, self
         )
+        self.unknown_plugin.init_and_populate()
 
         # set layout for main plugin
         self.main_layout = QtWidgets.QVBoxLayout()
@@ -82,7 +83,9 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         """
         When dropdown selection changes, update version hashes.
         """
-        sha1 = self.unknown_plugin.files_buttons_layout.dropdown.itemData(index)
+        sha1 = self.unknown_plugin.files_buttons_layout.dropdown.itemData(
+            index
+        )
         self.hashes["version_hash"] = sha1
 
         self.version_hash_changed()
@@ -95,6 +98,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         """
         self.ida_plugin.proc_table.reset_table()
         self.ida_plugin.center_widget.update_sha1(self.hashes["version_hash"])
+        self.unknown_plugin.list_widget.binary_id = self.hashes["version_hash"]
         self.unknown_plugin.list_widget.list_widget.clear()
         self.unknown_plugin.list_widget.list_widget_tab_bar.setCurrentIndex(2)
         self.unknown_plugin.make_list_api_call("Matches")
@@ -121,9 +125,6 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         # show with intrinsic title, specific options
         # dock this widget on the rightmost side of IDA,
         # ensure this by setting dest_ctrl to an empty string
-        super().Show(
-            self.title,
-            options=ida_kernwin.PluginForm.WOPN_DP_SZHINT
-        )
+        super().Show(self.title, options=ida_kernwin.PluginForm.WOPN_DP_SZHINT)
 
         ida_kernwin.set_dock_pos(self.title, "", ida_kernwin.DP_RIGHT)

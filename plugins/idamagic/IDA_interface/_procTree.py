@@ -74,7 +74,7 @@ class _ScrClassMethods:
 
         try:
             response = self.ctmfiles.list_file_genomics(
-                binary_id=self.hashes["version_hash"],
+                binary_id=self.main_interface.hashes["version_hash"],
                 read_mask=genomics_read_mask,
                 order_by=order_by,
                 no_links=True,
@@ -101,7 +101,7 @@ class _ScrClassMethods:
             if 200 <= response.status <= 299:
                 print("Procedures gathered successfully.")
                 self.populate_proc_table(response.resource)
-                if self.hashes["version_hash"] != self.hashes["loaded_sha1"]:
+                if self.main_interface.hashes["version_hash"] != self.main_interface.hashes["loaded_sha1"]:
                     self.sync_warning.show()
             else:
                 print("Error gathering Procedures.")
