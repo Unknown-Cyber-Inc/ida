@@ -226,7 +226,6 @@ class FileListWidget(BaseListWidget):
         """Handle delete pushbutton click"""
         confirmation_popup = DeleteConfirmationPopup(self)
         confirmation = confirmation_popup.exec_()
-        print("DELETING FOR HASH:", self.binary_id)
         if confirmation == QtWidgets.QMessageBox.Ok:
             item = self.list_widget.currentItem()
             if self.list_widget_tab_bar.currentIndex() == 0:
@@ -237,7 +236,7 @@ class FileListWidget(BaseListWidget):
                 if "Notes" in type_str:
                     api_call = ctmfiles.delete_file_note
                     response = api_call(
-                        binary_id=self.binary_id,
+                        binary_id=self.widget_parent.main_interface.hashes["ida_md5"],
                         note_id=item.proc_node.node_id,
                         force=True,
                         no_links=True,
@@ -246,7 +245,7 @@ class FileListWidget(BaseListWidget):
                 elif "Tags" in type_str:
                     api_call = ctmfiles.remove_file_tag
                     response = api_call(
-                        binary_id=self.binary_id,
+                        binary_id=self.widget_parent.main_interface.hashes["ida_md5"],
                         tag_id=item.proc_node.node_id,
                         force=True,
                         no_links=True,
