@@ -104,7 +104,9 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.loaded_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.linked_md5 = QLabel(f"Binary md5: {self.main_interface.hashes['ida_md5']}")
         self.linked_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.status_label = QLabel("Upload Processing Status: Upload a file to track it's status.")
+        self.status_label = QLabel(
+            "Upload Processing Status: Upload a file to track it's status."
+        )
         self.status_button = QPushButton("Check Upload Status")
         self.status_button.clicked.connect(self.get_file_status)
         self.status_button.setEnabled(False)
@@ -126,10 +128,10 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         """
         if len(self.content_versions) > 0:
             for key, value in self.content_versions.items():
-                self.files_buttons_layout.dropdown.addItem(
-                    key, value
-                )
+                self.files_buttons_layout.dropdown.addItem(key, value)
 
     def set_status_label(self, status):
         """Set the color of the status button according to the input status."""
-        self.status_label.setText(f"Upload Processing Status: {str(status).capitalize()}")
+        self.status_label.setText(
+            f"Upload Processing Status: {str(status).capitalize()}"
+        )

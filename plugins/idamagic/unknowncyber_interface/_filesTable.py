@@ -5,6 +5,7 @@ Methods and classes in the MAGICPluginFormClass related to populating the files 
 import logging
 import json
 import os
+
 # import shutil
 import traceback
 import hashlib
@@ -41,6 +42,7 @@ class _MAGICFormClassMethods:
             self.list_widget.binary_id = self.main_interface.hashes["ida_md5"]
         else:
             self.process_file_nonexistent()
+
     #
     # methods for connecting pyqt signals
     #
@@ -184,7 +186,7 @@ class _MAGICFormClassMethods:
                 no_links=True,
                 read_mask=read_mask,
                 expand_mask=expand_mask,
-                async_req=True
+                async_req=True,
             )
             response = response.get()
         except ApiException as exp:
@@ -230,12 +232,14 @@ class _MAGICFormClassMethods:
                 no_links=True,
                 read_mask=read_mask,
                 expand_mask=expand_mask,
-                async_req=True
+                async_req=True,
             )
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print("IDB-linked binary nor any IDBs from this binary uploaded yet.")
+            print(
+                "IDB-linked binary nor any IDBs from this binary uploaded yet."
+            )
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
                 print(f"{error['reason']}: {error['message']}")
@@ -251,12 +255,14 @@ class _MAGICFormClassMethods:
             content_child_sha1 = list(self.content_versions.items())[-1][-1]
             if content_child_sha1:
                 count = self.files_buttons_layout.dropdown.count()
-                self.files_buttons_layout.dropdown.setCurrentIndex(count-1)
+                self.files_buttons_layout.dropdown.setCurrentIndex(count - 1)
                 self.set_version_hash(content_child_sha1)
                 self.main_interface.set_file_exists(True)
                 return True
             elif self.verify_linked_binary_sha1(response.resource):
-                print("No content-children found. Updating set_version_hash to linked-binary's")
+                print(
+                    "No content-children found. Updating set_version_hash to linked-binary's"
+                )
                 self.set_version_hash(response.resource.sha1)
                 self.main_interface.set_file_exists(True)
                 return True
@@ -267,7 +273,7 @@ class _MAGICFormClassMethods:
         Verify the sha1 of the returned file is not a hash of the md5 + sha256.
         If it is, it will not have any genomics attached.
         """
-        sha1_prestring = (file.md5 + file.sha256).encode('utf-8')
+        sha1_prestring = (file.md5 + file.sha256).encode("utf-8")
         sha1 = hashlib.sha1(sha1_prestring).hexdigest()
 
         try:
@@ -296,14 +302,17 @@ class _MAGICFormClassMethods:
         """
         self.content_versions["Original File"] = file.sha1
         for child in file.children:
-            if child.get('sha1'):
-                sha1 = child.get('sha1')
+            if child.get("sha1"):
+                sha1 = child.get("sha1")
                 service_name = child.get("service_name", None)
                 service_data = child.get("service_data", {})
                 timestamp = service_data.get("time", None)
                 obj_type = service_data.get("type", None)
-                if timestamp and obj_type == "disasm-contents" and service_name == "webRequestHandler":
-                    print("GOLDEN CHILD FOUND: ", child)
+                if (
+                    timestamp
+                    and obj_type == "disasm-contents"
+                    and service_name == "webRequestHandler"
+                ):
                     self.content_versions[timestamp] = sha1
         self.populate_dropdown()
 
@@ -321,7 +330,9 @@ class _MAGICFormClassMethods:
         try:
             binary_path = get_linked_binary_expected_path()
         except Exception:
-            print(f"Binary file not found at path: {get_linked_binary_expected_path()}.")
+            print(
+                f"Binary file not found at path: {get_linked_binary_expected_path()}."
+            )
             print("To upload this binary, move to this file path.")
         print("Attempting binary file upload.")
         self.upload_file(binary_path, skip_unpack)
@@ -393,7 +404,7 @@ class _MAGICFormClassMethods:
                 binary_id=self.main_interface.hashes["upload_hash"],
                 no_links=True,
                 read_mask=read_mask,
-                async_req=True
+                async_req=True,
             )
             response = response.get()
         except ApiException as exp:

@@ -14,6 +14,7 @@ from ..helpers import create_proc_name
 
 logger = logging.getLogger(__name__)
 
+
 class _ScrClassMethods:
     """
     Methods in the MAGICPluginScrClass related to populating the procedure table
@@ -52,9 +53,9 @@ class _ScrClassMethods:
             # add node to dict to avoid looping through objects in PluginScrHooks
             start_ea = ida_kernwin.str2ea(proc.start_ea)
             proc_node_row = self.proc_table.rowCount()
-            self.procedureEADict_unbased[start_ea] = proc_node_row -1
+            self.procedureEADict_unbased[start_ea] = proc_node_row - 1
             start_ea = start_ea + self.image_base
-            self.procedureEADict[start_ea] = proc_node_row -1
+            self.procedureEADict[start_ea] = proc_node_row - 1
 
     def pushbutton_click(self):
         """What to do when the 'Get Procedures' button is clicked.
@@ -101,7 +102,10 @@ class _ScrClassMethods:
             if 200 <= response.status <= 299:
                 print("Procedures gathered successfully.")
                 self.populate_proc_table(response.resource)
-                if self.main_interface.hashes["version_hash"] != self.main_interface.hashes["loaded_sha1"]:
+                if (
+                    self.main_interface.hashes["version_hash"]
+                    != self.main_interface.hashes["loaded_sha1"]
+                ):
                     self.sync_warning.show()
             else:
                 print("Error gathering Procedures.")

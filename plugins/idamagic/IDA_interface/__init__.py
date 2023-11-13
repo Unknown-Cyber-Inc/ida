@@ -79,7 +79,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.pushbutton.clicked.connect(self.pushbutton_click)
         self.sync_warning = QLabel(
             f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
-            + " Addresses may be out of sync with IDA session.."
+            + " Addresses may be out of sync with IDA session."
         )
         self.sync_warning.setWordWrap(True)
         self.sync_warning.setStyleSheet("color: red;")
