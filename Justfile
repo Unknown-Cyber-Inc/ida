@@ -33,11 +33,9 @@ build +V:
 # Rebuilds the python distribution tarball
 redist:
     #!/bin/bash
-    cd plugins
-    zip unknowncyberidaplugin.zip *
-    mv unknowncyberidaplugin.zip ..
-    cd ..
     pip download -r requirements.txt -d dependencies/
+    zip -r unknowncyberidaplugin.zip dependencies plugins
+    tar cvzf unknowncyberidaplugin.tgz dependencies plugins
 
 install: redist
     pip install --no-index --find-links=./dependencies -r requirements.txt
