@@ -78,8 +78,8 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.pushbutton.setCheckable(False)
         self.pushbutton.clicked.connect(self.pushbutton_click)
         self.sync_warning = QLabel(
-            f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}. " +
-            "Addresses may be out of sync with IDA session.."
+            f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
+            + " Addresses may be out of sync with IDA session.."
         )
         self.sync_warning.setWordWrap(True)
         self.sync_warning.setStyleSheet("color: red;")
@@ -107,6 +107,6 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
     def update_sync_warning(self):
         """Update the hash displayed in the sync warning when version hash changes."""
         self.sync_warning.setText(
-            f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}. " +
-            "Addresses may be out of sync with IDA session."
+            f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
+            +" Addresses may be out of sync with IDA session."
         )

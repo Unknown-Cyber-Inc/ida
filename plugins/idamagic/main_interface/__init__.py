@@ -98,6 +98,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         """
         self.ida_plugin.proc_table.reset_table()
         self.ida_plugin.center_widget.update_sha1(self.hashes["version_hash"])
+        self.ida_plugin.update_sync_warning()
         self.unknown_plugin.list_widget.binary_id = self.hashes["version_hash"]
         self.unknown_plugin.list_widget.list_widget.clear()
         self.unknown_plugin.list_widget.list_widget_tab_bar.setCurrentIndex(2)
