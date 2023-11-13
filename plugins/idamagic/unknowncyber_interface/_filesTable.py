@@ -38,7 +38,7 @@ class _MAGICFormClassMethods:
         if self.main_interface.get_file_exists():
             self.make_list_api_call("Matches", 1)
             self.list_widget.enable_tab_bar()
-            self.list_widget.binary_id = self.hashes["ida_md5"]
+            self.list_widget.binary_id = self.main_interface.hashes["ida_md5"]
         else:
             self.process_file_nonexistent()
     #
@@ -78,7 +78,7 @@ class _MAGICFormClassMethods:
         """Populates the File list 'Matches' tab with recieved matches"""
         matches = []
         for match in list_items:
-            if match["sha1"] != self.hashes["version_hash"]:
+            if match["sha1"] != self.main_interface.hashes["version_hash"]:
                 filename = f"sha1: {match['sha1']}"
             else:
                 filename = f"Current file - sha1: {match['sha1']}"
@@ -111,14 +111,14 @@ class _MAGICFormClassMethods:
         try:
             if list_type == "Tags":
                 response = api_call(
-                    binary_id=self.hashes["ida_md5"],
+                    binary_id=self.main_interface.hashes["ida_md5"],
                     expand_mask=expand_mask,
                     no_links=True,
                     async_req=True,
                 )
             elif list_type == "Matches":
                 response = api_call(
-                    binary_id=self.hashes["version_hash"],
+                    binary_id=self.main_interface.hashes["version_hash"],
                     expand_mask=expand_mask,
                     page_count=page,
                     page_size=10,
@@ -127,7 +127,7 @@ class _MAGICFormClassMethods:
                 )
             else:
                 response = api_call(
-                    binary_id=self.hashes["ida_md5"], no_links=True, async_req=True
+                    binary_id=self.main_interface.hashes["ida_md5"], no_links=True, async_req=True
                 )
             response = response.get()
         except ApiException as exp:
@@ -166,7 +166,8 @@ class _MAGICFormClassMethods:
         """
         Set the hash for "version".
         """
-        self.hashes["version_hash"] = new_hash
+        self.main_interface.hashes["version_hash"] = new_hash
+        self.main_interface.version_hash_changed()
 
     def check_idb_uploaded(self):
         """
@@ -177,7 +178,7 @@ class _MAGICFormClassMethods:
         read_mask = "sha1,children.*"
         expand_mask = "children"
         try:
-            sha1 = self.hashes["loaded_sha1"]
+            sha1 = self.main_interface.hashes["loaded_sha1"]
             response = self.ctmfiles.get_file(
                 binary_id=sha1,
                 no_links=True,
@@ -194,7 +195,7 @@ class _MAGICFormClassMethods:
             self.main_interface.set_file_exists(False)
             linked_uploaded = self.check_linked_binary_object_exists(False)
             if not linked_uploaded:
-                self.set_version_hash(self.hashes["loaded_sha1"])
+                self.set_version_hash(self.main_interface.hashes["loaded_sha1"])
                 self.list_widget.disable_tab_bar()
                 for error in json.loads(exp.body).get("errors"):
                     logger.info(error["reason"])
@@ -225,7 +226,7 @@ class _MAGICFormClassMethods:
         expand_mask = "children"
         try:
             response = self.ctmfiles.get_file(
-                binary_id=self.hashes["ida_md5"],
+                binary_id=self.main_interface.hashes["ida_md5"],
                 no_links=True,
                 read_mask=read_mask,
                 expand_mask=expand_mask,
@@ -364,7 +365,7 @@ class _MAGICFormClassMethods:
             if response.status == 200:
                 self.main_interface.set_file_exists(True)
                 self.set_version_hash(response.resources[0].sha1)
-                self.hashes["upload_hash"] = response.resources[0].sha1
+                self.main_interface.hashes["upload_hash"] = response.resources[0].sha1
                 self.status_button.setEnabled(True)
                 self.set_status_label("pending")
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
@@ -374,7 +375,7 @@ class _MAGICFormClassMethods:
             elif response.status >= 201 and response.status <= 299:
                 self.main_interface.set_file_exists(True)
                 self.set_version_hash(response.resources[0].sha1)
-                self.hashes["upload_hash"] = response.resources[0].sha1
+                self.main_interface.hashes["upload_hash"] = response.resources[0].sha1
                 self.status_button.setEnabled(True)
                 self.set_status_label("pending")
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
@@ -389,7 +390,7 @@ class _MAGICFormClassMethods:
         read_mask = "status,pipeline"
         try:
             response = self.ctmfiles.get_file(
-                binary_id=self.hashes["upload_hash"],
+                binary_id=self.main_interface.hashes["upload_hash"],
                 no_links=True,
                 read_mask=read_mask,
                 async_req=True

@@ -41,8 +41,8 @@ class ProcsToggleLayout(QHBoxLayout):
         """Set widgets to `show()`"""
         self.layout_parent.pushbutton.show()
         self.layout_parent.proc_table.show()
-        if (self.layout_parent.hashes["version_hash"] !=
-            self.layout_parent.hashes["loaded_sha1"]):
+        if (self.layout_parent.main_interface.hashes["version_hash"] !=
+            self.layout_parent.main_interface.hashes["loaded_sha1"]):
             self.layout_parent.sync_warning.show()
 
     def hide_widgets(self):

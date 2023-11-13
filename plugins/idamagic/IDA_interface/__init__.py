@@ -24,14 +24,13 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
     Plugin Scroll UI Object.
     """
 
-    def __init__(self, title, magic_api_client, hashes, main_interface):
+    def __init__(self, title, magic_api_client, main_interface):
         """Initialializes the formtype some UI elements may not be loaded in this case,
             which may cause issues.
         Additionally, sets a few member variables necessary to the function of the plugin.
         A few are variables which are determined by IDA.
         """
         super().__init__()
-        self.hashes = hashes
         self.main_interface = main_interface
         self.baseRVA = ida_nalt.get_imagebase()
         self.image_base = None
@@ -79,8 +78,8 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
         self.pushbutton.setCheckable(False)
         self.pushbutton.clicked.connect(self.pushbutton_click)
         self.sync_warning = QLabel(
-            f"Showing procedures from file with hash {self.hashes['version_hash']}. " +
-            "Addresses may be out of sync with IDA session.."
+            f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
+            + " Addresses may be out of sync with IDA session.."
         )
         self.sync_warning.setWordWrap(True)
         self.sync_warning.setStyleSheet("color: red;")
@@ -103,3 +102,11 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
 
         # set widget's layout based on the above items
         self.setLayout(self.layout)
+
+
+    def update_sync_warning(self):
+        """Update the hash displayed in the sync warning when version hash changes."""
+        self.sync_warning.setText(
+            f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
+            +" Addresses may be out of sync with IDA session."
+        )

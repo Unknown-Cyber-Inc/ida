@@ -39,7 +39,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
     # functions for PluginForm object functionality.
     #
 
-    def __init__(self, title, magic_api_client, hashes, main_interface):
+    def __init__(self, title, magic_api_client, main_interface):
         """Initialializes the form object
 
         Additionally, sets a few member variables necessary to the function of the plugin.
@@ -50,7 +50,6 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # non pyqt attrs
         self.title: str = title
         self.file_type = None
-        self.hashes = hashes
         self.main_interface = main_interface
         self.content_versions = OrderedDict()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
@@ -101,9 +100,9 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # Personalizing QT items, in decending order of appearance.
         # NOTE! Upon display, actual arrangement is solely determined by
         #       the order widgets are ADDED to the layout.
-        self.loaded_md5 = QLabel(f"IDB md5: {self.hashes['loaded_md5']}")
+        self.loaded_md5 = QLabel(f"IDB md5: {self.main_interface.hashes['loaded_md5']}")
         self.loaded_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.linked_md5 = QLabel(f"Binary md5: {self.hashes['ida_md5']}")
+        self.linked_md5 = QLabel(f"Binary md5: {self.main_interface.hashes['ida_md5']}")
         self.linked_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status_label = QLabel("Upload Processing Status: Upload a file to track it's status.")
         self.status_button = QPushButton("Check Upload Status")
@@ -117,11 +116,9 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
             list_items=[],
-            binary_id=self.hashes["version_hash"],
+            binary_id=self.main_interface.hashes["ida_md5"],
             widget_parent=self,
         )
-        # help create items, add to tab widget
-        self.init_and_populate()
 
     def populate_dropdown(self):
         """
