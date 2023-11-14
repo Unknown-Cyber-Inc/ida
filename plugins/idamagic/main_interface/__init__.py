@@ -14,8 +14,6 @@ from ..unknowncyber_interface import MAGICPluginFormClass
 logging.basicConfig(level=os.getenv("IDA_LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
-HOT_RELOAD = to_bool(os.getenv("HOT_RELOAD"))
-
 
 class MAGICMainClass(ida_kernwin.PluginForm):
     """Main plugin form at the highest level."""
