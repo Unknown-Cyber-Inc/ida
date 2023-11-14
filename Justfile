@@ -33,9 +33,19 @@ build +V:
 # Rebuilds the python distribution tarball
 redist:
     #!/bin/bash
-    pip download -r requirements.txt -d dependencies/
-    zip -r unknowncyberidaplugin.zip dependencies plugins
-    tar cvzf unknowncyberidaplugin.tgz dependencies plugins
+    PLATFORMS=(manylinux_2_28_64 manylinux_2_28_i686 win_amd64 win32 macosx_10_9_x86_64)
+    PYTHONS=(3.7 3.8 3.9 3.10 3.11)
+    for py in "${PYTHONS[@]}"; do
+        for platform in "${PLATFORMS[@]}"; do
+            pip download -r requirements.txt \
+                --python-version $py \
+                --platform $platform \
+                -d dependencies \
+                --no-deps
+        done
+    done
+    zip -r unknowncyberidaplugin.zip dependencies plugins requirements.txt
+    tar cvzf unknowncyberidaplugin.tgz dependencies plugins requirements.txt
 
 install: redist
     pip install --no-index --find-links=./dependencies -r requirements.txt
