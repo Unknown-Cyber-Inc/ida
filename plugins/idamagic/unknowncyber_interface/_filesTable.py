@@ -37,7 +37,6 @@ class _MAGICFormClassMethods:
         """
         self.check_idb_uploaded()
         if self.main_interface.get_file_exists():
-            self.make_list_api_call("Matches", 1)
             self.list_widget.enable_tab_bar()
             self.list_widget.binary_id = self.main_interface.hashes["ida_md5"]
         else:
