@@ -2059,13 +2059,35 @@ class DeleteConfirmationPopup(QtWidgets.QMessageBox):
 class StatusPopup(QtWidgets.QMessageBox):
     """Popup to display uploaded file status"""
 
+    PIPELINE_MAP = {
+        "dashboard_report": "Label Inference",
+        "ioc_handler": "Ioc Extraction",
+        "proc_hash_signatures": "Yara Generation",
+        "reputation_handler": "Maliciousness Determination",
+        "similarity_computation": "Similarity Matching",
+        "srl_archive": "Archive Extraction",
+        "srl_juice": "Genomic Juicing",
+        "srl_scanners": "AV Scan Report",
+        "srl_unpacker": "Unpacking",
+        "web_request_handler": "Filetype Discovery",
+    }
+
     def __init__(self, resource, widget_parent):
         super(StatusPopup, self).__init__(parent=widget_parent)
         self.widget_parent = widget_parent
         self.setWindowTitle("Upload Status")
+        mapped_pipelines = self.convert_pipeline_names(resource.pipeline)
+
         new_text = (
             "File md5: " + self.widget_parent.main_interface.hashes["upload_hash"] + "\n\nStatus: "
-            + str(resource.status).capitalize() + "\n\n\n" + str(resource.pipeline)
+            + str(resource.status).capitalize() + "\n\n\n" + str(mapped_pipelines)
         )
         self.setText(new_text)
         self.setStandardButtons(QtWidgets.QMessageBox.Ok)
+
+    def convert_pipeline_names(self, pipelines):
+        """Map API response pipelines to user-friendly names."""
+        return json.dumps(
+            {self.PIPELINE_MAP.get(k, k): v for k, v in pipelines.to_dict().items()},
+            indent=4
+        )
