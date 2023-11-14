@@ -41,8 +41,6 @@ PLUGIN_VERSION = "0.0.1"
 # Ida synchronized scroll widget constants
 SCROLLWIDGET_TITLE = "MAGIC Genomics"
 
-HOT_RELOAD = to_bool(os.getenv("HOT_RELOAD"))
-
 
 class magic(ida_idaapi.plugin_t):
     """
@@ -53,12 +51,7 @@ class magic(ida_idaapi.plugin_t):
     This hotkey is linked to plugin_t.run().
     """
 
-    # unload plugin from memory when widget is closed
-    if HOT_RELOAD:
-        flags = ida_idaapi.PLUGIN_UNL
-    else:
-        flags = ida_idaapi.PLUGIN_FIX
-
+    flags = ida_idaapi.PLUGIN_FIX
     main_widget = MAGICMainClass
     syncscroll = MAGICPluginScrClass
     form = MAGICPluginFormClass
@@ -94,24 +87,12 @@ class magic(ida_idaapi.plugin_t):
             unknowncyber.ApiClient()
         )  # Create API client to be used by plugin
 
-        if HOT_RELOAD:
-            logger.info("MAGIC plugin is hot reloadable")
-            ida_idaapi.require(
-                "idamagic.main_interface"
-            )  # reloads the module so we can make changes without restarting IDA
-            ida_idaapi.require("idamagic.unknowncyber_interface")
-            ida_idaapi.require("idamagic.IDA_interface")
-            ida_idaapi.require("idamagic.hooks")
-            return ida_idaapi.PLUGIN_OK
+        ida_idaapi.require("idamagic.main_interface")
+        ida_idaapi.require("idamagic.unknowncyber_interface")
+        ida_idaapi.require("idamagic.IDA_interface")
+        ida_idaapi.require("idamagic.hooks")
 
-        # # check if our widget is registered with IDA
-        # # if found, display it
-        # # if not found, register it
-        self.main_widget = register_autoinst_hooks(
-            self.main_name, self.api_client, MAGICMainClass
-        )
-        self.main_widget.parent.setMaximumSize(400)
-
+        self.main_widget = register_autoinst_hooks(self.main_name, self.api_client, MAGICMainClass)
         return ida_idaapi.PLUGIN_KEEP
 
     def run(self, args):
@@ -121,12 +102,6 @@ class magic(ida_idaapi.plugin_t):
 
         @param args: int, most likely bits demonstrating different flags. More research required
         """
-
-        # close and reopen the widget
-        if HOT_RELOAD:
-            logger.debug("Reloading MAGIC")
-            close_widget(find_widget(self.main_name), 0)
-
         # if IDA widget with our title does not exist,
         # create it and populate it. Do nothing otherwise.
         if find_widget(self.main_name) is None:
