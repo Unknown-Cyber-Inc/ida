@@ -459,6 +459,42 @@ class TreeTagsNode(ProcTableItem):
         self.appendRow(ProcSimpleTextNode())
 
 
+class TreeProcGroupNotesNode(ProcTableItem):
+    """Node representing the root of the "notes" category.
+
+    Contains subnodes representing individual notes.
+    """
+
+    def __init__(self, hard_hash, binary_id, rva):
+        super().__init__()
+        self.setText("Procedure Group Notes")
+        self.hard_hash = hard_hash
+        self.isPopulated = False
+        self.binary_id = binary_id
+        self.rva = rva
+        # empty item to be deleted when populated
+        # expand button will not show unless it has at least one child
+        self.appendRow(ProcSimpleTextNode())
+
+
+class TreeProcGroupTagsNode(ProcTableItem):
+    """Node representing the root of the "tags" category.
+
+    Contains subnodes representing individual tags.
+    """
+
+    def __init__(self, hard_hash, binary_id, rva):
+        super().__init__()
+        self.setText("Procedure Group Tags")
+        self.hard_hash = hard_hash
+        self.isPopulated = False
+        self.binary_id = binary_id
+        self.rva = rva
+        # empty item to be deleted when populated
+        # expand button will not show unless it has at least one child
+        self.appendRow(ProcSimpleTextNode())
+
+
 class ProcFilesNode(ProcTableItem):
     """Node representing the root of the "files" category.
 
@@ -521,14 +557,19 @@ class BaseCenterTab(QtWidgets.QWidget):
         if index.parent().data() is None and tab_color.green() == 128:
             # selecting a procedure of ProcRootNode
             self.center_widget.edit_button.setEnabled(True)
-        elif index.data() == "Tags" or index.data() == "Notes":
+        elif (
+            index.data() == "Tags"
+            or index.data() == "Notes"
+            or index.data() == "Procedure Group Notes"
+            or index.data() == "Procedure Group Tags"
+        ):
             # selecting the TreeTagsNode or TreeNotesNode
             self.center_widget.create_button.setEnabled(True)
-        elif index.parent().data() == "Tags":
+        elif index.parent().data() == "Tags" or index.parent().data() == "Procedure Group Tags":
             # selecting a tag node of ProcSimpleTextNode
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.delete_button.setEnabled(True)
-        elif index.parent().data() == "Notes":
+        elif index.parent().data() == "Notes" or index.parent().data() == "Procedure Group Notes":
             # selecting a note node of ProcSimpleTextNode
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.edit_button.setEnabled(True)
@@ -550,6 +591,10 @@ class BaseCenterTab(QtWidgets.QWidget):
             self.center_widget.populate_proc_notes(item)
         elif item_type is TreeTagsNode:
             self.center_widget.populate_proc_tags(item)
+        elif item_type is TreeProcGroupNotesNode:
+            self.center_widget.populate_proc_group_notes(item)
+        elif item_type is TreeProcGroupTagsNode:
+            self.center_widget.populate_proc_group_tags(item)
         elif item_type is ProcSimilarityNode:
             self.center_widget.populate_proc_similarities(item)
 
@@ -746,6 +791,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     TreeNotesNode(item.hard_hash, self.sha1, item.start_ea),
                     TreeTagsNode(item.hard_hash, self.sha1, item.start_ea),
                     ProcFilesNode(item.hard_hash, item.start_ea),
+                    TreeProcGroupNotesNode(item.hard_hash, None, None),
+                    TreeProcGroupTagsNode(item.hard_hash, None, None),
                     ProcSimilarityNode(
                         item.hard_hash, self.sha1, item.start_ea
                     ),
@@ -839,6 +886,62 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             tagsRootNode.removeRows(0, 1)
             tagsRootNode.isPopulated = True
 
+    def populate_proc_group_notes(self, notes_root_node: TreeProcGroupNotesNode):
+        """populates a selected procedure's 'Proc Group Notes' node with received notes
+
+        PARAMETERS
+        ----------
+        notes_root_node: TreeProcGroupNotesNode
+            Represents the procedure node which is to be populated with notes.
+        """
+        if not notes_root_node.isPopulated:
+            returned_vals = self.make_list_api_call(notes_root_node)
+
+            # start adding note information
+            for note in returned_vals:
+                notes_root_node.appendRow(
+                    ProcSimpleTextNode(
+                        hard_hash=notes_root_node.hard_hash,
+                        node_id=note["id"],
+                        text=(
+                            f"{note['note']}\n"
+                            f"    User:{note['username']}\n"
+                            f"    Create time: {note['create_time']}"
+                        ),
+                        binary_id=None,
+                        rva=None,
+                    )
+                )
+            # remove the empty init child
+            notes_root_node.removeRows(0, 1)
+            notes_root_node.isPopulated = True
+
+    def populate_proc_group_tags(self, tags_root_node: TreeProcGroupTagsNode):
+        """populates a selected procedure's 'Proc Group Tags' node with received tags
+
+        PARAMETERS
+        ---------
+        tags_root_node: TreeProcGroupTagsNode
+            Represents the subroot node which is to be populated with tags.
+        """
+        if not tags_root_node.isPopulated:
+            returned_vals = self.make_list_api_call(tags_root_node)
+
+            for tag in returned_vals:
+                tags_root_node.appendRow(
+                    ProcSimpleTextNode(
+                        hard_hash=tags_root_node.hard_hash,
+                        node_id=tag["id"],
+                        text=tag["name"],
+                        binary_id=None,
+                        rva=None,
+                    )
+                )
+
+            # remove the empty init child
+            tags_root_node.removeRows(0, 1)
+            tags_root_node.isPopulated = True
+
     def populate_proc_similarities(
         self, similarityRootNode: ProcSimilarityNode
     ):
@@ -918,6 +1021,14 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             api_call = ctmprocs.list_procedure_files
             type_str = "Files"
             read_mask = "sha1,sha256,filename"
+        elif node_type is TreeProcGroupNotesNode:
+            api_call = ctmprocs.list_procedure_notes
+            type_str = "Procedure Group Notes"
+            expand_mask = "notes"
+        elif node_type is TreeProcGroupTagsNode:
+            api_call = ctmprocs.list_procedure_tags
+            type_str = "Procedure Group Tags"
+            expand_mask = "tags"
         elif node_type is TreeNotesNode and self.tab_color.red() == 255:
             api_call = ctmfiles.list_file_notes
             type_str = "File notes"
@@ -946,6 +1057,13 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     node.hard_hash,
                     read_mask=read_mask,
                     expand_mask=type_str.lower(),
+                    no_links=True,
+                    async_req=True,
+                )
+            elif type_str == "Procedure Group Notes" or type_str == "Procedure Group Tags":
+                response = api_call(
+                    proc_hash=node.hard_hash,
+                    expand_mask=expand_mask,
                     no_links=True,
                     async_req=True,
                 )
@@ -997,6 +1115,14 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             # (this func always returns None anyway)
             return None
         else:
+            if type_str == "Procedure Group Notes" or type_str == "Procedure Group Tags":
+                if 200 <= response["status"] <= 299:
+                    print(f"{type_str} gathered successfully.")
+                else:
+                    print(f"Error gathering {type_str}.")
+                    print(f"Status Code: {response['status']}")
+                    print(f"Error message: {response['errors']}")
+                return response["resources"]
             if 200 <= response.status <= 299:
                 print(f"{type_str} gathered successfully.")
             else:
@@ -1071,6 +1197,14 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 rva=item.parent().rva,
                 item_type=item_type,
             )
+        elif isinstance(item.parent(), TreeProcGroupNotesNode):
+            item_type = "Procedure Group Notes"
+            self.show_popup(
+                listing_item=item,
+                text=text.split("\n")[0],
+                parent=item.parent().parent().parent(),
+                item_type=item_type,
+            )
 
     def on_create_click(self):
         """Handle edit pushbutton click"""
@@ -1104,6 +1238,22 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 parent=item.parent().parent(),
                 binary_id=item.binary_id,
                 rva=item.rva,
+                item_type=item_type,
+            )
+        elif isinstance(item, TreeProcGroupNotesNode):
+            item_type = "Procedure Group Notes"
+            self.show_popup(
+                listing_item=item,
+                text=None,
+                parent=item.parent().parent(),
+                item_type=item_type,
+            )
+        elif isinstance(item, TreeProcGroupTagsNode):
+            item_type = "Procedure Group Tags"
+            self.show_popup(
+                listing_item=item,
+                text=None,
+                parent=item.parent().parent(),
                 item_type=item_type,
             )
         elif isinstance(item.parent(), TreeNotesNode):
@@ -1166,26 +1316,24 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                             no_links=True,
                             async_req=True,
                         )
-                elif type_str == "Tags":
-                    if self.tab_color.red() == 255:
-                        api_call = ctmfiles.remove_file_tag
-                        response = api_call(
-                            binary_id=item.binary_id,
-                            tag_id=item.node_id,
-                            force=True,
-                            no_links=True,
-                            async_req=True,
-                        )
-                    else:
-                        api_call = ctmfiles.delete_procedure_genomics_tag_by_id
-                        response = api_call(
-                            binary_id=item.binary_id,
-                            rva=item.rva,
-                            tag_id=item.node_id,
-                            force=True,
-                            no_links=True,
-                            async_req=True,
-                        )
+                if type_str == "Procedure Group Notes":
+                    api_call = ctmprocs.delete_procedure_note
+                    response = api_call(
+                        proc_hash=item.hard_hash,
+                        note_id=item.node_id,
+                        force=True,
+                        no_links=True,
+                        async_req=True,
+                    )
+                elif type_str == "Procedure Group Tags":
+                    api_call = ctmprocs.delete_procedure_tag
+                    response = api_call(
+                        proc_hash=item.hard_hash,
+                        tag_id=item.node_id,
+                        force=True,
+                        no_links=True,
+                        async_req=True,
+                    )
                 response = response.get()
             except ApiException as exp:
                 logger.debug(traceback.format_exc())
@@ -1483,6 +1631,23 @@ class ProcTextPopup(TextPopup):
                     no_links=True,
                     async_req=True,
                 )
+            elif self.item_type == "Procedure Group Notes":
+                api_call = ctmprocs.create_procedure_note
+                response = api_call(
+                    proc_hash=self.listing_item.hard_hash,
+                    note=text,
+                    public=False,
+                    no_links=True,
+                    async_req=True,
+                )
+            elif self.item_type == "Procedure Group Tags":
+                api_call = ctmprocs.add_procedure_tag
+                response = api_call(
+                    proc_hash=self.listing_item.hard_hash,
+                    name=text,
+                    no_links=True,
+                    async_req=True,
+                )
             response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
@@ -1518,6 +1683,20 @@ class ProcTextPopup(TextPopup):
                             rva=self.rva,
                         )
                     )
+                elif self.item_type == "Procedure Group Notes":
+                    self.listing_item.appendRow(
+                        ProcSimpleTextNode(
+                            hard_hash=self.listing_item.hard_hash,
+                            node_id=response.resource.id,
+                            text=(
+                                f"{text}\n"
+                                f"    User: {response.resource.username}\n"
+                                f"    Create time: {response.resource.create_time}"
+                            ),
+                            binary_id=None,
+                            rva=None,
+                        )
+                    )
                 elif (
                     self.item_type == "Tags"
                     or self.item_type == "Derived file tag"
@@ -1529,6 +1708,16 @@ class ProcTextPopup(TextPopup):
                             text=response.resource.name,
                             binary_id=self.binary_id,
                             rva=self.rva,
+                        )
+                    )
+                elif self.item_type == "Procedure Group Tags":
+                    self.listing_item.appendRow(
+                        ProcSimpleTextNode(
+                            hard_hash=self.listing_item.hard_hash,
+                            node_id=response.resource.id,
+                            text=response.resource.name,
+                            binary_id=None,
+                            rva=None,
                         )
                     )
                 return text
@@ -1557,6 +1746,17 @@ class ProcTextPopup(TextPopup):
                 response = api_call(
                     binary_id=self.binary_id,
                     rva=self.rva,
+                    note_id=item.node_id,
+                    note=text,
+                    public=False,
+                    no_links=True,
+                    update_mask="note",
+                    async_req=True,
+                )
+            elif self.item_type == "Procedure Group Notes":
+                api_call = ctmprocs.update_procedure_note
+                response = api_call(
+                    proc_hash=self.listing_item.hard_hash,
                     note_id=item.node_id,
                     note=text,
                     public=False,
