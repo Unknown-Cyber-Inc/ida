@@ -1590,7 +1590,7 @@ class ProcTextPopup(TextPopup):
             # (this func always returns None anyway)
             return None
         else:
-            if self.item_type == "Derived file note":
+            if self.item_type != "Proc Name":
                 if 200 <= response[1] <= 299:
                     print(f"{self.item_type} updated successfully.")
                     return text

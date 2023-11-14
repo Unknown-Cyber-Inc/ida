@@ -110,3 +110,4 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
             f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
             +" Addresses may be out of sync with IDA session."
         )
+        self.sync_warning.hide()
