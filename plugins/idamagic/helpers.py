@@ -1182,14 +1182,20 @@ def parse_binary(orig_dir=None):
 
         binary_id = hash_file()
 
+        arch = get_file_architecture()
+
         bin_dict = {
-            "image_base": get_image_base(),
             "md5": hash_file("md5"),
             "sha1": binary_id,
             "sha256": hash_file("sha256"),
             "sha512": hash_file("sha512"),
             "unix_filetype": getUnixFileType(),
             "version": get_ida_version(),
+            "disassembler": "ida",
+	        "use_32": arch == "32-bit", 
+	        "use_64": arch == "64-bit",
+	        "file_name": get_input_file_name(),
+            "image_base": get_image_base(),
         }
 
         bin_path = os.path.join(outdir, "binary.json")
