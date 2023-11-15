@@ -1197,10 +1197,8 @@ def parse_binary(main_hashes, orig_dir=None):
 	        "use_64": arch == "64-bit",
 	        "file_name": get_input_file_name(),
             "image_base": get_image_base(),
-            "byte_data": str(convert_to_py_bytes()),
+            "byte_data": convert_to_encoded_byte_string(),
         }
-        print("\n\nSHA1 IN PARSEBIN", bin_dict["sha1"])
-        print("\n\n")
 
         bin_path = os.path.join(outdir, "binary.json")
         with open(bin_path, "w") as outfile:
@@ -1311,6 +1309,21 @@ def convert_to_py_bytes():
     c = [item.to_bytes(1, "big") for item in b]
 
     return b"".join(c)
+
+
+def convert_to_encoded_byte_string():
+    """Convert return from get_ida_byte_list to a base64-encoded string."""
+    a = get_idb_byte_list()
+    b = [int(item, 16) for item in a]
+    c = [item.to_bytes(1, "big") for item in b]
+    d = b"".join(c)
+
+    return base64.b64encode(pad_byte_list(d)).decode("ascii")
+
+
+def pad_byte_list(byte_list):
+    padding_needed = (3 - len(byte_list) % 3) % 3
+    return byte_list + b'\x00' * padding_needed
 
 
 def create_idb_file():

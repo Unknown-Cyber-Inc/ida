@@ -63,7 +63,11 @@ class _ScrClassMethods:
         GET from procedures and list all procedures associated with file.
         """
         if not self.main_interface.get_file_exists():
-            print("Upload a file or IDB first to generate procedures.")
+            print(
+                "Upload a file or IDB first to generate procedures."
+                + " If you have already uploaded, check the status with"
+                + " the 'Check Upload Status' button."
+            )
             return None
 
         self.proc_table.reset_table()

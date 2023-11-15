@@ -2118,7 +2118,7 @@ class StatusPopup(QtWidgets.QMessageBox):
         mapped_pipelines = self.convert_pipeline_names(resource.pipeline)
 
         new_text = (
-            "File md5: " + self.widget_parent.main_interface.hashes["upload_hash"] + "\n\nStatus: "
+            "File hash: " + self.widget_parent.main_interface.hashes["upload_hash"] + "\n\nStatus: "
             + str(resource.status).capitalize() + "\n\n\n" + str(mapped_pipelines)
         )
         self.setText(new_text)
