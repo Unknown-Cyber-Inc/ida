@@ -98,13 +98,16 @@ class FilesButtonsLayout(QHBoxLayout):
 
     def upload_binary_button_click(self):
         """Display check for `skip_unpack`"""
-        unpack_popup = FileUnpackPopup(self, "binary")
+        unpack_popup = FileUnpackPopup(self)
         unpack_popup.exec_()
 
     def upload_idb_button_click(self):
         """Calls file upload passing in IDB file."""
-        unpack_popup = FileUnpackPopup(self, "idb")
-        unpack_popup.exec_()
+        self.layout_parent.upload_idb()
+
+    def upload_disassembly_button_click(self):
+        """Calls disassembly upload."""
+        self.layout_parent.upload_disassembled()
 
     def binary_skip_unpack(self):
         """Set skip_unpack arg to True. Send upload_file request method."""
@@ -113,14 +116,6 @@ class FilesButtonsLayout(QHBoxLayout):
     def binary_unpack(self):
         """Set skip_unpack arg to False. Send upload_file request method."""
         self.layout_parent.upload_binary(skip_unpack=False)
-
-    def idb_skip_unpack(self):
-        """Set skip_unpack arg to True. Send upload_file request method."""
-        self.layout_parent.upload_idb(skip_unpack=True)
-
-    def idb_unpack(self):
-        """Set skip_unpack arg to False. Send upload_file request method."""
-        self.layout_parent.upload_idb(skip_unpack=False)
 
     def show_file_not_found_popup(self):
         """Handles displaying the FileNotFound popup."""

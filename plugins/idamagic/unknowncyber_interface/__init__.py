@@ -63,7 +63,6 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.status_layout: QHBoxLayout
         self.status_popup: StatusPopup
         self.files_toggle: QPushButton
-        self.upload_button: QPushButton
         self.files_buttons_layout: FilesButtonsLayout
         self.list_widget: FileListWidget
 
