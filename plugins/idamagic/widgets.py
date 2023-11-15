@@ -122,7 +122,6 @@ class FileListWidget(BaseListWidget):
 
     def previous_page(self):
         """Navigate to the previous page."""
-        print("clicked previous")
         if self.pagination_selector.current_page > 1:
             self.pagination_selector.update_page_number(
                 self.pagination_selector.current_page - 1
@@ -134,7 +133,6 @@ class FileListWidget(BaseListWidget):
 
     def next_page(self):
         """Navigate to the next page."""
-        print("clicked next")
         self.pagination_selector.update_page_number(
             self.pagination_selector.current_page + 1
         )
@@ -1881,10 +1879,8 @@ class FileTextPopup(TextPopup):
     def save_create(self, text):
         """API call logic for `create` submissions"""
         if self.parent.list_widget_tab_bar.currentIndex() == 0:
-            print("NOTE IS VISIBLE")
             type_str = "Notes"
         elif self.parent.list_widget_tab_bar.currentIndex() == 1:
-            print("TAG IS VISIBLE")
             type_str = "Tags"
         try:
             if "Notes" in type_str:
@@ -2003,14 +1999,6 @@ class FileUploadPopup(QtWidgets.QMessageBox):
         self.setText("Select the type of upload to perform.")
         self.setStandardButtons(QtWidgets.QMessageBox.Cancel)
 
-        # idb upload button
-        idb_upload_button = self.addButton(
-            "IDB", QtWidgets.QMessageBox.ActionRole
-        )
-        idb_upload_button.setEnabled(True)
-        idb_upload_button.clicked.connect(
-            self.widget_parent.upload_idb_button_click
-        )
         # Binary upload button
         binary_upload_button = self.addButton(
             "Binary", QtWidgets.QMessageBox.ActionRole
@@ -2019,12 +2007,28 @@ class FileUploadPopup(QtWidgets.QMessageBox):
         binary_upload_button.clicked.connect(
             self.widget_parent.upload_binary_button_click
         )
+        # idb upload button
+        idb_upload_button = self.addButton(
+            "IDB", QtWidgets.QMessageBox.ActionRole
+        )
+        idb_upload_button.setEnabled(True)
+        idb_upload_button.clicked.connect(
+            self.widget_parent.upload_idb_button_click
+        )
+        # Disassembly upload button
+        disassembly_upload_button = self.addButton(
+            "Disassembly", QtWidgets.QMessageBox.ActionRole
+        )
+        disassembly_upload_button.setEnabled(True)
+        disassembly_upload_button.clicked.connect(
+            self.widget_parent.upload_disassembly_button_click
+        )
 
 
 class FileUnpackPopup(QtWidgets.QMessageBox):
     """Custom popup with unpack and skip unpack buttons."""
 
-    def __init__(self, widget_parent, file_type):
+    def __init__(self, widget_parent):
         super().__init__()
         self.widget_parent = widget_parent
         self.setWindowTitle("Skip unpacking?")
@@ -2042,12 +2046,8 @@ class FileUnpackPopup(QtWidgets.QMessageBox):
         )
         unpack_button.setEnabled(True)
 
-        if file_type == "binary":
-            skip_button.clicked.connect(self.widget_parent.binary_skip_unpack)
-            unpack_button.clicked.connect(self.widget_parent.binary_unpack)
-        elif file_type == "idb":
-            skip_button.clicked.connect(self.widget_parent.idb_skip_unpack)
-            unpack_button.clicked.connect(self.widget_parent.idb_unpack)
+        skip_button.clicked.connect(self.widget_parent.binary_skip_unpack)
+        unpack_button.clicked.connect(self.widget_parent.binary_unpack)
 
 
 class FileNotFoundPopup(QtWidgets.QWidget):

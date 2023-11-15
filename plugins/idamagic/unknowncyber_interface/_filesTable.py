@@ -14,6 +14,7 @@ from cythereal_magic.rest import ApiException
 from ..helpers import (
     encode_file,
     get_linked_binary_expected_path,
+    parse_binary,
 )
 from ..widgets import FileSimpleTextNode, StatusPopup
 from ..helpers import create_idb_file
@@ -320,10 +321,10 @@ class _MAGICFormClassMethods:
         self.list_widget.disable_tab_bar()
         self.files_buttons_layout.show_file_not_found_popup()
 
-    def upload_idb(self, skip_unpack):
+    def upload_idb(self):
         idb = create_idb_file()
         print("Attempting IDB file upload.")
-        self.upload_file(idb, skip_unpack)
+        self.upload_file(idb, None)
 
     def upload_binary(self, skip_unpack):
         try:
@@ -394,6 +395,45 @@ class _MAGICFormClassMethods:
                 print("Upload Successful.")
         # finally:
         #     os.remove(temp_file_path)
+
+    def upload_disassembled(self):
+        """Upload editted binaries button behavior"""
+        zip_path = parse_binary(self.main_interface.hashes)
+        api_call = self.ctmfiles.upload_disassembly
+
+        try:
+            response, status, _ = api_call(
+                filedata=zip_path,
+                no_links=True,
+            )
+        except ApiException as exp:
+            logger.debug(traceback.format_exc())
+            print("Disassembly upload failed.")
+            for error in json.loads(exp.body).get("errors"):
+                logger.info(error["reason"])
+                print(f"{error['reason']}: {error['message']}")
+        except Exception as exp:
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+            # exit if this call fails so user can retry
+            # (this func always returns None anyway)
+            return None
+        else:
+            if 200 <= status <= 299:
+                self.main_interface.set_file_exists(True)
+                self.set_version_hash(response.resource.sha1)
+                self.main_interface.hashes["upload_hash"] = response.resource.sha1
+                self.status_button.setEnabled(True)
+                self.set_status_label("pending")
+                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
+                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
+                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
+                print("Disassembly Upload Successful.")
+            else:
+                print("Error uploading disassembled binary.")
+                print(f"Status Code: {status}")
+
 
     def get_file_status(self):
         """Get the status of an uploaded file."""
