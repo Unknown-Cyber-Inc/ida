@@ -1197,7 +1197,7 @@ def parse_binary(main_hashes, orig_dir=None):
 	        "use_64": arch == "64-bit",
 	        "file_name": get_input_file_name(),
             "image_base": get_image_base(),
-            "byte_data": get_idb_byte_list(),
+            "byte_data": str(convert_to_py_bytes()),
         }
         print("\n\nSHA1 IN PARSEBIN", bin_dict["sha1"])
         print("\n\n")
