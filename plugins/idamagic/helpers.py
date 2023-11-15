@@ -1148,7 +1148,7 @@ def zip_disassembled(outdir):
         print(f"Error: {exc}")
 
 
-def parse_binary(orig_dir=None):
+def parse_binary(main_hashes, orig_dir=None):
     """Parse the input binary and run it through the provided factory.
 
     Parameters
@@ -1181,14 +1181,15 @@ def parse_binary(orig_dir=None):
         os.mkdir(proc_outdir)
 
         binary_id = hash_file()
+        disassimly_hashes = get_disassembly_hashes(input_path)
 
         arch = get_file_architecture()
 
         bin_dict = {
-            "md5": hash_file("md5"),
-            "sha1": binary_id,
-            "sha256": hash_file("sha256"),
-            "sha512": hash_file("sha512"),
+            "md5": main_hashes["ida_md5"],
+            "sha1": disassimly_hashes["sha1"],
+            "sha256": main_hashes["ida_sha256"],
+            "sha512": disassimly_hashes["sha512"],
             "unix_filetype": getUnixFileType(),
             "version": get_ida_version(),
             "disassembler": "ida",
@@ -1197,6 +1198,8 @@ def parse_binary(orig_dir=None):
 	        "file_name": get_input_file_name(),
             "image_base": get_image_base(),
         }
+        print("\n\nSHA1 IN PARSEBIN", bin_dict["sha1"])
+        print("\n\n")
 
         bin_path = os.path.join(outdir, "binary.json")
         with open(bin_path, "w") as outfile:
@@ -1364,6 +1367,37 @@ def get_all_idb_hashes():
         "sha256": sha256.hexdigest(),
         "md5": md5.hexdigest(),
     }
+
+
+def get_disassembly_hashes(file_path):
+    """Hash loaded idb's contents.
+
+    Returns
+    -------
+    dict
+        The hashes of the IDB's contents in hexadecimal format.
+    """
+    sha1 = hashlib.sha1()
+    sha512 = hashlib.sha512()
+
+    try:
+        with open(file_path, "rb") as f:
+            while True:
+                block = f.read(2**10)  # Magic number: one-megabyte blocks.
+                if not block:
+                    break
+                sha1.update(block)
+                sha512.update(block)
+            return {
+                "sha1": sha1.hexdigest(),
+                "sha512": sha512.hexdigest(),
+            }
+    except FileNotFoundError:
+        print(
+            "Original binary not accessible."
+            + " Place binary in the directory containing the loaded idb file"
+        )
+        return None
 
 
 def get_end_ea(obj):

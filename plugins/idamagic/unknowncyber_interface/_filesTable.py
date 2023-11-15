@@ -398,7 +398,7 @@ class _MAGICFormClassMethods:
 
     def upload_disassembled(self):
         """Upload editted binaries button behavior"""
-        zip_path = parse_binary()
+        zip_path = parse_binary(self.main_interface.hashes)
         api_call = self.ctmfiles.upload_disassembly
 
         try:
