@@ -1192,7 +1192,7 @@ def parse_binary(orig_dir=None):
             "unix_filetype": getUnixFileType(),
             "version": get_ida_version(),
             "disassembler": "ida",
-	        "use_32": arch == "32-bit", 
+	        "use_32": arch == "32-bit",
 	        "use_64": arch == "64-bit",
 	        "file_name": get_input_file_name(),
             "image_base": get_image_base(),

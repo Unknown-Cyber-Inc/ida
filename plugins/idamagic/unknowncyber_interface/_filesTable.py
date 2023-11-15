@@ -402,7 +402,7 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_disassembly
 
         try:
-            resp, status, _ = api_call(
+            response, status, _ = api_call(
                 filedata=zip_path,
                 no_links=True,
             )
@@ -421,8 +421,11 @@ class _MAGICFormClassMethods:
             return None
         else:
             if 200 <= status <= 299:
-                self.file_exists = True
-                self.main_interface.hashes["upload_hash"] = resp.resource.sha1
+                self.main_interface.set_file_exists(True)
+                self.set_version_hash(response.resource.sha1)
+                self.main_interface.hashes["upload_hash"] = response.resource.sha1
+                self.status_button.setEnabled(True)
+                self.set_status_label("pending")
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
