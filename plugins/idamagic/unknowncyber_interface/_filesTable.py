@@ -422,11 +422,11 @@ class _MAGICFormClassMethods:
         else:
             if 200 <= status <= 299:
                 self.file_exists = True
-                self.main_interface.hashes["upload_hash"] = resp["sha1"]
+                self.main_interface.hashes["upload_hash"] = resp.resource.sha1
                 self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
                 self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
-                print("Upload Successful.")
+                print("Disassembly Upload Successful.")
             else:
                 print("Error uploading disassembled binary.")
                 print(f"Status Code: {status}")
