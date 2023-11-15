@@ -1282,6 +1282,22 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 rva=item.parent().rva,
                 item_type=item_type,
             )
+        elif isinstance(item.parent(), TreeProcGroupNotesNode):
+            item_type = "Procedure Group Notes"
+            self.show_popup(
+                listing_item=item.parent(),
+                text=None,
+                parent=item.parent().parent().parent(),
+                item_type=item_type,
+            )
+        elif isinstance(item.parent(), TreeProcGroupTagsNode):
+            item_type = "Procedure Group Tags"
+            self.show_popup(
+                listing_item=item.parent(),
+                text=None,
+                parent=item.parent().parent().parent(),
+                item_type=item_type,
+            )
 
     def on_delete_click(self):
         """Handle delete pushbutton click"""
@@ -1311,6 +1327,26 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         response = api_call(
                             binary_id=item.binary_id,
                             note_id=item.node_id,
+                            rva=item.rva,
+                            force=True,
+                            no_links=True,
+                            async_req=True,
+                        )
+                if type_str == "Tags":
+                    if self.tab_color.red() == 255:
+                        api_call = ctmfiles.remove_file_tag
+                        response = api_call(
+                            binary_id=item.binary_id,
+                            tag_id=item.node_id,
+                            force=True,
+                            no_links=True,
+                            async_req=True,
+                        )
+                    else:
+                        api_call = ctmfiles.delete_procedure_genomics_tag_by_id
+                        response = api_call(
+                            binary_id=item.binary_id,
+                            tag_id=item.node_id,
                             rva=item.rva,
                             force=True,
                             no_links=True,
@@ -1564,11 +1600,13 @@ class ProcTextPopup(TextPopup):
                 self.listing_item.full_name = (
                     self.listing_item.rva + " - " + text
                 )
+
                 table_item = self.proc_table.item(
                     self.listing_item.table_row, 0
                 )
                 data = table_item.data(1)
                 data.procedure_name = text
+
                 updated_item = QTableWidgetItem(data.start_ea + " - " + text)
                 self.proc_table.setItem(
                     self.listing_item.table_row, 0, updated_item
@@ -1577,6 +1615,7 @@ class ProcTextPopup(TextPopup):
                     self.listing_item.table_row, 0
                 )
                 table_item.setData(1, data)
+
             elif text:
                 text = (
                     f"{text}\n"
@@ -1790,20 +1829,20 @@ class ProcTextPopup(TextPopup):
             # (this func always returns None anyway)
             return None
         else:
-            if self.item_type != "Proc Name":
-                if 200 <= response[1] <= 299:
+            if self.item_type == "Proc Name" or self.item_type == "Procedure Group Notes":
+                if 200 <= response.status <= 299:
                     print(f"{self.item_type} updated successfully.")
                     return text
                 else:
                     print(f"Error updating {self.item_type}.")
-                    print(f"Status Code: {response[1]}")
+                    print(f"Status Code: {response.status}")
                     return None
-            if 200 <= response.status <= 299:
+            if 200 <= response[1] <= 299:
                 print(f"{self.item_type} updated successfully.")
                 return text
             else:
                 print(f"Error updating {self.item_type}.")
-                print(f"Status Code: {response.status}")
+                print(f"Status Code: {response[1]}")
                 return None
 
 
