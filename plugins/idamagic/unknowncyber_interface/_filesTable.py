@@ -268,6 +268,64 @@ class _MAGICFormClassMethods:
                 return True
             return False
 
+    def set_upload_hash_to_content_child(self):
+        """
+        Call the api at `get_file` to check for the real IDB-linked binary object.
+        """
+        read_mask = "*,children.*,object_class,upload_time"
+        expand_mask = "children"
+        try:
+            response = self.ctmfiles.get_file(
+                binary_id=self.main_interface.hashes["ida_md5"],
+                no_links=True,
+                read_mask=read_mask,
+                expand_mask=expand_mask,
+                async_req=True,
+            )
+            response = response.get()
+        except ApiException as exp:
+            logger.debug(traceback.format_exc())
+            print(
+                "IDB-linked binary nor any IDBs from this binary uploaded yet."
+            )
+            for error in json.loads(exp.body).get("errors"):
+                logger.info(error["reason"])
+                print(f"{error['reason']}: {error['message']}")
+            return False
+        except Exception as exp:
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+            return False
+        print("IDB-Linked Binary Found. Checking for content-children.")
+        filtered_children = self.filter_content_children(response.resource.children)
+        self.main_interface.hashes["upload_hash"] = filtered_children[-1]
+        return True
+
+    def filter_content_children(self, children):
+        """Filter out unwanted content-children."""
+        filtered_children = []
+        filtered_children_set = set()
+
+        for child in children:
+            if child.get("sha1"):
+                sha1 = child.get("sha1")
+                service_name = child.get("service_name", None)
+                service_data = child.get("service_data", {})
+                obj_type = service_data.get("type", None)
+                if (
+                    child.get("sha1", None)
+                    and obj_type == "disasm-contents"
+                    and service_name == "alt_juice_handler"
+                    or service_name == "webRequestHandler"
+                ):
+                    if sha1 in filtered_children_set:
+                        filtered_children.remove(sha1)
+                    filtered_children.append(sha1)
+                    filtered_children_set.add(sha1)
+
+        return filtered_children
+
     def verify_linked_binary_sha1(self, file):
         """
         Verify the sha1 of the returned file is not a hash of the md5 + sha256.
@@ -312,6 +370,7 @@ class _MAGICFormClassMethods:
                     timestamp
                     and obj_type == "disasm-contents"
                     and service_name == "webRequestHandler"
+                    or service_name == "alt_juice_handler"
                 ):
                     self.content_versions[timestamp] = sha1
         self.populate_dropdown()
@@ -321,27 +380,20 @@ class _MAGICFormClassMethods:
         self.list_widget.disable_tab_bar()
         self.files_buttons_layout.show_file_not_found_popup()
 
-    def upload_idb(self):
-        idb = create_idb_file()
-        print("Attempting IDB file upload.")
-        self.upload_file(idb, None)
+    def upload_file(self, skip_unpack):
+        """Upload file button click behavior
 
-    def upload_binary(self, skip_unpack):
+        POST to upload_file
+        """
         try:
-            binary_path = get_linked_binary_expected_path()
+            file_path = get_linked_binary_expected_path()
         except Exception:
             print(
                 f"Binary file not found at path: {get_linked_binary_expected_path()}."
             )
             print("To upload this binary, move to this file path.")
         print("Attempting binary file upload.")
-        self.upload_file(binary_path, skip_unpack)
 
-    def upload_file(self, file_path, skip_unpack):
-        """Upload file button click behavior
-
-        POST to upload_file
-        """
         api_call = self.ctmfiles.upload_file
         tags = []
         notes = []
@@ -374,27 +426,58 @@ class _MAGICFormClassMethods:
             return None
         else:
             if response.status == 200:
-                self.main_interface.set_file_exists(True)
-                self.set_version_hash(response.resources[0].sha1)
-                self.main_interface.hashes["upload_hash"] = response.resources[0].sha1
-                self.status_button.setEnabled(True)
-                self.set_status_label("pending")
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
+                self.update_and_enable_plugin_features()
                 print("File previously uploaded and available.")
             elif response.status >= 201 and response.status <= 299:
-                self.main_interface.set_file_exists(True)
-                self.set_version_hash(response.resources[0].sha1)
-                self.main_interface.hashes["upload_hash"] = response.resources[0].sha1
-                self.status_button.setEnabled(True)
-                self.set_status_label("pending")
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
+                self.update_and_enable_plugin_features()
                 print("Upload Successful.")
         # finally:
         #     os.remove(temp_file_path)
+
+    def upload_idb(self):
+        """Upload file button click behavior
+
+        POST to upload_file
+        """
+        idb_path = create_idb_file()
+        print("Attempting IDB file upload.")
+
+        api_call = self.ctmfiles.upload_file
+        tags = []
+        notes = []
+        filedata = encode_file(idb_path)
+
+        try:
+            response = api_call(
+                filedata=[filedata],
+                password="",
+                tags=tags,
+                notes=notes,
+                no_links=True,
+                b64=True,
+                async_req=True,
+            )
+            response = response.get()
+        except ApiException as exp:
+            logger.debug(traceback.format_exc())
+            print("No procedures could be gathered.")
+            for error in json.loads(exp.body).get("errors"):
+                logger.info(error["reason"])
+                print(f"{error['reason']}: {error['message']}")
+        except Exception as exp:
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+            # exit if this call fails so user can retry
+            # (this func always returns None anyway)
+            return None
+        else:
+            if response.status == 200:
+                self.update_and_enable_plugin_features()
+                print("IDB previously uploaded and available.")
+            elif response.status >= 201 and response.status <= 299:
+                self.update_and_enable_plugin_features()
+                print("IDB Upload Successful.")
 
     def upload_disassembled(self):
         """Upload editted binaries button behavior"""
@@ -402,7 +485,7 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_disassembly
 
         try:
-            response, status, _ = api_call(
+            _, status, _ = api_call(
                 filedata=zip_path,
                 no_links=True,
             )
@@ -421,19 +504,11 @@ class _MAGICFormClassMethods:
             return None
         else:
             if 200 <= status <= 299:
-                self.main_interface.set_file_exists(True)
-                self.set_version_hash(response.resource.sha1)
-                self.main_interface.hashes["upload_hash"] = response.resource.sha1
-                self.status_button.setEnabled(True)
-                self.set_status_label("pending")
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
+                self.update_and_enable_plugin_features()
                 print("Disassembly Upload Successful.")
             else:
                 print("Error uploading disassembled binary.")
                 print(f"Status Code: {status}")
-
 
     def get_file_status(self):
         """Get the status of an uploaded file."""
@@ -473,3 +548,16 @@ class _MAGICFormClassMethods:
         """Handle updating the list widget"""
         widget.refresh_list_data(list_items)
         widget.update()
+
+    def update_and_enable_plugin_features(self):
+        """
+        Using the content-child hash, update and enable plugin features.
+        """
+        self.main_interface.set_file_exists(True)
+        self.set_upload_hash_to_content_child()
+        self.set_version_hash(self.main_interface.hashes["upload_hash"])
+        self.status_button.setEnabled(True)
+        self.set_status_label("pending")
+        self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
+        self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
+        self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
