@@ -36,16 +36,61 @@ class _MAGICFormClassMethods:
         """
         Helper, initialize and populate items in analysis tab widget
         """
-        self.check_idb_uploaded()
-        if self.main_interface.get_file_exists():
-            self.list_widget.enable_tab_bar()
-            self.list_widget.binary_id = self.main_interface.hashes["ida_md5"]
-        else:
-            self.process_file_nonexistent()
+        if self.check_env_vars():
+            self.check_idb_uploaded()
+            if self.main_interface.get_file_exists():
+                self.list_widget.enable_tab_bar()
+                self.list_widget.binary_id = self.main_interface.hashes["ida_md5"]
+            else:
+                self.process_file_nonexistent()
 
     #
     # methods for connecting pyqt signals
     #
+
+    def check_env_vars(self):
+        """Make an API call to check the validity of the API vars."""
+        try:
+            sha1 = self.main_interface.hashes["loaded_sha1"]
+            response = self.ctmfiles.get_file(
+                binary_id=sha1,
+                no_links=True,
+                explain=True,
+                async_req=True,
+            )
+            response = response.get()
+        except ApiException as exp:
+            logger.debug(traceback.format_exc())
+            try:
+                error_body = json.loads(exp.body)
+                for error in error_body.get("errors", []):
+                    if "Unauthorized" in str(exp):
+                        print(
+                            "The `MAGIC_API_KEY` env var is invalid."
+                            + " Correct and reload."
+                        )
+                    return None
+            except json.JSONDecodeError:
+                print("Received non-JSON response. Body:", exp.body)
+                print("API error. Check that the Unknown Cyber dashboard is working.")
+            return None
+        except Exception as exp:
+            if "NameResolutionError" in  str(exp):
+                print(
+                    "The `MAGIC_API_HOST` env var's domain is not set correctly."
+                    + " Correct and reload."
+                )
+            elif "NewConnectionError" in str(exp):
+                print(
+                    "The `MAGIC_API_HOST` env var's port is not set correctly."
+                    + " Correct and reload."
+                )
+            logger.debug(traceback.format_exc())
+            print("Unknown Error occurred")
+            print(f"<{exp.__class__}>: {str(exp)}")
+            return None
+        else:
+            return True
 
     def populate_file_notes(self, list_items):
         """Populates the File list 'Notes' tab with recieved notes"""
@@ -203,6 +248,16 @@ class _MAGICFormClassMethods:
                     logger.info(error["reason"])
                     print(f"{error['reason']}: {error['message']}")
         except Exception as exp:
+            if "NameResolutionError" in  str(exp):
+                print(
+                    "The `MAGIC_API_HOST` env var is not set correctly."
+                    + " Adjust it's value and reload."
+                )
+            elif "BADBOY" in str(exp):
+                print(
+                    "The `MAGIC_API_HOST` env var is not set correctly."
+                    + " Adjust it's value and reload."
+                )
             logger.debug(traceback.format_exc())
             print("Unknown Error occurred")
             print(f"<{exp.__class__}>: {str(exp)}")
@@ -238,7 +293,7 @@ class _MAGICFormClassMethods:
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             print(
-                "IDB-linked binary nor any IDBs from this binary uploaded yet."
+                "IDB-linked binary nor any IDB/disassemblies from this binary uploaded yet."
             )
             for error in json.loads(exp.body).get("errors"):
                 logger.info(error["reason"])
