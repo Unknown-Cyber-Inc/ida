@@ -111,11 +111,11 @@ class FilesButtonsLayout(QHBoxLayout):
 
     def binary_skip_unpack(self):
         """Set skip_unpack arg to True. Send upload_file request method."""
-        self.layout_parent.upload_file(skip_unpack=True)
+        self.layout_parent.upload_binary(skip_unpack=True)
 
     def binary_unpack(self):
         """Set skip_unpack arg to False. Send upload_file request method."""
-        self.layout_parent.upload_file(skip_unpack=False)
+        self.layout_parent.upload_binary(skip_unpack=False)
 
     def show_file_not_found_popup(self):
         """Handles displaying the FileNotFound popup."""
