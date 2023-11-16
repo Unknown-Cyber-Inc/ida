@@ -248,16 +248,6 @@ class _MAGICFormClassMethods:
                     logger.info(error["reason"])
                     print(f"{error['reason']}: {error['message']}")
         except Exception as exp:
-            if "NameResolutionError" in  str(exp):
-                print(
-                    "The `MAGIC_API_HOST` env var is not set correctly."
-                    + " Adjust it's value and reload."
-                )
-            elif "BADBOY" in str(exp):
-                print(
-                    "The `MAGIC_API_HOST` env var is not set correctly."
-                    + " Adjust it's value and reload."
-                )
             logger.debug(traceback.format_exc())
             print("Unknown Error occurred")
             print(f"<{exp.__class__}>: {str(exp)}")
