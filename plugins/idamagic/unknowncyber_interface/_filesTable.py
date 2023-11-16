@@ -311,7 +311,8 @@ class _MAGICFormClassMethods:
                 if (
                     timestamp
                     and obj_type == "disasm-contents"
-                    and service_name == "webRequestHandler"
+                    and service_name == "alt_juice_handler"
+                    or service_name == "webRequestHandler"
                 ):
                     self.content_versions[timestamp] = sha1
         self.populate_dropdown()
