@@ -66,12 +66,12 @@ class _MAGICFormClassMethods:
             if "Unauthorized" in str(exp):
                 info_msgs = [
                     "The `MAGIC_API_KEY` env var is invalid."
-                    + " Correct and reload."
+                    + " Correct and reload.\n"
                 ]
             else:
                 info_msgs = [
                     "An unknown error has occured. Please check host domain, "
-                    + "port, and api key below.",
+                    + "port, and api key below.\n",
                     str(exp),
                 ]
             process_regular_exception(exp, False, info_msgs)
@@ -81,17 +81,17 @@ class _MAGICFormClassMethods:
             if "NameResolutionError" in  str(exp):
                 info_msgs = [
                     "The `MAGIC_API_HOST` env var's domain is not set correctly."
-                    + " Correct and reload.",
+                    + " Correct and reload.\n",
                 ]
             elif "NewConnectionError" in str(exp):
                 info_msgs = [
                     "The `MAGIC_API_HOST` env var's port is not set correctly."
-                    + " Correct and reload."
+                    + " Correct and reload.\n"
                 ]
             else:
                 info_msgs = [
                     "An unknown error has occured. Please check host domain, "
-                    + "port, and api key below.",
+                    + "port, and api key below.\n",
                     str(exp),
                 ]
             process_regular_exception(exp, False, info_msgs)
@@ -185,7 +185,7 @@ class _MAGICFormClassMethods:
                 )
             response = response.get()
         except ApiException as exp:
-            info_msgs = ["No " + list_type.lower() + " could be gathered from File."]
+            info_msgs = ["No " + list_type.lower() + " could be gathered from File.\n"]
             process_api_exception(exp, True, info_msgs)
             if list_type == "Matches":
                 self.populate_file_matches(list())
@@ -223,7 +223,7 @@ class _MAGICFormClassMethods:
         If not, check for original binary's pervious upload.
         """
         self.main_interface.set_file_exists(False)
-        read_mask = "sha1,children.*"
+        read_mask = "*,children.*"
         expand_mask = "children"
         try:
             sha1 = self.main_interface.hashes["loaded_sha1"]
@@ -283,7 +283,7 @@ class _MAGICFormClassMethods:
             response = response.get()
         except ApiException as exp:
             info_msgs = [
-                "IDB-linked binary nor any IDB/disassemblies from this binary uploaded yet."
+                "IDB-linked binary nor any IDB/disassemblies from this binary uploaded yet.\n"
             ]
             process_api_exception(exp, True, info_msgs)
             return False
@@ -400,7 +400,7 @@ class _MAGICFormClassMethods:
             )
             response = response.get()
         except ApiException as exp:
-            info_msgs = ["Error uploading file."]
+            info_msgs = ["Error uploading file.\n"]
             process_api_exception(exp, False, info_msgs)
         except Exception as exp:
             process_regular_exception(exp, False, [str(exp)])
@@ -443,7 +443,7 @@ class _MAGICFormClassMethods:
                 no_links=True,
             )
         except ApiException as exp:
-            info_msgs = ["Disassembly upload failed."]
+            info_msgs = ["Disassembly upload failed.\n"]
             process_api_exception(exp, False, info_msgs)
         except Exception as exp:
             process_regular_exception(exp, False, [str(exp)])
@@ -467,10 +467,12 @@ class _MAGICFormClassMethods:
         initial_upload_hash = self.main_interface.hashes["initial_upload_hash"]
         if upload_hash:
             try:
-                self.main_interface.hashes["upload_hash"] = (
-                    self.get_upload_child_hash(initial_upload_hash)
-                    if initial_upload_hash else upload_hash
-                )
+                if initial_upload_hash:
+                    child_hash = self.get_upload_child_hash(initial_upload_hash)
+                else:
+                    child_hash = self.get_upload_child_hash(upload_hash)
+                if child_hash:
+                    self.main_interface.hashes["upload_hash"] = child_hash
                 upload_hash = self.main_interface.hashes["upload_hash"]
                 response = self.ctmfiles.get_file(
                     binary_id=upload_hash,
@@ -481,14 +483,14 @@ class _MAGICFormClassMethods:
                 response = response.get()
             except ApiException as exp:
                 info_msgs = [
-                    "Error retrieving status of uploaded file."
+                    "Error retrieving status of uploaded file.\n"
                 ]
                 process_api_exception(exp, False, info_msgs)
                 self.set_status_label("api failure")
                 return None
             except Exception as exp:
                 info_msgs = [
-                    "Unknown error retrieving status of uploaded file."
+                    "Unknown error retrieving status of uploaded file.\n"
                 ]
                 process_regular_exception(exp, False, info_msgs)
                 self.set_status_label("api failure")
@@ -521,17 +523,17 @@ class _MAGICFormClassMethods:
         try:
             response = self.ctmfiles.get_file(
                 binary_id=response_hash,
-                expand_mask=expand_mask,
-                read_mask=read_mask,
                 no_links=True,
-                async_req=True
+                read_mask=read_mask,
+                expand_mask=expand_mask,
+                async_req=True,
             )
             response = response.get()
         except ApiException as exp:
             info_msgs = [
-                "Unable to gather information on the uploaded file."
+                "Unable to gather information on the uploaded file.\n"
             ]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
             process_regular_exception(exp, False, [str(exp)])
@@ -548,8 +550,8 @@ class _MAGICFormClassMethods:
                     if (
                         timestamp
                         and obj_type == "disasm-contents"
-                        and service_name == "alt_juice_handler"
-                        or service_name == "webRequestHandler"
+                        and (service_name == "alt_juice_handler"
+                        or service_name == "webRequestHandler")
                     ):
                         latest_child_hash = sha1
             return latest_child_hash
