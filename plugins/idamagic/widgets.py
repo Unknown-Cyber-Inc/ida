@@ -2062,6 +2062,7 @@ class StatusPopup(QtWidgets.QMessageBox):
         "similarity_computation": "Similarity Matching",
         "srl_archive": "Archive Extraction",
         "srl_juice": "Genomic Juicing",
+        "alt_juice_handler": "Disassembly Genomic Juicing",
         "srl_scanners": "AV Scan Report",
         "srl_unpacker": "Unpacking",
         "web_request_handler": "Filetype Discovery",
