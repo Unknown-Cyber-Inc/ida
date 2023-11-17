@@ -9,6 +9,7 @@ import re
 import json
 import struct
 import shutil
+import traceback
 import six
 import networkx
 
@@ -1495,3 +1496,52 @@ def get_start_ea(obj):
         return obj.start_ea
     except AttributeError:
         return obj.startEA
+
+def process_api_exception(exp, console_only, info_msgs):
+    """Prepare an APIException to be displayed."""
+    from .widgets import ErrorPopup
+
+    logger.debug(traceback.format_exc())
+    if console_only:
+        try:
+            error_body = json.loads(exp.body)
+            for error in error_body.get("errors", []):
+                logger.info(error["reason"])
+                print(error)
+        except json.JSONDecodeError:
+            print(str(exp))
+            print("Received non-JSON response. Body:", exp.body)
+            print("Possible API error. Check that the Unknown Cyber dashboard is online.")
+        return None
+    try:
+        error_msgs = json.loads(exp.body)
+        if error_msgs.get("errors", []):
+            for error in error_msgs.get("errors"):
+                logger.info(error["reason"])
+    except json.JSONDecodeError:
+        error_msgs = [
+            "Possible API error. Check that the Unknown Cyber dashboard is online.",
+            str(exp),
+            "Received non-JSON response. Body: " + exp.body
+        ]
+    err_popup = ErrorPopup(info_msgs, error_msgs)
+    err_popup.exec_()
+
+def process_regular_exception(exp, console_only, info_msgs):
+    """Prepare an Exception to be displayed."""
+    from .widgets import ErrorPopup
+
+    logger.debug(traceback.format_exc())
+    if console_only:
+        print("Unknown Error occurred")
+        print(f"<{exp.__class__}>: {str(exp)}")
+        # exit if this call fails so user can retry
+        # (this func always returns None anyway)
+        return None
+    error_msgs = [
+        "Unknown Error occurred",
+        "<" + str(exp.__class__) + ">:" + str(exp) + ">",
+    ]
+    err_popup = ErrorPopup(info_msgs, error_msgs)
+    err_popup.exec_()
+    

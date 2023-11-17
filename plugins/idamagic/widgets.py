@@ -5,6 +5,8 @@ import cythereal_magic
 from cythereal_magic.rest import ApiException
 from .helpers import (
     create_proc_name,
+    process_api_exception,
+    process_regular_exception,
 )
 import json
 import traceback
@@ -251,18 +253,13 @@ class FileListWidget(BaseListWidget):
                     )
                 response = response.get()
             except ApiException as exp:
-                logger.debug(traceback.format_exc())
-                print(f"Could not delete file {type_str}.")
-                for error in json.loads(exp.body).get("errors"):
-                    logger.info(error["reason"])
-                    print(f"{error['reason']}: {error['message']}")
+                info_msgs = [
+                    "Could not delete file " + type_str + "."
+                ]
+                process_api_exception(exp, True, info_msgs)
                 return None
             except Exception as exp:
-                logger.debug(traceback.format_exc())
-                print("Unknown Error occurred")
-                print(f"<{exp.__class__}>: {str(exp)}")
-                # exit if this call fails so user can retry
-                # (this func always returns None anyway)
+                process_regular_exception(exp, True, None)
                 return None
             else:
                 if 200 <= response[1] <= 299:
@@ -1100,17 +1097,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print(f"No {type_str.lower()} could be gathered.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            process_api_exception(exp, True, None)
+            return None
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, True, None)
             return None
         else:
             if type_str == "Procedure Group Notes" or type_str == "Procedure Group Tags":
@@ -1370,20 +1360,11 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     )
                 response = response.get()
             except ApiException as exp:
-                logger.debug(traceback.format_exc())
-                print(f"Could not delete {type_str} from selected procedure.")
-                for error in json.loads(exp.body).get("errors"):
-                    logger.info(error["reason"])
-                    print(f"{error['reason']}: {error['message']}")
-
+                info_msgs = ["Could not delete " + type_str + " from selected procedure."]
+                process_api_exception(exp, True, info_msgs)
                 return None
             except Exception as exp:
-                logger.debug(traceback.format_exc())
-                print("Unknown Error occurred")
-                print(f"<{exp.__class__}>: {str(exp)}")
-                # exit if this call fails so user can retry
-                # (this func always returns None anyway)
-
+                process_regular_exception(exp, True, None)
                 return None
             else:
                 if 200 <= response[1] <= 299:
@@ -1687,18 +1668,11 @@ class ProcTextPopup(TextPopup):
                 )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print(f"Could not update {self.item_type}.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            info_msgs = ["Could not update " + self.item_type + "."]
+            process_api_exception(exp, True, info_msgs)
             return None
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, True, None)
             return None
         else:
             if 200 <= response.status <= 299:
@@ -1813,18 +1787,11 @@ class ProcTextPopup(TextPopup):
                 )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print(f"Could not update {self.item_type}.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            info_msgs = ["Could not update " + self.item_type + "."]
+            process_api_exception(exp, True, info_msgs)
             return None
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, True, None)
             return None
         else:
             if self.item_type == "Proc Name" or self.item_type == "Procedure Group Notes":
@@ -1902,18 +1869,11 @@ class FileTextPopup(TextPopup):
                 )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print(f"Could not create {type_str} for File.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            info_msgs = ["Could not create " + type_str + " for File."]
+            process_api_exception(exp, True, info_msgs)
             return None
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, True, None)
             return None
         else:
             if 200 <= response.status <= 299:
@@ -1967,17 +1927,11 @@ class FileTextPopup(TextPopup):
                 response = response.get()
         except ApiException as exp:
             logger.debug(traceback.format_exc())
-            print(f"Could not update File {type_str}.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            info_msgs = ["Could not update File " + type_str + "."]
+            process_api_exception(exp, True, info_msgs)
             return None
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, True, None)
             return None
         else:
             if 200 <= response[1] <= 299:
@@ -2130,3 +2084,35 @@ class StatusPopup(QtWidgets.QMessageBox):
             {self.PIPELINE_MAP.get(k, k): v for k, v in pipelines.to_dict().items()},
             indent=4
         )
+
+
+class ErrorPopup(QtWidgets.QDialog):
+    """Popup to display significant errors."""
+
+    def __init__(self, info_msgs, error_msgs):
+        super().__init__()
+        final_msg = ""
+        if info_msgs:
+            final_msg = "\n".join(info_msgs)
+        if hasattr(error_msgs, "errors") and error_msgs.get("errors", None):
+            for error in error_msgs.get("errors"):
+                out_err_msg = out_err_msg + "\n\n" + str(error["reason"])
+        else:
+            out_err_msg = ""
+        final_msg = final_msg + out_err_msg
+
+        # layout details
+        layout = QtWidgets.QVBoxLayout(self)
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addStretch()
+
+        display_msg = QtWidgets.QLabel(final_msg, self)
+
+        ok_button = QtWidgets.QPushButton("OK", self)
+        ok_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        ok_button.clicked.connect(self.accept)
+
+        button_layout.addWidget(ok_button)
+        layout.addWidget(display_msg)
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
