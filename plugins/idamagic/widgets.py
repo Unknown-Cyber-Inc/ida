@@ -1036,6 +1036,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         elif node_type is TreeTagsNode and self.tab_color.red() == 255:
             api_call = ctmfiles.list_file_tags
             type_str = "File tags"
+            expand_mask = "tags"
         elif node_type is TreeTagsNode and self.tab_color.blue() == 255:
             api_call = ctmfiles.list_procedure_genomics_tags
             type_str = "Derived proc tags"
@@ -1071,6 +1072,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             elif type_str == "File tags":
                 response = api_call(
                     binary_id=node.binary_id,
+                    expand_mask=expand_mask,
                     no_links=True,
                     async_req=True,
                 )
