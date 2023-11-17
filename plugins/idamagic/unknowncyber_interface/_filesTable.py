@@ -15,6 +15,8 @@ from ..helpers import (
     encode_file,
     get_linked_binary_expected_path,
     parse_binary,
+    process_api_exception,
+    process_regular_exception,
 )
 from ..widgets import FileSimpleTextNode, StatusPopup
 from ..helpers import create_idb_file
@@ -60,34 +62,27 @@ class _MAGICFormClassMethods:
             )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            try:
-                error_body = json.loads(exp.body)
-                for error in error_body.get("errors", []):
-                    if "Unauthorized" in str(exp):
-                        print(
-                            "The `MAGIC_API_KEY` env var is invalid."
-                            + " Correct and reload."
-                        )
-                    return None
-            except json.JSONDecodeError:
-                print("Received non-JSON response. Body:", exp.body)
-                print("API error. Check that the Unknown Cyber dashboard is working.")
+            info_msgs = []
+            if "Unauthorized" in str(exp):
+                info_msgs = [
+                    "The `MAGIC_API_KEY` env var is invalid."
+                    + " Correct and reload."
+                ]
+            process_regular_exception(exp, True, info_msgs)
             return None
         except Exception as exp:
+            info_msgs = []
             if "NameResolutionError" in  str(exp):
-                print(
+                info_msgs = [
                     "The `MAGIC_API_HOST` env var's domain is not set correctly."
-                    + " Correct and reload."
-                )
+                    + " Correct and reload.",
+                ]
             elif "NewConnectionError" in str(exp):
-                print(
+                info_msgs = [
                     "The `MAGIC_API_HOST` env var's port is not set correctly."
                     + " Correct and reload."
-                )
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
+                ]
+            process_regular_exception(exp, False, info_msgs)
             return None
         else:
             return True
@@ -178,18 +173,12 @@ class _MAGICFormClassMethods:
                 )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print(f"No {list_type.lower()} could be gathered from File.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
-            self.populate_file_matches(list())
+            info_msgs = ["No " + list_type.lower() + " could be gathered from File."]
+            process_api_exception(exp, True, info_msgs)
+            if list_type == "Matches":
+                self.populate_file_matches(list())
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, False, None)
             return None
         else:
             if list_type == "Matches":
@@ -235,7 +224,6 @@ class _MAGICFormClassMethods:
             )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
             print(
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
@@ -244,13 +232,9 @@ class _MAGICFormClassMethods:
             if not linked_uploaded:
                 self.set_version_hash(self.main_interface.hashes["loaded_sha1"])
                 self.list_widget.disable_tab_bar()
-                for error in json.loads(exp.body).get("errors"):
-                    logger.info(error["reason"])
-                    print(f"{error['reason']}: {error['message']}")
+                process_api_exception(exp, True, None)
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
+            process_regular_exception(exp, False, None)
             self.list_widget.disable_tab_bar()
             return None
         else:
@@ -281,18 +265,13 @@ class _MAGICFormClassMethods:
             )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print(
+            info_msgs = [
                 "IDB-linked binary nor any IDB/disassemblies from this binary uploaded yet."
-            )
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            ]
+            process_api_exception(exp, True, info_msgs)
             return False
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
+            process_regular_exception(exp, False, None)
             return False
         print("IDB-Linked Binary Found. Checking for content-children.")
         self.populate_content_versions(response.resource)
@@ -331,9 +310,7 @@ class _MAGICFormClassMethods:
             print("Linked binary previously uploaded.")
             return True
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
+            process_regular_exception(exp, False, None)
         return False
 
     def populate_content_versions(self, file):
@@ -406,17 +383,10 @@ class _MAGICFormClassMethods:
             )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print("No procedures could be gathered.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            info_msgs = ["Error uploading file."]
+            process_api_exception(exp, False, info_msgs)
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, False, None)
             return None
         else:
             if response.status == 200:
@@ -453,17 +423,10 @@ class _MAGICFormClassMethods:
                 no_links=True,
             )
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print("Disassembly upload failed.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            info_msgs = ["Disassembly upload failed."]
+            process_api_exception(exp, False, info_msgs)
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, False, None)
             return None
         else:
             if 200 <= status <= 299:
@@ -493,16 +456,11 @@ class _MAGICFormClassMethods:
             )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            process_api_exception(exp, False, None)
             self.set_status_label("api failure")
             return None
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
+            process_regular_exception(exp, False, None)
             self.set_status_label("api failure")
             return None
         else:

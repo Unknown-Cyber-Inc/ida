@@ -10,10 +10,8 @@ import ida_kernwin
 
 from cythereal_magic.rest import ApiException
 from PyQt5.QtWidgets import QTableWidgetItem
-from ..helpers import create_proc_name
-
+from ..helpers import create_proc_name, process_regular_exception, process_api_exception
 logger = logging.getLogger(__name__)
-
 
 class _ScrClassMethods:
     """
@@ -88,19 +86,14 @@ class _ScrClassMethods:
             )
             response = response.get()
         except ApiException as exp:
-            logger.debug(traceback.format_exc())
-            print("No procedures could be gathered.")
-            for error in json.loads(exp.body).get("errors"):
-                logger.info(error["reason"])
-                print(f"{error['reason']}: {error['message']}")
+            info_msgs = [
+                "No procedures could be gathered.",
+                "This may occur if the file was recently uploaded."
+            ]
+            process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            logger.debug(traceback.format_exc())
-            print("Unknown Error occurred")
-            print(f"<{exp.__class__}>: {str(exp)}")
-            print(traceback.format_exc())
-            # exit if this call fails so user can retry
-            # (this func always returns None anyway)
+            process_regular_exception(exp, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
