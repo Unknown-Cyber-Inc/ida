@@ -2103,9 +2103,16 @@ class ErrorPopup(QtWidgets.QDialog):
 
         # layout details
         layout = QtWidgets.QVBoxLayout(self)
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addStretch()
+
         display_msg = QtWidgets.QLabel(final_msg, self)
+
         ok_button = QtWidgets.QPushButton("OK", self)
+        ok_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         ok_button.clicked.connect(self.accept)
+
+        button_layout.addWidget(ok_button)
         layout.addWidget(display_msg)
-        layout.addWidget(ok_button)
+        layout.addLayout(button_layout)
         self.setLayout(layout)
