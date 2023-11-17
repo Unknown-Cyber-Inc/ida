@@ -2092,26 +2092,28 @@ class ErrorPopup(QtWidgets.QDialog):
     def __init__(self, info_msgs, error_msgs):
         super().__init__()
         final_msg = ""
+        out_err_msg = ""
         if info_msgs:
             final_msg = "\n".join(info_msgs)
-        if hasattr(error_msgs, "errors") and error_msgs.get("errors", None):
-            for error in error_msgs.get("errors"):
-                out_err_msg = out_err_msg + "\n\n" + str(error["reason"])
-        else:
-            out_err_msg = ""
-        final_msg = final_msg + out_err_msg
+        if isinstance(error_msgs, dict) and "errors" in error_msgs:
+            error_msg_list = [str(error["reason"]) for error in error_msgs["errors"]]
+            out_err_msg = "\n\n".join(error_msg_list)
+        elif isinstance(error_msgs, list):
+            out_err_msg = "\n\n".join(error_msgs)
+        if out_err_msg:
+            final_msg += "\n\n" + out_err_msg
 
         # layout details
         layout = QtWidgets.QVBoxLayout(self)
-        button_layout = QtWidgets.QHBoxLayout()
-        button_layout.addStretch()
-
-        display_msg = QtWidgets.QLabel(final_msg, self)
-
+        display_msg = QtWidgets.QTextEdit(final_msg, self)
+        display_msg.setReadOnly(True)
         ok_button = QtWidgets.QPushButton("OK", self)
         ok_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         ok_button.clicked.connect(self.accept)
 
+        # layout setup
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addStretch()
         button_layout.addWidget(ok_button)
         layout.addWidget(display_msg)
         layout.addLayout(button_layout)

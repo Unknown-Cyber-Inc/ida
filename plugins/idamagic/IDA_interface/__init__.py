@@ -7,6 +7,7 @@ information of the current file from unknowncyber.
 
 import cythereal_magic
 import ida_nalt
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QLabel,
     QVBoxLayout,
@@ -81,6 +82,7 @@ class MAGICPluginScrClass(QWidget, _ScrClassMethods):
             f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
             + " Addresses may be out of sync with IDA session."
         )
+        self.sync_warning.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.sync_warning.setWordWrap(True)
         self.sync_warning.setStyleSheet("color: red;")
         self.sync_warning.hide()
