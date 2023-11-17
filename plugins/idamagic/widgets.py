@@ -2083,7 +2083,10 @@ class StatusPopup(QtWidgets.QMessageBox):
     def convert_pipeline_names(self, pipelines):
         """Map API response pipelines to user-friendly names."""
         return json.dumps(
-            {self.PIPELINE_MAP.get(k, k): v for k, v in pipelines.to_dict().items()},
+            {
+                self.PIPELINE_MAP.get(k, k): v for k, v in pipelines.to_dict().items()
+                if v
+            },
             indent=4
         )
 
@@ -2096,7 +2099,7 @@ class ErrorPopup(QtWidgets.QDialog):
         final_msg = ""
         out_err_msg = ""
         if info_msgs:
-            final_msg = "\n".join(info_msgs)
+            final_msg = "\n\n".join(info_msgs)
         if isinstance(error_msgs, dict) and "errors" in error_msgs:
             error_msg_list = [str(error["reason"]) for error in error_msgs["errors"]]
             out_err_msg = "\n\n".join(error_msg_list)
