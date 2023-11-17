@@ -68,7 +68,7 @@ class _MAGICFormClassMethods:
                     "The `MAGIC_API_KEY` env var is invalid."
                     + " Correct and reload."
                 ]
-            process_regular_exception(exp, True, info_msgs)
+            process_regular_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
             info_msgs = []
@@ -81,6 +81,12 @@ class _MAGICFormClassMethods:
                 info_msgs = [
                     "The `MAGIC_API_HOST` env var's port is not set correctly."
                     + " Correct and reload."
+                ]
+            else:
+                info_msgs = [
+                    "An unknown error has occured. Please check host domain, "
+                    + "port, and api key below.",
+                    str(exp),
                 ]
             process_regular_exception(exp, False, info_msgs)
             return None

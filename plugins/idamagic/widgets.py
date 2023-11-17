@@ -2091,7 +2091,6 @@ class ErrorPopup(QtWidgets.QDialog):
 
     def __init__(self, info_msgs, error_msgs):
         super().__init__()
-        layout = QtWidgets.QVBoxLayout(self)
         final_msg = ""
         if info_msgs:
             final_msg = "\n".join(info_msgs)
@@ -2101,8 +2100,10 @@ class ErrorPopup(QtWidgets.QDialog):
         else:
             out_err_msg = ""
         final_msg = final_msg + out_err_msg
-        display_msg = QtWidgets.QLabel(final_msg, self)
 
+        # layout details
+        layout = QtWidgets.QVBoxLayout(self)
+        display_msg = QtWidgets.QLabel(final_msg, self)
         ok_button = QtWidgets.QPushButton("OK", self)
         ok_button.clicked.connect(self.accept)
         layout.addWidget(display_msg)
