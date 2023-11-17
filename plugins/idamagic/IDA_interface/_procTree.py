@@ -93,7 +93,7 @@ class _ScrClassMethods:
             process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            process_regular_exception(exp, False, None)
+            process_regular_exception(exp, False, [str(exp)])
             return None
         else:
             if 200 <= response.status <= 299:
