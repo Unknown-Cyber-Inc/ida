@@ -999,56 +999,49 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         """
         if not similarityRootNode.isPopulated:
             returned_vals = self.make_list_api_call(similarityRootNode)
-
-            current_response_sha1 = None
+            proc_dict = {}
             for proc in returned_vals:
-                # If we are at a proc that shares the same binary_id as the
-                # previous proc:
-                if current_response_sha1 == proc.binary_id:
-                    # add additional "startEA"
-                    similarityRootNode.appendRow(
-                        ProcSimpleTextNode(
-                            hard_hash=similarityRootNode.hard_hash,
-                            text=f"\t{proc.start_ea}",
-                            binary_id=current_response_sha1,
-                            rva=proc.start_ea,
-                        )
-                    )
-                # Else (if) this is a new proc.binary_id:
+                bin_id = proc.binary_id
+                ea = proc.start_ea
+                blocks = proc.block_count
+                code = proc.code_count
+                if bin_id in proc_dict:
+                    proc_dict[bin_id].append(f"{ea}, Blocks:{blocks}, Code:{code}")
                 else:
-                    current_response_sha1 = proc.binary_id
-                    # If this is the file open in IDA:
-                    if (
-                        self.sha1 == proc.binary_id
-                        and similarityRootNode.rva == proc.start_ea
-                    ):
-                        similarityRootNode.appendRow(
-                            ProcSimpleTextNode(
-                                hard_hash=similarityRootNode.hard_hash,
-                                text=f"Current File - {proc.binary_id}",
-                                binary_id=current_response_sha1,
-                                rva=None,
-                            )
-                        )
-                    else:
-                        similarityRootNode.appendRow(
-                            ProcSimpleTextNode(
-                                hard_hash=similarityRootNode.hard_hash,
-                                text=f"{proc.binary_id}",
-                                binary_id=current_response_sha1,
-                                rva=None,
-                            )
-                        )
-                    # add first startEA
+                    proc_dict[bin_id] = [f"{ea}, Blocks:{blocks}, Code:{code}"]
+
+            for bin_id, eas in proc_dict.items():
+                if (
+                    self.sha1 == bin_id
+                ):
                     similarityRootNode.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
-                            text=f"       startEAs:{proc.start_ea}",
-                            binary_id=current_response_sha1,
-                            rva=proc.start_ea,
+                            text=f"Current File - {bin_id}",
+                            binary_id=bin_id,
+                            rva=None,
                         )
                     )
-
+                else:
+                    similarityRootNode.appendRow(
+                        ProcSimpleTextNode(
+                            hard_hash=similarityRootNode.hard_hash,
+                            text=f"{bin_id}",
+                            binary_id=bin_id,
+                            rva=None,
+                        )
+                    )
+                for ea in eas:
+                    rva = ea.split(",", 1)
+                    rva = rva[0]
+                    similarityRootNode.appendRow(
+                    ProcSimpleTextNode(
+                        hard_hash=similarityRootNode.hard_hash,
+                        text=f"       {ea}",
+                        binary_id=bin_id,
+                        rva=rva,
+                    )
+                )
             # remove the empty init child
             similarityRootNode.removeRows(0, 1)
             similarityRootNode.isPopulated = True
@@ -1547,7 +1540,24 @@ class ProcTableWidget(QtWidgets.QTableWidget):
         """Reset the table data, replacing the header labels."""
         self.clearContents()
         self.setRowCount(0)
+    
+class ProcTableAddressItem(QtWidgets.QTableWidgetItem):
+    """
+    Custom QTableWidgetItem for procedure address/name.
 
+    This allows proper sorting based on the integer value of the address instead
+    of string value.
+    """
+    def __lt__(self, other):
+        def extract_value(item):
+            text = item.text()
+            start_index = text.find("x") + 1
+            end_index = text.find(" ", start_index)
+            if end_index == -1:
+                end_index = len(text)
+            sortable_string = text[start_index:end_index]
+            return int(sortable_string, 16)
+        return extract_value(self) < extract_value(other)
 
 class ProcTableIntegerItem(QtWidgets.QTableWidgetItem):
     """
@@ -2272,9 +2282,14 @@ class ComparePopup(QtWidgets.QDialog):
             )
 
         main_layout = QtWidgets.QVBoxLayout(self)
+        lock_layout = QtWidgets.QHBoxLayout()
         labels_layout = QtWidgets.QHBoxLayout()
         code_layout = QtWidgets.QHBoxLayout()
         lower_layout = QtWidgets.QHBoxLayout()
+
+        self.lock_button = QtWidgets.QPushButton("Lock Scroll")
+        self.lock_button.clicked.connect(self.toggle_scroll_lock)
+        self.scroll_locked = False
 
         self.orig_label = QtWidgets.QLabel(
             f"File hash: {orig_proc.binary_id}\nAddress: {orig_proc.start_ea}"
@@ -2302,6 +2317,9 @@ class ComparePopup(QtWidgets.QDialog):
         close_button = QtWidgets.QPushButton("Close", self)
         close_button.clicked.connect(self.accept)
 
+        lock_layout.addWidget(self.lock_button)
+        lock_layout.addStretch()
+
         labels_layout.addWidget(self.orig_label)
         labels_layout.addWidget(self.derived_label)
 
@@ -2310,6 +2328,34 @@ class ComparePopup(QtWidgets.QDialog):
 
         lower_layout.addWidget(close_button)
 
+        main_layout.addLayout(lock_layout)
         main_layout.addLayout(labels_layout)
         main_layout.addLayout(code_layout)
         main_layout.addLayout(lower_layout)
+
+    def toggle_scroll_lock(self):
+        self.scroll_locked = not self.scroll_locked
+        if self.scroll_locked:
+            # Connect the scroll bars
+            self.orig_code_area.verticalScrollBar().valueChanged.connect(self.sync_scroll)
+            self.derived_code_area.verticalScrollBar().valueChanged.connect(self.sync_scroll)
+        else:
+            # Disconnect the scroll bars
+            self.orig_code_area.verticalScrollBar().valueChanged.disconnect(self.sync_scroll)
+            self.derived_code_area.verticalScrollBar().valueChanged.disconnect(self.sync_scroll)
+
+    def sync_scroll(self, value):
+        # Determine the sender and the receiver
+        sender = self.sender()
+        if sender == self.orig_code_area.verticalScrollBar():
+            receiver = self.derived_code_area.verticalScrollBar()
+        else:
+            receiver = self.orig_code_area.verticalScrollBar()
+
+        # Calculate the percentage scrolled
+        max_value = sender.maximum() - sender.minimum()
+        percentage_scrolled = (value - sender.minimum()) / max_value if max_value else 0
+
+        # Set the receiver's scroll position to the same percentage
+        receiver_value = percentage_scrolled * (receiver.maximum() - receiver.minimum()) + receiver.minimum()
+        receiver.setValue(int(receiver_value))
