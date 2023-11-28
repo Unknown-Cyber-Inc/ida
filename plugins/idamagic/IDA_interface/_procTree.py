@@ -10,6 +10,7 @@ import ida_kernwin
 
 from cythereal_magic.rest import ApiException
 from PyQt5.QtWidgets import QTableWidgetItem
+from ..widgets import ProcTableIntegerItem
 from ..helpers import create_proc_name, process_regular_exception, process_api_exception
 logger = logging.getLogger(__name__)
 
@@ -29,19 +30,27 @@ class _ScrClassMethods:
 
             proc_info = [
                 proc_name,
-                str(proc.occurrence_count),
+                proc.occurrence_count,
+                proc.block_count,
+                proc.code_count,
                 proc.status,
-                ("0" if not proc.notes else str(len(proc.notes))),
-                ("0" if not proc.tags else str(len(proc.tags))),
+                (0 if not proc.notes else len(proc.notes)),
+                (0 if not proc.tags else len(proc.tags)),
             ]
             # insert blank row
             self.proc_table.insertRow(self.proc_table.rowCount())
             # place data in column slots of blank row
             for col, info in enumerate(proc_info):
-                col_item = QTableWidgetItem(info)
-                self.proc_table.setItem(
-                    self.proc_table.rowCount() - 1, col, col_item
-                )
+                if isinstance(info, int):
+                    col_item = ProcTableIntegerItem(str(info))
+                    self.proc_table.setItem(
+                        self.proc_table.rowCount() - 1, col, col_item
+                    )
+                else:
+                    col_item = QTableWidgetItem(info)
+                    self.proc_table.setItem(
+                        self.proc_table.rowCount() - 1, col, col_item
+                    )
             # Set the row's address column .data() to proc object
             row = self.proc_table.rowCount() - 1
             row_addr_col = self.proc_table.item(row, 0)
@@ -69,10 +78,7 @@ class _ScrClassMethods:
             return None
 
         self.proc_table.reset_table()
-        genomics_read_mask = (
-            "cfg,start_ea,is_library,status,procedure_hash,notes,tags,"
-            + "occurrence_count,strings,api_calls,procedure_name"
-        )
+        genomics_read_mask = "*"
         order_by = "start_ea"
 
         try:
