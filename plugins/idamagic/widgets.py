@@ -1087,6 +1087,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         elif node_type is ProcSimilarityNode:
             api_call = ctmfiles.list_procedure_similarities
             type_str = "Similarities"
+            read_mask="block_count,code_count,binary_id,start_ea"
 
         try:
             if type_str == "Files":
@@ -1140,6 +1141,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     rva=node.rva,
                     no_links=True,
                     async_req=True,
+                    read_mask=read_mask,
                 )
             response = response.get()
         except ApiException as exp:
