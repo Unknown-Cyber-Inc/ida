@@ -1,5 +1,5 @@
 """Custom widgets"""
-from PyQt5 import QtWidgets, Qt, QtGui
+from PyQt5 import QtWidgets, Qt, QtGui, QtCore
 from PyQt5.QtWidgets import QTableWidgetItem
 import cythereal_magic
 from cythereal_magic.rest import ApiException
@@ -236,7 +236,9 @@ class FileListWidget(BaseListWidget):
                 if "Notes" in type_str:
                     api_call = ctmfiles.delete_file_note
                     response = api_call(
-                        binary_id=self.widget_parent.main_interface.hashes["ida_md5"],
+                        binary_id=self.widget_parent.main_interface.hashes[
+                            "ida_md5"
+                        ],
                         note_id=item.proc_node.node_id,
                         force=True,
                         no_links=True,
@@ -245,7 +247,9 @@ class FileListWidget(BaseListWidget):
                 elif "Tags" in type_str:
                     api_call = ctmfiles.remove_file_tag
                     response = api_call(
-                        binary_id=self.widget_parent.main_interface.hashes["ida_md5"],
+                        binary_id=self.widget_parent.main_interface.hashes[
+                            "ida_md5"
+                        ],
                         tag_id=item.proc_node.node_id,
                         force=True,
                         no_links=True,
@@ -253,9 +257,7 @@ class FileListWidget(BaseListWidget):
                     )
                 response = response.get()
             except ApiException as exp:
-                info_msgs = [
-                    "Could not delete file " + type_str + "."
-                ]
+                info_msgs = ["Could not delete file " + type_str + "."]
                 process_api_exception(exp, True, info_msgs)
                 return None
             except Exception as exp:
@@ -560,11 +562,17 @@ class BaseCenterTab(QtWidgets.QWidget):
         ):
             # selecting the TreeTagsNode or TreeNotesNode
             self.center_widget.create_button.setEnabled(True)
-        elif index.parent().data() == "Tags" or index.parent().data() == "Procedure Group Tags":
+        elif (
+            index.parent().data() == "Tags"
+            or index.parent().data() == "Procedure Group Tags"
+        ):
             # selecting a tag node of ProcSimpleTextNode
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.delete_button.setEnabled(True)
-        elif index.parent().data() == "Notes" or index.parent().data() == "Procedure Group Notes":
+        elif (
+            index.parent().data() == "Notes"
+            or index.parent().data() == "Procedure Group Notes"
+        ):
             # selecting a note node of ProcSimpleTextNode
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.edit_button.setEnabled(True)
@@ -602,6 +610,7 @@ class CenterProcTab(BaseCenterTab):
 
     def __init__(self, center_widget, item, table_row):
         super().__init__(center_widget)
+        self.item = item
 
         self.center_widget.populate_tab_tree(
             item, self.tab_tree, self.center_widget.sha1, table_row
@@ -630,8 +639,19 @@ class CenterDerivedProcTab(BaseCenterTab):
     Created from a procedure NOT located within the file loaded into IDA.
     """
 
-    def __init__(self, center_widget, item):
+    def __init__(
+            self, center_widget,
+            item,
+            orig_file_hash,
+            orig_proc_rva,
+            derived_file_hash,
+            derived_proc_rva,
+        ):
         super().__init__(center_widget)
+        self.orig_file_hash = orig_file_hash
+        self.orig_proc_rva = orig_proc_rva
+        self.derived_file_hash = derived_file_hash
+        self.derived_proc_rva = derived_proc_rva
 
         self.center_widget.populate_tab_tree(
             item, self.tab_tree, "Derived procedure"
@@ -647,6 +667,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
         self.sha1 = self.widget_parent.main_interface.hashes["version_hash"]
+        self.popups = []
         self.init_ui()
 
     def init_ui(self):
@@ -670,14 +691,18 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.edit_button.setMinimumSize(30, 30)
         self.delete_button = QtWidgets.QPushButton("Delete")
         self.delete_button.setMinimumSize(30, 30)
+        self.compare_button = QtWidgets.QPushButton("Compare Procedures")
+        self.compare_button.hide()
 
         # link button to clicked functions and set default 'enabled' to False
         self.create_button.setEnabled(False)
         self.edit_button.setEnabled(False)
         self.delete_button.setEnabled(False)
+        self.compare_button.setEnabled(False)
         self.create_button.clicked.connect(self.on_create_click)
         self.edit_button.clicked.connect(self.on_edit_click)
         self.delete_button.clicked.connect(self.on_delete_click)
+        self.compare_button.clicked.connect(self.on_compare_click)
 
         # create button row for create/edit/delete buttons
         self.button_row = QtWidgets.QHBoxLayout()
@@ -685,6 +710,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.button_row.addWidget(self.edit_button)
         self.button_row.addWidget(self.delete_button)
         layout.addLayout(self.button_row)
+        layout.addWidget(self.compare_button)
 
     def update_sha1(self, hash):
         """Update the has for center display widget."""
@@ -692,7 +718,18 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
     def update_tab_color(self, index):
         """Update the value stored in self.tab_color to the current tab's."""
+        self.create_button.setEnabled(False)
+        self.edit_button.setEnabled(False)
+        self.delete_button.setEnabled(False)
         self.tab_color = self.tab_bar.tabTextColor(index)
+
+        # enable/disable and hide/show compare button based on tab color
+        if self.tab_color.blue() == 255:
+            self.compare_button.setEnabled(True)
+            self.compare_button.show()
+        else:
+            self.compare_button.setEnabled(False)
+            self.compare_button.hide()
 
     def close_tab(self, index):
         """Close one of self.tabs_widget' tabs"""
@@ -710,7 +747,16 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 self.tab_color.setGreen(128)
             self.add_tab_visuals(tab_type)
         elif tab_type == "Derived procedure":
-            tab = CenterDerivedProcTab(self, item)
+            original_tab = self.tabs_widget.currentWidget()
+            original_proc = original_tab.item
+            tab = CenterDerivedProcTab(
+                self,
+                item,
+                original_proc.binary_id,
+                original_proc.start_ea,
+                item.binary_id,
+                item.rva,
+            )
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Derived file":
@@ -881,7 +927,9 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             tagsRootNode.removeRows(0, 1)
             tagsRootNode.isPopulated = True
 
-    def populate_proc_group_notes(self, notes_root_node: TreeProcGroupNotesNode):
+    def populate_proc_group_notes(
+        self, notes_root_node: TreeProcGroupNotesNode
+    ):
         """populates a selected procedure's 'Proc Group Notes' node with received notes
 
         PARAMETERS
@@ -951,56 +999,49 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         """
         if not similarityRootNode.isPopulated:
             returned_vals = self.make_list_api_call(similarityRootNode)
-
-            current_response_sha1 = None
+            proc_dict = {}
             for proc in returned_vals:
-                # If we are at a proc that shares the same binary_id as the
-                # previous proc:
-                if current_response_sha1 == proc.binary_id:
-                    # add additional "startEA"
-                    similarityRootNode.appendRow(
-                        ProcSimpleTextNode(
-                            hard_hash=similarityRootNode.hard_hash,
-                            text=f"\t{proc.start_ea}",
-                            binary_id=current_response_sha1,
-                            rva=proc.start_ea,
-                        )
-                    )
-                # Else (if) this is a new proc.binary_id:
+                bin_id = proc.binary_id
+                ea = proc.start_ea
+                blocks = proc.block_count
+                code = proc.code_count
+                if bin_id in proc_dict:
+                    proc_dict[bin_id].append(f"{ea}, Blocks:{blocks}, Code:{code}")
                 else:
-                    current_response_sha1 = proc.binary_id
-                    # If this is the file open in IDA:
-                    if (
-                        self.sha1 == proc.binary_id
-                        and similarityRootNode.rva == proc.start_ea
-                    ):
-                        similarityRootNode.appendRow(
-                            ProcSimpleTextNode(
-                                hard_hash=similarityRootNode.hard_hash,
-                                text=f"Current File - {proc.binary_id}",
-                                binary_id=current_response_sha1,
-                                rva=None,
-                            )
-                        )
-                    else:
-                        similarityRootNode.appendRow(
-                            ProcSimpleTextNode(
-                                hard_hash=similarityRootNode.hard_hash,
-                                text=f"{proc.binary_id}",
-                                binary_id=current_response_sha1,
-                                rva=None,
-                            )
-                        )
-                    # add first startEA
+                    proc_dict[bin_id] = [f"{ea}, Blocks:{blocks}, Code:{code}"]
+
+            for bin_id, eas in proc_dict.items():
+                if (
+                    self.sha1 == bin_id
+                ):
                     similarityRootNode.appendRow(
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
-                            text=f"       startEAs:{proc.start_ea}",
-                            binary_id=current_response_sha1,
-                            rva=proc.start_ea,
+                            text=f"Current File - {bin_id}",
+                            binary_id=bin_id,
+                            rva=None,
                         )
                     )
-
+                else:
+                    similarityRootNode.appendRow(
+                        ProcSimpleTextNode(
+                            hard_hash=similarityRootNode.hard_hash,
+                            text=f"{bin_id}",
+                            binary_id=bin_id,
+                            rva=None,
+                        )
+                    )
+                for ea in eas:
+                    rva = ea.split(",", 1)
+                    rva = rva[0]
+                    similarityRootNode.appendRow(
+                    ProcSimpleTextNode(
+                        hard_hash=similarityRootNode.hard_hash,
+                        text=f"       {ea}",
+                        binary_id=bin_id,
+                        rva=rva,
+                    )
+                )
             # remove the empty init child
             similarityRootNode.removeRows(0, 1)
             similarityRootNode.isPopulated = True
@@ -1046,6 +1087,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         elif node_type is ProcSimilarityNode:
             api_call = ctmfiles.list_procedure_similarities
             type_str = "Similarities"
+            read_mask="block_count,code_count,binary_id,start_ea"
 
         try:
             if type_str == "Files":
@@ -1056,7 +1098,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     no_links=True,
                     async_req=True,
                 )
-            elif type_str == "Procedure Group Notes" or type_str == "Procedure Group Tags":
+            elif (
+                type_str == "Procedure Group Notes"
+                or type_str == "Procedure Group Tags"
+            ):
                 response = api_call(
                     proc_hash=node.hard_hash,
                     expand_mask=expand_mask,
@@ -1096,6 +1141,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     rva=node.rva,
                     no_links=True,
                     async_req=True,
+                    read_mask=read_mask,
                 )
             response = response.get()
         except ApiException as exp:
@@ -1105,7 +1151,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             process_regular_exception(exp, True, None)
             return None
         else:
-            if type_str == "Procedure Group Notes" or type_str == "Procedure Group Tags":
+            if (
+                type_str == "Procedure Group Notes"
+                or type_str == "Procedure Group Tags"
+            ):
                 if 200 <= response["status"] <= 299:
                     print(f"{type_str} gathered successfully.")
                 else:
@@ -1362,7 +1411,11 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     )
                 response = response.get()
             except ApiException as exp:
-                info_msgs = ["Could not delete " + type_str + " from selected procedure."]
+                info_msgs = [
+                    "Could not delete "
+                    + type_str
+                    + " from selected procedure."
+                ]
                 process_api_exception(exp, True, info_msgs)
                 return None
             except Exception as exp:
@@ -1381,6 +1434,49 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     return None
         else:
             return None
+
+    def on_compare_click(self):
+        """
+        Display a procedure comparison popup.
+        Make the API calls to fill the text areas.
+        """
+        tab_index = self.tabs_widget.currentIndex()
+        tab = self.tabs_widget.widget(tab_index)
+        orig_file_hash = tab.orig_file_hash
+        orig_proc_rva = tab.orig_proc_rva
+        derived_file_hash = tab.derived_file_hash
+        derived_proc_rva = tab.derived_proc_rva
+
+        try:
+            orig_response = ctmfiles.list_file_procedure_genomics(
+                binary_id=orig_file_hash,
+                rva=orig_proc_rva,
+                no_links=True,
+                async_req=True,
+            )
+            orig_response = orig_response.get()
+            orig_proc = orig_response.resource
+
+            derived_response = ctmfiles.list_file_procedure_genomics(
+                binary_id=derived_file_hash,
+                rva=derived_proc_rva,
+                no_links=True,
+                async_req=True,
+            )
+            derived_response = derived_response.get()
+            derived_proc = derived_response.resource
+        except ApiException as exp:
+            info_msgs = ["Unable to fetch procedure code."]
+            process_api_exception(exp, True, info_msgs)
+            return None
+        except Exception as exp:
+            process_regular_exception(exp, True, None)
+            return None
+        else:
+            popup = ComparePopup(orig_proc, derived_proc)
+            popup.finished.connect(lambda: self.popups.remove(popup))
+            popup.show()
+            self.popups.append(popup)
 
     def count_tabs(self):
         """Return a count of current tabs."""
@@ -1408,9 +1504,17 @@ class ProcTableWidget(QtWidgets.QTableWidget):
     def __init__(self, widget_parent):
         super().__init__()
         self.widget_parent = widget_parent
-        self.setColumnCount(5)
+        self.setColumnCount(7)
         self.setHorizontalHeaderLabels(
-            ["Address", "Occurrence #", "Type", "Notes", "Tags"]
+            [
+                "Address",
+                "Occurrence #",
+                "Blocks",
+                "Code Count",
+                "Type",
+                "Notes",
+                "Tags",
+            ]
         )
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.setSortingEnabled(True)
@@ -1438,7 +1542,33 @@ class ProcTableWidget(QtWidgets.QTableWidget):
         """Reset the table data, replacing the header labels."""
         self.clearContents()
         self.setRowCount(0)
+    
+class ProcTableAddressItem(QtWidgets.QTableWidgetItem):
+    """
+    Custom QTableWidgetItem for procedure address/name.
 
+    This allows proper sorting based on the integer value of the address instead
+    of string value.
+    """
+    def __lt__(self, other):
+        def extract_value(item):
+            text = item.text()
+            start_index = text.find("x") + 1
+            end_index = text.find(" ", start_index)
+            if end_index == -1:
+                end_index = len(text)
+            sortable_string = text[start_index:end_index]
+            return int(sortable_string, 16)
+        return extract_value(self) < extract_value(other)
+
+class ProcTableIntegerItem(QtWidgets.QTableWidgetItem):
+    """
+    Custom QTableWidgetItem for integers.
+    
+    This allows proper sorting based on integer value instead of string value.
+    """
+    def __lt__(self, other):
+        return int(self.text()) < int(other.text())
 
 class TabTreeWidget(QtWidgets.QTreeView):
     """
@@ -1796,7 +1926,10 @@ class ProcTextPopup(TextPopup):
             process_regular_exception(exp, True, None)
             return None
         else:
-            if self.item_type == "Proc Name" or self.item_type == "Procedure Group Notes":
+            if (
+                self.item_type == "Proc Name"
+                or self.item_type == "Procedure Group Notes"
+            ):
                 if 200 <= response.status <= 299:
                     print(f"{self.item_type} updated successfully.")
                     return text
@@ -2075,8 +2208,12 @@ class StatusPopup(QtWidgets.QMessageBox):
         mapped_pipelines = self.convert_pipeline_names(resource.pipeline)
 
         new_text = (
-            "File hash: " + self.widget_parent.main_interface.hashes["upload_hash"] + "\n\nStatus: "
-            + str(resource.status).capitalize() + "\n\n\n" + str(mapped_pipelines)
+            "File hash: "
+            + self.widget_parent.main_interface.hashes["upload_hash"]
+            + "\n\nStatus: "
+            + str(resource.status).capitalize()
+            + "\n\n\n"
+            + str(mapped_pipelines)
         )
         self.setText(new_text)
         self.setStandardButtons(QtWidgets.QMessageBox.Ok)
@@ -2114,7 +2251,9 @@ class ErrorPopup(QtWidgets.QDialog):
         display_msg = QtWidgets.QTextEdit(final_msg, self)
         display_msg.setReadOnly(True)
         ok_button = QtWidgets.QPushButton("OK", self)
-        ok_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        ok_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
         ok_button.clicked.connect(self.accept)
 
         # layout setup
@@ -2124,3 +2263,101 @@ class ErrorPopup(QtWidgets.QDialog):
         layout.addWidget(display_msg)
         layout.addLayout(button_layout)
         self.setLayout(layout)
+
+
+class ComparePopup(QtWidgets.QDialog):
+    """Popup to display procedure code from two procedures."""
+
+    def __init__(self, orig_proc, derived_proc, parent=None):
+        super(ComparePopup, self).__init__(parent)
+
+        self.setWindowTitle("Procedure Comparison")
+        self.resize(600, 400)
+
+        orig_code = "\n\n".join(
+            "\n".join(code_line for code_line in block.code)
+            for block in orig_proc.blocks
+            )
+        derived_code = "\n\n".join(
+            "\n".join(code_line for code_line in block.code)
+            for block in derived_proc.blocks
+            )
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        lock_layout = QtWidgets.QHBoxLayout()
+        labels_layout = QtWidgets.QHBoxLayout()
+        code_layout = QtWidgets.QHBoxLayout()
+        lower_layout = QtWidgets.QHBoxLayout()
+
+        self.lock_button = QtWidgets.QPushButton("Lock Scroll")
+        self.lock_button.clicked.connect(self.toggle_scroll_lock)
+        self.scroll_locked = False
+
+        self.orig_label = QtWidgets.QLabel(
+            f"File hash: {orig_proc.binary_id}\nAddress: {orig_proc.start_ea}"
+        )
+        self.derived_label = QtWidgets.QLabel(
+            f"File hash: {derived_proc.binary_id}\nAddress: {derived_proc.start_ea}"
+        )
+
+        self.orig_code_area = QtWidgets.QTextEdit(self)
+        self.derived_code_area = QtWidgets.QTextEdit(self)
+        self.orig_code_area.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse | QtCore.Qt.TextSelectableByKeyboard
+        )
+        self.derived_code_area.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse | QtCore.Qt.TextSelectableByKeyboard
+        )
+        self.orig_code_area.setPlainText(orig_code)
+        self.derived_code_area.setPlainText(derived_code)
+
+        self.orig_code_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.orig_code_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.derived_code_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.derived_code_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+
+        close_button = QtWidgets.QPushButton("Close", self)
+        close_button.clicked.connect(self.accept)
+
+        lock_layout.addWidget(self.lock_button)
+        lock_layout.addStretch()
+
+        labels_layout.addWidget(self.orig_label)
+        labels_layout.addWidget(self.derived_label)
+
+        code_layout.addWidget(self.orig_code_area)
+        code_layout.addWidget(self.derived_code_area)
+
+        lower_layout.addWidget(close_button)
+
+        main_layout.addLayout(lock_layout)
+        main_layout.addLayout(labels_layout)
+        main_layout.addLayout(code_layout)
+        main_layout.addLayout(lower_layout)
+
+    def toggle_scroll_lock(self):
+        self.scroll_locked = not self.scroll_locked
+        if self.scroll_locked:
+            # Connect the scroll bars
+            self.orig_code_area.verticalScrollBar().valueChanged.connect(self.sync_scroll)
+            self.derived_code_area.verticalScrollBar().valueChanged.connect(self.sync_scroll)
+        else:
+            # Disconnect the scroll bars
+            self.orig_code_area.verticalScrollBar().valueChanged.disconnect(self.sync_scroll)
+            self.derived_code_area.verticalScrollBar().valueChanged.disconnect(self.sync_scroll)
+
+    def sync_scroll(self, value):
+        # Determine the sender and the receiver
+        sender = self.sender()
+        if sender == self.orig_code_area.verticalScrollBar():
+            receiver = self.derived_code_area.verticalScrollBar()
+        else:
+            receiver = self.orig_code_area.verticalScrollBar()
+
+        # Calculate the percentage scrolled
+        max_value = sender.maximum() - sender.minimum()
+        percentage_scrolled = (value - sender.minimum()) / max_value if max_value else 0
+
+        # Set the receiver's scroll position to the same percentage
+        receiver_value = percentage_scrolled * (receiver.maximum() - receiver.minimum()) + receiver.minimum()
+        receiver.setValue(int(receiver_value))
