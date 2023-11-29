@@ -18,7 +18,7 @@ from ..helpers import (
     process_api_exception,
     process_regular_exception,
 )
-from ..widgets import FileSimpleTextNode, StatusPopup
+from ..widgets import FileSimpleTextNode, StatusPopup, ErrorPopup
 from ..helpers import create_idb_file
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
@@ -66,7 +66,13 @@ class _MAGICFormClassMethods:
             if "Unauthorized" in str(exp):
                 info_msgs = [
                     "The `MAGIC_API_KEY` env var is invalid."
-                    + " Correct and reload."
+                    + " Correct and reload.\n"
+                ]
+            else:
+                info_msgs = [
+                    "An unknown error has occured. Please check host domain, "
+                    + "port, and api key below.\n",
+                    str(exp),
                 ]
             process_regular_exception(exp, False, info_msgs)
             return None
@@ -75,17 +81,17 @@ class _MAGICFormClassMethods:
             if "NameResolutionError" in  str(exp):
                 info_msgs = [
                     "The `MAGIC_API_HOST` env var's domain is not set correctly."
-                    + " Correct and reload.",
+                    + " Correct and reload.\n",
                 ]
             elif "NewConnectionError" in str(exp):
                 info_msgs = [
                     "The `MAGIC_API_HOST` env var's port is not set correctly."
-                    + " Correct and reload."
+                    + " Correct and reload.\n"
                 ]
             else:
                 info_msgs = [
                     "An unknown error has occured. Please check host domain, "
-                    + "port, and api key below.",
+                    + "port, and api key below.\n",
                     str(exp),
                 ]
             process_regular_exception(exp, False, info_msgs)
@@ -179,12 +185,12 @@ class _MAGICFormClassMethods:
                 )
             response = response.get()
         except ApiException as exp:
-            info_msgs = ["No " + list_type.lower() + " could be gathered from File."]
+            info_msgs = ["No " + list_type.lower() + " could be gathered from File.\n"]
             process_api_exception(exp, True, info_msgs)
             if list_type == "Matches":
                 self.populate_file_matches(list())
         except Exception as exp:
-            process_regular_exception(exp, False, None)
+            process_regular_exception(exp, False, [str(exp)])
             return None
         else:
             if list_type == "Matches":
@@ -217,7 +223,7 @@ class _MAGICFormClassMethods:
         If not, check for original binary's pervious upload.
         """
         self.main_interface.set_file_exists(False)
-        read_mask = "sha1,children.*"
+        read_mask = "*,children.*"
         expand_mask = "children"
         try:
             sha1 = self.main_interface.hashes["loaded_sha1"]
@@ -238,9 +244,14 @@ class _MAGICFormClassMethods:
             if not linked_uploaded:
                 self.set_version_hash(self.main_interface.hashes["loaded_sha1"])
                 self.list_widget.disable_tab_bar()
-                process_api_exception(exp, True, None)
+                process_api_exception(
+                    exp,
+                    True,
+                    ["No upload has occurred for the loaded IDB's linked binary file."
+                    + " This includes any disassembly or IDB uploads."]
+                )
         except Exception as exp:
-            process_regular_exception(exp, False, None)
+            process_regular_exception(exp, False, [str(exp)])
             self.list_widget.disable_tab_bar()
             return None
         else:
@@ -259,7 +270,7 @@ class _MAGICFormClassMethods:
         If not, check for any content file children in response.
         If content children, return the sha1 of the most recent.
         """
-        read_mask = "*,children.*,object_class,upload_time"
+        read_mask = "*,children.*"
         expand_mask = "children"
         try:
             response = self.ctmfiles.get_file(
@@ -272,12 +283,12 @@ class _MAGICFormClassMethods:
             response = response.get()
         except ApiException as exp:
             info_msgs = [
-                "IDB-linked binary nor any IDB/disassemblies from this binary uploaded yet."
+                "IDB-linked binary nor any IDB/disassemblies from this binary uploaded yet.\n"
             ]
             process_api_exception(exp, True, info_msgs)
             return False
         except Exception as exp:
-            process_regular_exception(exp, False, None)
+            process_regular_exception(exp, True, [str(exp)])
             return False
         print("IDB-Linked Binary Found. Checking for content-children.")
         self.populate_content_versions(response.resource)
@@ -316,7 +327,7 @@ class _MAGICFormClassMethods:
             print("Linked binary previously uploaded.")
             return True
         except Exception as exp:
-            process_regular_exception(exp, False, None)
+            process_regular_exception(exp, False, [str(exp)])
         return False
 
     def populate_content_versions(self, file):
@@ -353,7 +364,7 @@ class _MAGICFormClassMethods:
     def upload_idb(self):
         idb = create_idb_file()
         print("Attempting IDB file upload.")
-        self.upload_file(idb, None)
+        self.upload_file(idb, None, True)
 
     def upload_binary(self, skip_unpack):
         try:
@@ -364,9 +375,9 @@ class _MAGICFormClassMethods:
             )
             print("To upload this binary, move to this file path.")
         print("Attempting binary file upload.")
-        self.upload_file(binary_path, skip_unpack)
+        self.upload_file(binary_path, skip_unpack, False)
 
-    def upload_file(self, file_path, skip_unpack):
+    def upload_file(self, file_path, skip_unpack, is_idb):
         """Upload file button click behavior
 
         POST to upload_file
@@ -389,31 +400,34 @@ class _MAGICFormClassMethods:
             )
             response = response.get()
         except ApiException as exp:
-            info_msgs = ["Error uploading file."]
+            info_msgs = ["Error uploading file.\n"]
             process_api_exception(exp, False, info_msgs)
         except Exception as exp:
-            process_regular_exception(exp, False, None)
+            process_regular_exception(exp, False, [str(exp)])
             return None
         else:
             if response.status == 200:
-                self.main_interface.set_file_exists(True)
-                self.set_version_hash(response.resources[0].sha1)
+                if is_idb:
+                    self.set_initial_upload_hash(response.resources[0].sha1)
+                else:
+                    self.main_interface.set_file_exists(True)
+                    self.set_version_hash(response.resources[0].sha1)
+                    self.enable_all_list_tabs()
                 self.main_interface.hashes["upload_hash"] = response.resources[0].sha1
                 self.status_button.setEnabled(True)
                 self.set_status_label("pending")
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("File previously uploaded and available.")
             elif response.status >= 201 and response.status <= 299:
                 self.main_interface.set_file_exists(True)
-                self.set_version_hash(response.resources[0].sha1)
+                if is_idb:
+                    self.set_initial_upload_hash(response.resources[0].sha1)
+                else:
+                    self.main_interface.set_file_exists(True)
+                    self.set_version_hash(response.resources[0].sha1)
+                    self.enable_all_list_tabs()
                 self.main_interface.hashes["upload_hash"] = response.resources[0].sha1
                 self.status_button.setEnabled(True)
                 self.set_status_label("pending")
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("Upload Successful.")
         # finally:
         #     os.remove(temp_file_path)
@@ -429,21 +443,17 @@ class _MAGICFormClassMethods:
                 no_links=True,
             )
         except ApiException as exp:
-            info_msgs = ["Disassembly upload failed."]
+            info_msgs = ["Disassembly upload failed.\n"]
             process_api_exception(exp, False, info_msgs)
         except Exception as exp:
-            process_regular_exception(exp, False, None)
+            process_regular_exception(exp, False, [str(exp)])
             return None
         else:
             if 200 <= status <= 299:
-                self.main_interface.set_file_exists(True)
-                self.set_version_hash(response.resource.sha1)
+                self.set_initial_upload_hash(response.resource.sha1)
                 self.main_interface.hashes["upload_hash"] = response.resource.sha1
                 self.status_button.setEnabled(True)
                 self.set_status_label("pending")
-                self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
-                self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
                 print("Disassembly Upload Successful.")
             else:
                 print("Error uploading disassembled binary.")
@@ -453,27 +463,104 @@ class _MAGICFormClassMethods:
     def get_file_status(self):
         """Get the status of an uploaded file."""
         read_mask = "status,pipeline"
+        upload_hash = self.main_interface.hashes["upload_hash"]
+        initial_upload_hash = self.main_interface.hashes["initial_upload_hash"]
+        if upload_hash:
+            try:
+                if initial_upload_hash:
+                    child_hash = self.get_upload_child_hash(initial_upload_hash)
+                else:
+                    child_hash = self.get_upload_child_hash(upload_hash)
+                if child_hash:
+                    self.main_interface.hashes["upload_hash"] = child_hash
+                upload_hash = self.main_interface.hashes["upload_hash"]
+                response = self.ctmfiles.get_file(
+                    binary_id=upload_hash,
+                    no_links=True,
+                    read_mask=read_mask,
+                    async_req=True,
+                )
+                response = response.get()
+            except ApiException as exp:
+                info_msgs = [
+                    "Error retrieving status of uploaded file.\n"
+                ]
+                process_api_exception(exp, False, info_msgs)
+                self.set_status_label("api failure")
+                return None
+            except Exception as exp:
+                info_msgs = [
+                    "Unknown error retrieving status of uploaded file.\n"
+                ]
+                process_regular_exception(exp, False, info_msgs)
+                self.set_status_label("api failure")
+                return None
+            else:
+                if 200 <= response.status <= 299:
+                    self.main_interface.set_file_exists(True)
+                    self.enable_all_list_tabs()
+                    self.set_version_hash(upload_hash)
+
+                    self.main_interface.hashes["initial_upload_hash"] = None
+                    self.set_status_label(response.resource.status)
+                    status_popup = StatusPopup(response.resource, self)
+                    status_popup.show()
+        else:
+            err_popup = ErrorPopup(
+                ["No upload hash is set. Try to upload a file again."],
+                None
+            )
+            err_popup.exec_()
+
+    def set_initial_upload_hash(self, response_hash):
+        """Set the initial upload hash to the sha1 in the upload response."""
+        self.main_interface.hashes["initial_upload_hash"] = response_hash
+
+    def get_upload_child_hash(self, response_hash):
+        """Get the latest matching upload child."""
+        expand_mask = "children"
+        read_mask = "*,children.*"
         try:
             response = self.ctmfiles.get_file(
-                binary_id=self.main_interface.hashes["upload_hash"],
+                binary_id=response_hash,
                 no_links=True,
                 read_mask=read_mask,
+                expand_mask=expand_mask,
                 async_req=True,
             )
             response = response.get()
         except ApiException as exp:
-            process_api_exception(exp, False, None)
-            self.set_status_label("api failure")
+            info_msgs = [
+                "Unable to gather information on the uploaded file.\n"
+            ]
+            process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            process_regular_exception(exp, False, None)
-            self.set_status_label("api failure")
+            process_regular_exception(exp, False, [str(exp)])
             return None
         else:
-            if 200 <= response.status <= 299:
-                self.set_status_label(response.resource.status)
-                self.status_popup = StatusPopup(response.resource, self)
-                self.status_popup.show()
+            latest_child_hash = None
+            for child in response.resource.children:
+                if child.get("sha1"):
+                    sha1 = child.get("sha1")
+                    service_name = child.get("service_name", None)
+                    service_data = child.get("service_data", {})
+                    timestamp = service_data.get("time", None)
+                    obj_type = service_data.get("type", None)
+                    if (
+                        timestamp
+                        and obj_type == "disasm-contents"
+                        and (service_name == "alt_juice_handler"
+                        or service_name == "webRequestHandler")
+                    ):
+                        latest_child_hash = sha1
+            return latest_child_hash
+
+    def enable_all_list_tabs(self):
+        """Enable all file list tabs (notes, tags, matches)."""
+        self.list_widget.list_widget_tab_bar.setTabEnabled(0, True)
+        self.list_widget.list_widget_tab_bar.setTabEnabled(1, True)
+        self.list_widget.list_widget_tab_bar.setTabEnabled(2, True)
 
     def update_list_widget(
         self,

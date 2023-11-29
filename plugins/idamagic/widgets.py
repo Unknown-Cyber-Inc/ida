@@ -1036,6 +1036,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         elif node_type is TreeTagsNode and self.tab_color.red() == 255:
             api_call = ctmfiles.list_file_tags
             type_str = "File tags"
+            expand_mask = "tags"
         elif node_type is TreeTagsNode and self.tab_color.blue() == 255:
             api_call = ctmfiles.list_procedure_genomics_tags
             type_str = "Derived proc tags"
@@ -1071,6 +1072,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             elif type_str == "File tags":
                 response = api_call(
                     binary_id=node.binary_id,
+                    expand_mask=expand_mask,
                     no_links=True,
                     async_req=True,
                 )
@@ -2060,6 +2062,7 @@ class StatusPopup(QtWidgets.QMessageBox):
         "similarity_computation": "Similarity Matching",
         "srl_archive": "Archive Extraction",
         "srl_juice": "Genomic Juicing",
+        "alt_juice_handler": "Disassembly Genomic Juicing",
         "srl_scanners": "AV Scan Report",
         "srl_unpacker": "Unpacking",
         "web_request_handler": "Filetype Discovery",
@@ -2081,7 +2084,10 @@ class StatusPopup(QtWidgets.QMessageBox):
     def convert_pipeline_names(self, pipelines):
         """Map API response pipelines to user-friendly names."""
         return json.dumps(
-            {self.PIPELINE_MAP.get(k, k): v for k, v in pipelines.to_dict().items()},
+            {
+                self.PIPELINE_MAP.get(k, k): v for k, v in pipelines.to_dict().items()
+                if v
+            },
             indent=4
         )
 
@@ -2092,26 +2098,28 @@ class ErrorPopup(QtWidgets.QDialog):
     def __init__(self, info_msgs, error_msgs):
         super().__init__()
         final_msg = ""
+        out_err_msg = ""
         if info_msgs:
-            final_msg = "\n".join(info_msgs)
-        if hasattr(error_msgs, "errors") and error_msgs.get("errors", None):
-            for error in error_msgs.get("errors"):
-                out_err_msg = out_err_msg + "\n\n" + str(error["reason"])
-        else:
-            out_err_msg = ""
-        final_msg = final_msg + out_err_msg
+            final_msg = "\n\n".join(info_msgs)
+        if isinstance(error_msgs, dict) and "errors" in error_msgs:
+            error_msg_list = [str(error["reason"]) for error in error_msgs["errors"]]
+            out_err_msg = "\n\n".join(error_msg_list)
+        elif isinstance(error_msgs, list):
+            out_err_msg = "\n\n".join(error_msgs)
+        if out_err_msg:
+            final_msg += "\n\n" + out_err_msg
 
         # layout details
         layout = QtWidgets.QVBoxLayout(self)
-        button_layout = QtWidgets.QHBoxLayout()
-        button_layout.addStretch()
-
-        display_msg = QtWidgets.QLabel(final_msg, self)
-
+        display_msg = QtWidgets.QTextEdit(final_msg, self)
+        display_msg.setReadOnly(True)
         ok_button = QtWidgets.QPushButton("OK", self)
         ok_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         ok_button.clicked.connect(self.accept)
 
+        # layout setup
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addStretch()
         button_layout.addWidget(ok_button)
         layout.addWidget(display_msg)
         layout.addLayout(button_layout)

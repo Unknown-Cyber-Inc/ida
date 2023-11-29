@@ -27,6 +27,7 @@ import idautils
 from networkx.drawing import nx_pydot
 from collections import namedtuple
 
+IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
 
 MIN_STRING_LENGTH = 3
@@ -1539,8 +1540,8 @@ def process_regular_exception(exp, console_only, info_msgs):
         # (this func always returns None anyway)
         return None
     error_msgs = [
-        "Unknown Error occurred",
-        "<" + str(exp.__class__) + ">:" + str(exp) + ">",
+        "Unknown Error occurred" + "\n\n",
+        ("<" + str(exp.__class__) + ">:" + str(exp)),
     ]
     err_popup = ErrorPopup(info_msgs, error_msgs)
     err_popup.exec_()
