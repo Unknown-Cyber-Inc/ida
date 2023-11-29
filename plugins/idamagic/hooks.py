@@ -69,21 +69,30 @@ class PluginScrHooks(ida_kernwin.UI_Hooks):
         eaKey = ida_kernwin.ea2str(ea).split(":")[1]
         eaKey = int(eaKey, 16)
         if eaKey in self.procedureEADict:
-            procedureItemRow = self.procedureEADict[eaKey]
-            row = procedureItemRow
+            ea_text = self.procedureEADict[eaKey]
+            row = self.search_table(ea_text)
             self.proc_table.setCurrentCell(row, 0)
             item_to_scroll_to = self.proc_table.item(row, 0)
             self.proc_table.scrollToItem(
                 item_to_scroll_to, QtWidgets.QAbstractItemView.PositionAtTop
             )
         elif eaKey in self.procedureEADict_unbased:
-            procedureItemRow = self.procedureEADict_unbased[eaKey]
-            row = procedureItemRow
+            ea_text = self.procedureEADict_unbased[eaKey]
+            row = self.search_table(ea_text)
             self.proc_table.setCurrentCell(row, 0)
             item_to_scroll_to = self.proc_table.item(row, 0)
             self.proc_table.scrollToItem(
                 item_to_scroll_to, QtWidgets.QAbstractItemView.PositionAtTop
             )
+
+    def search_table(self, ea_text):
+        """Search through the table to find the current position of the EA."""
+        for row in range(self.proc_table.rowCount()):
+            item = self.proc_table.item(row, 0)
+            if item:
+                item_text = item.text()
+                if ea_text in item_text:
+                    return row
 
     def ready_to_run(self, *args):
         return

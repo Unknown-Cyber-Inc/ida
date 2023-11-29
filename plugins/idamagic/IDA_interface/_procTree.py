@@ -10,7 +10,7 @@ import ida_kernwin
 
 from cythereal_magic.rest import ApiException
 from PyQt5.QtWidgets import QTableWidgetItem
-from ..widgets import ProcTableIntegerItem
+from ..widgets import ProcTableIntegerItem, ProcTableAddressItem
 from ..helpers import create_proc_name, process_regular_exception, process_api_exception
 logger = logging.getLogger(__name__)
 
@@ -59,10 +59,9 @@ class _ScrClassMethods:
 
             # add node to dict to avoid looping through objects in PluginScrHooks
             start_ea = ida_kernwin.str2ea(proc.start_ea)
-            proc_node_row = self.proc_table.rowCount()
-            self.procedureEADict_unbased[start_ea] = proc_node_row - 1
+            self.procedureEADict_unbased[start_ea] = proc.start_ea
             start_ea = start_ea + self.image_base
-            self.procedureEADict[start_ea] = proc_node_row - 1
+            self.procedureEADict[start_ea] = proc.start_ea
 
     def pushbutton_click(self):
         """What to do when the 'Get Procedures' button is clicked.
@@ -99,7 +98,7 @@ class _ScrClassMethods:
             process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            process_regular_exception(exp, False, [str(exp)])
+            process_regular_exception(exp, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
