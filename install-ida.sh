@@ -27,3 +27,5 @@ sudo mkdir -p /opt/ida
 sudo chown -R `logname` /opt/ida
 
 ./ida.run --mode unattended --prefix /opt/ida --installpassword $1
+
+rm /opt/ida/ida.key
