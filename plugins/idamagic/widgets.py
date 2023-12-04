@@ -1542,7 +1542,7 @@ class ProcTableWidget(QtWidgets.QTableWidget):
         """Reset the table data, replacing the header labels."""
         self.clearContents()
         self.setRowCount(0)
-    
+
 class ProcTableAddressItem(QtWidgets.QTableWidgetItem):
     """
     Custom QTableWidgetItem for procedure address/name.
@@ -2359,5 +2359,7 @@ class ComparePopup(QtWidgets.QDialog):
         percentage_scrolled = (value - sender.minimum()) / max_value if max_value else 0
 
         # Set the receiver's scroll position to the same percentage
-        receiver_value = percentage_scrolled * (receiver.maximum() - receiver.minimum()) + receiver.minimum()
+        receiver_value = percentage_scrolled * (
+            receiver.maximum() - receiver.minimum()
+        ) + receiver.minimum()
         receiver.setValue(int(receiver_value))
