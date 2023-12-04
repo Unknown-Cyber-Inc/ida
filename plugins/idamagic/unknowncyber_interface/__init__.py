@@ -135,7 +135,8 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         The version name will be set as a temporary one. Upon reloading the plugin
         or IDA, the version name will be normalized by the API.
         """
-        self.files_buttons_layout.dropdown.addItem("Recent Upload", binary_id)
+        if self.files_buttons_layout.dropdown.findText("Recent Upload") == -1:
+            self.files_buttons_layout.dropdown.addItem("Recent Upload", binary_id)
 
     def set_status_label(self, status):
         """Set the color of the status button according to the input status."""
