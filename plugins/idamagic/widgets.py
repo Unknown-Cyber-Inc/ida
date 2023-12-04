@@ -1048,6 +1048,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
     def make_list_api_call(self, node):
         """Make api call and handle exceptions"""
+        plain_calls = ["Notes", "Tags", "Derived proc notes", "Derived proc tags"]
+
         node_type = type(node)
         api_call = None
         type_str = None
@@ -1121,21 +1123,14 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     no_links=True,
                     async_req=True,
                 )
-            elif type_str == "Derived proc notes":
+            elif type_str in plain_calls:
                 response = api_call(
                     binary_id=node.binary_id,
                     rva=node.rva,
                     no_links=True,
                     async_req=True,
                 )
-            elif type_str == "Derived proc tags":
-                response = api_call(
-                    binary_id=node.binary_id,
-                    rva=node.rva,
-                    no_links=True,
-                    async_req=True,
-                )
-            else:
+            elif type_str == "Similarities":
                 response = api_call(
                     binary_id=node.binary_id,
                     rva=node.rva,
