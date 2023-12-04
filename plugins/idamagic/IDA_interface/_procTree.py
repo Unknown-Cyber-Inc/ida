@@ -41,14 +41,13 @@ class _ScrClassMethods:
             self.proc_table.insertRow(self.proc_table.rowCount())
             # place data in column slots of blank row
             for col, info in enumerate(proc_info):
-                if isinstance(info, int):
+                if col == 0:
+                    col_item = ProcTableAddressItem(info)
+                elif isinstance(info, int):
                     col_item = ProcTableIntegerItem(str(info))
-                    self.proc_table.setItem(
-                        self.proc_table.rowCount() - 1, col, col_item
-                    )
                 else:
                     col_item = QTableWidgetItem(info)
-                    self.proc_table.setItem(
+                self.proc_table.setItem(
                         self.proc_table.rowCount() - 1, col, col_item
                     )
             # Set the row's address column .data() to proc object
