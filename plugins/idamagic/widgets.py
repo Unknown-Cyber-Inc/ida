@@ -2243,8 +2243,9 @@ class ErrorPopup(QtWidgets.QDialog):
 
         # layout details
         layout = QtWidgets.QVBoxLayout(self)
-        display_msg = QtWidgets.QTextEdit(final_msg, self)
+        display_msg = QtWidgets.QTextEdit()
         display_msg.setReadOnly(True)
+        display_msg.setText(final_msg)
         ok_button = QtWidgets.QPushButton("OK", self)
         ok_button.setSizePolicy(
             QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
@@ -2358,3 +2359,33 @@ class ComparePopup(QtWidgets.QDialog):
             receiver.maximum() - receiver.minimum()
         ) + receiver.minimum()
         receiver.setValue(int(receiver_value))
+
+class GenericPopup(QtWidgets.QDialog):
+    """
+    Generic popup that will display simple messages.
+    """
+    def __init__(self, message, parent=None):
+        super().__init__()
+
+        self.resize(500, 300)
+        self.message = message
+        self.parent = parent
+
+        # layout details
+        layout = QtWidgets.QVBoxLayout(self)
+        display_msg = QtWidgets.QTextEdit()
+        display_msg.setReadOnly(True)
+        display_msg.setText(message)
+        ok_button = QtWidgets.QPushButton("OK", self)
+        ok_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
+        ok_button.clicked.connect(self.accept)
+
+        # layout setup
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(ok_button)
+        layout.addWidget(display_msg)
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
