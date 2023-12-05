@@ -274,6 +274,10 @@ class FileListWidget(BaseListWidget):
 
             index = self.list_widget.row(item)
             self.list_widget.takeItem(index)
+
+            self.create_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
         else:
             return None
 
@@ -1427,6 +1431,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     print(f"Status Code: {response[1]}")
                     # print(f"Error message: {response.errors}")
                     return None
+                
+                self.create_button.setEnabled(False)
+                self.edit_button.setEnabled(False)
+                self.delete_button.setEnabled(False)
         else:
             return None
 
