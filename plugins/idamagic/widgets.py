@@ -2389,3 +2389,19 @@ class GenericPopup(QtWidgets.QDialog):
         layout.addWidget(display_msg)
         layout.addLayout(button_layout)
         self.setLayout(layout)
+
+class PopupWorker(QtCore.QThread):
+    """
+    Worker used to notify user of processes happening that may take extended time.
+    """
+    finished = QtCore.pyqtSignal()
+
+    def __init__(self, process, *args, **kwargs):
+        super().__init__()
+        self.process = process
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        self.process(*self.args, **self.kwargs)
+        self.finished.emit()
