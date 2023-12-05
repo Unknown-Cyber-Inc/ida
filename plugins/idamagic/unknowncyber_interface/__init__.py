@@ -58,6 +58,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.layout: QVBoxLayout
         self.loaded_md5: QLabel
         self.linked_md5: QLabel
+        self.version_hash: QLabel
         self.status_label: QLabel
         self.status_button: QPushButton
         self.status_layout: QHBoxLayout
@@ -85,6 +86,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # adding widgets to layout, order here matters
         self.layout.addWidget(self.loaded_md5)
         self.layout.addWidget(self.linked_md5)
+        self.layout.addWidget(self.version_hash)
         self.layout.addLayout(self.status_layout)
         self.layout.addLayout(self.files_buttons_layout)
         self.layout.addWidget(self.list_widget)
@@ -103,6 +105,8 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.loaded_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.linked_md5 = QLabel(f"Binary md5: {self.main_interface.hashes['ida_md5']}")
         self.linked_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.version_hash = QLabel(f"Version hash: {self.main_interface.hashes['version_hash']}")
+        self.version_hash.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status_label = QLabel(
             "Upload Processing Status: Upload a file to track it's status."
         )
@@ -128,6 +132,15 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         if len(self.content_versions) > 0:
             for key, value in self.content_versions.items():
                 self.files_buttons_layout.dropdown.addItem(key, value)
+
+    def add_upload_version_to_dropdown(self, binary_id):
+        """
+        Add the latest uploaded version and binary_id to the version dropdown.
+        The version name will be set as a temporary one. Upon reloading the plugin
+        or IDA, the version name will be normalized by the API.
+        """
+        if self.files_buttons_layout.dropdown.findText("Recent Upload") == -1:
+            self.files_buttons_layout.dropdown.addItem("Recent Upload", binary_id)
 
     def set_status_label(self, status):
         """Set the color of the status button according to the input status."""

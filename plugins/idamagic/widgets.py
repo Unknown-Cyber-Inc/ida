@@ -1048,6 +1048,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
 
     def make_list_api_call(self, node):
         """Make api call and handle exceptions"""
+        plain_calls = ["Notes", "Tags", "Derived proc notes", "Derived proc tags"]
+
         node_type = type(node)
         api_call = None
         type_str = None
@@ -1121,21 +1123,14 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     no_links=True,
                     async_req=True,
                 )
-            elif type_str == "Derived proc notes":
+            elif type_str in plain_calls:
                 response = api_call(
                     binary_id=node.binary_id,
                     rva=node.rva,
                     no_links=True,
                     async_req=True,
                 )
-            elif type_str == "Derived proc tags":
-                response = api_call(
-                    binary_id=node.binary_id,
-                    rva=node.rva,
-                    no_links=True,
-                    async_req=True,
-                )
-            else:
+            elif type_str == "Similarities":
                 response = api_call(
                     binary_id=node.binary_id,
                     rva=node.rva,
@@ -2248,8 +2243,9 @@ class ErrorPopup(QtWidgets.QDialog):
 
         # layout details
         layout = QtWidgets.QVBoxLayout(self)
-        display_msg = QtWidgets.QTextEdit(final_msg, self)
+        display_msg = QtWidgets.QTextEdit()
         display_msg.setReadOnly(True)
+        display_msg.setText(final_msg)
         ok_button = QtWidgets.QPushButton("OK", self)
         ok_button.setSizePolicy(
             QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
@@ -2363,3 +2359,33 @@ class ComparePopup(QtWidgets.QDialog):
             receiver.maximum() - receiver.minimum()
         ) + receiver.minimum()
         receiver.setValue(int(receiver_value))
+
+class GenericPopup(QtWidgets.QDialog):
+    """
+    Generic popup that will display simple messages.
+    """
+    def __init__(self, message, parent=None):
+        super().__init__()
+
+        self.resize(500, 300)
+        self.message = message
+        self.parent = parent
+
+        # layout details
+        layout = QtWidgets.QVBoxLayout(self)
+        display_msg = QtWidgets.QTextEdit()
+        display_msg.setReadOnly(True)
+        display_msg.setText(message)
+        ok_button = QtWidgets.QPushButton("OK", self)
+        ok_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
+        ok_button.clicked.connect(self.accept)
+
+        # layout setup
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(ok_button)
+        layout.addWidget(display_msg)
+        layout.addLayout(button_layout)
+        self.setLayout(layout)

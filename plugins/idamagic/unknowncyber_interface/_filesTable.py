@@ -500,6 +500,7 @@ class _MAGICFormClassMethods:
                     self.main_interface.set_file_exists(True)
                     self.enable_all_list_tabs()
                     self.set_version_hash(upload_hash)
+                    self.add_upload_version_to_dropdown(upload_hash)
 
                     self.main_interface.hashes["initial_upload_hash"] = None
                     self.set_status_label(response.resource.status)

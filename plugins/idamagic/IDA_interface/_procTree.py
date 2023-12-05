@@ -10,7 +10,7 @@ import ida_kernwin
 
 from cythereal_magic.rest import ApiException
 from PyQt5.QtWidgets import QTableWidgetItem
-from ..widgets import ProcTableIntegerItem, ProcTableAddressItem
+from ..widgets import ProcTableIntegerItem, ProcTableAddressItem, GenericPopup
 from ..helpers import create_proc_name, process_regular_exception, process_api_exception
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,14 @@ class _ScrClassMethods:
         else:
             if 200 <= response.status <= 299:
                 print("Procedures gathered successfully.")
+                if len(response.resource.procedures) < 1:
+                    popup = GenericPopup(
+                        "The request for procedures came back empty.\n\n" +
+                        "Please check the UnknownCyber dashboard to see if the" +
+                        " file associated with the hash below contains any genomics.\n\n" +
+                        f"Hash: {self.main_interface.hashes['version_hash']}"
+                    )
+                    popup.exec_()
                 self.populate_proc_table(response.resource)
                 if (
                     self.main_interface.hashes["version_hash"]
