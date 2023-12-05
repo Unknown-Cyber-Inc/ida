@@ -274,6 +274,10 @@ class FileListWidget(BaseListWidget):
 
             index = self.list_widget.row(item)
             self.list_widget.takeItem(index)
+
+            self.create_button.setEnabled(False)
+            self.edit_button.setEnabled(False)
+            self.delete_button.setEnabled(False)
         else:
             return None
 
@@ -1427,6 +1431,11 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     print(f"Status Code: {response[1]}")
                     # print(f"Error message: {response.errors}")
                     return None
+                
+                self.create_button.setEnabled(False)
+                self.edit_button.setEnabled(False)
+                self.delete_button.setEnabled(False)
+                self.tabs_widget.currentWidget().tab_tree.clear_selection()
         else:
             return None
 
@@ -1595,6 +1604,10 @@ class TabTreeWidget(QtWidgets.QTreeView):
                 )
             else:
                 self.center_widget.create_tab("Derived file", item=item)
+
+    def clear_selection(self):
+        """Clears the trees current selection."""
+        self.selectionModel().clearSelection()
 
 
 class CustomListItem(QtWidgets.QListWidgetItem):
@@ -2389,3 +2402,19 @@ class GenericPopup(QtWidgets.QDialog):
         layout.addWidget(display_msg)
         layout.addLayout(button_layout)
         self.setLayout(layout)
+
+class PopupWorker(QtCore.QThread):
+    """
+    Worker used to notify user of processes happening that may take extended time.
+    """
+    finished = QtCore.pyqtSignal()
+
+    def __init__(self, process, *args, **kwargs):
+        super().__init__()
+        self.process = process
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        self.process(*self.args, **self.kwargs)
+        self.finished.emit()

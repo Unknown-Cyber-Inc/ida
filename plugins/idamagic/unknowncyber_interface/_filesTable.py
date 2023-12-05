@@ -18,8 +18,8 @@ from ..helpers import (
     process_api_exception,
     process_regular_exception,
 )
-from ..widgets import FileSimpleTextNode, StatusPopup, ErrorPopup
-from ..helpers import create_idb_file
+from ..widgets import FileSimpleTextNode, StatusPopup, ErrorPopup, GenericPopup
+from ..helpers import create_idb_file, popup_task_completed
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
@@ -370,10 +370,10 @@ class _MAGICFormClassMethods:
         try:
             binary_path = get_linked_binary_expected_path()
         except Exception:
-            print(
+            GenericPopup(
                 f"Binary file not found at path: {get_linked_binary_expected_path()}."
+                + "To upload this binary, move to this file path."
             )
-            print("To upload this binary, move to this file path.")
         print("Attempting binary file upload.")
         self.upload_file(binary_path, skip_unpack, False)
 
@@ -406,29 +406,29 @@ class _MAGICFormClassMethods:
             process_regular_exception(exp, False, [str(exp)])
             return None
         else:
-            if response.status == 200:
-                if is_idb:
-                    self.set_initial_upload_hash(response.resources[0].sha1)
-                else:
-                    self.main_interface.set_file_exists(True)
-                    self.set_version_hash(response.resources[0].sha1)
-                    self.enable_all_list_tabs()
-                self.main_interface.hashes["upload_hash"] = response.resources[0].sha1
-                self.status_button.setEnabled(True)
-                self.set_status_label("pending")
-                print("File previously uploaded and available.")
-            elif response.status >= 201 and response.status <= 299:
+            upload_hash = response.resources[0].sha1
+
+            if is_idb:
+                self.main_interface.recent_upload_type = "IDB"
+                self.set_initial_upload_hash(upload_hash)
+            else:
+                self.main_interface.recent_upload_type = "Binary"
                 self.main_interface.set_file_exists(True)
-                if is_idb:
-                    self.set_initial_upload_hash(response.resources[0].sha1)
-                else:
-                    self.main_interface.set_file_exists(True)
-                    self.set_version_hash(response.resources[0].sha1)
-                    self.enable_all_list_tabs()
-                self.main_interface.hashes["upload_hash"] = response.resources[0].sha1
-                self.status_button.setEnabled(True)
-                self.set_status_label("pending")
-                print("Upload Successful.")
+                self.set_version_hash(upload_hash)
+                self.enable_all_list_tabs()
+
+            self.add_upload_version_to_dropdown(upload_hash)
+            self.main_interface.hashes["upload_hash"] = upload_hash
+            self.status_button.setEnabled(True)
+            self.set_status_label("pending")
+
+            if response.status == 200:
+                popup = GenericPopup("File previously uploaded and available.")
+                popup.exec_()
+            elif response.status >= 201 and response.status <= 299:
+                popup = GenericPopup("File upload successful.")
+                popup.exec_()
+
         # finally:
         #     os.remove(temp_file_path)
 
@@ -438,7 +438,7 @@ class _MAGICFormClassMethods:
         api_call = self.ctmfiles.upload_disassembly
 
         try:
-            response, status, _ = api_call(
+            response, _, _ = api_call(
                 filedata=zip_path,
                 no_links=True,
             )
@@ -449,16 +449,16 @@ class _MAGICFormClassMethods:
             process_regular_exception(exp, False, [str(exp)])
             return None
         else:
-            if 200 <= status <= 299:
-                self.set_initial_upload_hash(response.resource.sha1)
-                self.main_interface.hashes["upload_hash"] = response.resource.sha1
-                self.status_button.setEnabled(True)
-                self.set_status_label("pending")
-                print("Disassembly Upload Successful.")
-            else:
-                print("Error uploading disassembled binary.")
-                print(f"Status Code: {status}")
+            upload_hash = response.resource.sha1
+            self.main_interface.recent_upload_type = "Disassembly"
+            self.set_initial_upload_hash(upload_hash)
+            self.add_upload_version_to_dropdown(upload_hash)
+            self.main_interface.hashes["upload_hash"] = upload_hash
+            self.status_button.setEnabled(True)
+            self.set_status_label("pending")
 
+            popup = GenericPopup("Disassembly Upload Successful.")
+            popup.exec_()
 
     def get_file_status(self):
         """Get the status of an uploaded file."""
@@ -500,7 +500,6 @@ class _MAGICFormClassMethods:
                     self.main_interface.set_file_exists(True)
                     self.enable_all_list_tabs()
                     self.set_version_hash(upload_hash)
-                    self.add_upload_version_to_dropdown(upload_hash)
 
                     self.main_interface.hashes["initial_upload_hash"] = None
                     self.set_status_label(response.resource.status)

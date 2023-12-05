@@ -1545,4 +1545,7 @@ def process_regular_exception(exp, console_only, info_msgs):
     ]
     err_popup = ErrorPopup(info_msgs, error_msgs)
     err_popup.exec_()
-    
+
+def popup_task_completed(popup):
+    """Closes the popup when the worker finishes."""
+    popup.accept()
