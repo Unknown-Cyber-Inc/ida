@@ -1435,6 +1435,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 self.create_button.setEnabled(False)
                 self.edit_button.setEnabled(False)
                 self.delete_button.setEnabled(False)
+                self.tabs_widget.currentWidget().tab_tree.clear_selection()
         else:
             return None
 
@@ -1603,6 +1604,10 @@ class TabTreeWidget(QtWidgets.QTreeView):
                 )
             else:
                 self.center_widget.create_tab("Derived file", item=item)
+
+    def clear_selection(self):
+        """Clears the trees current selection."""
+        self.selectionModel().clearSelection()
 
 
 class CustomListItem(QtWidgets.QListWidgetItem):
