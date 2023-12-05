@@ -39,6 +39,8 @@ class MAGICMainClass(ida_kernwin.PluginForm):
             "initial_upload_hash": None,
         }
 
+        self.recent_upload_type = None
+
         self.title = main_title
         self.api_client = magic_api_client
 
