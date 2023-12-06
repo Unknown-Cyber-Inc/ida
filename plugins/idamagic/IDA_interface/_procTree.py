@@ -68,12 +68,21 @@ class _ScrClassMethods:
         GET from procedures and list all procedures associated with file.
         """
         if not self.main_interface.get_file_exists():
-            print(
-                "Upload a file or IDB first to generate procedures."
-                + " If you have already uploaded, check the status with"
+            popup = GenericPopup(
+                "Upload a file or IDB first to generate procedures.\n\n"
+                + "If you have already uploaded, check the status with"
                 + " the 'Check Upload Status' button."
             )
+            popup.exec_()
             return None
+        elif self.main_interface.unknown_plugin.get_file_status(with_popup=False):
+            if "pending" in self.main_interface.unknown_plugin.status_label.text().lower():
+                popup = GenericPopup(
+                    "The uploaded file has not finished processing.\n\n"
+                    + "Check the status of the upload with the 'Check Upload Status' button."
+                )
+                popup.exec_()
+                return None
 
         self.proc_table.reset_table()
         genomics_read_mask = "*"
@@ -110,6 +119,7 @@ class _ScrClassMethods:
                         f"Hash: {self.main_interface.hashes['version_hash']}"
                     )
                     popup.exec_()
+                    return None
                 self.populate_proc_table(response.resource)
                 if (
                     self.main_interface.hashes["version_hash"]
@@ -117,6 +127,8 @@ class _ScrClassMethods:
                 ):
                     self.sync_warning.show()
             else:
-                print("Error gathering Procedures.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")
+                popup = GenericPopup(
+                    "Error gathering Procedures.\n\n"
+                    + f"Status Code: {response.status}\n\n"
+                    + f"Error message: {response.errors}"
+                )

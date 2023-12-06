@@ -460,7 +460,7 @@ class _MAGICFormClassMethods:
             popup = GenericPopup("Disassembly Upload Successful.")
             popup.exec_()
 
-    def get_file_status(self):
+    def get_file_status(self, with_popup):
         """Get the status of an uploaded file."""
         read_mask = "status,pipeline"
         upload_hash = self.main_interface.hashes["upload_hash"]
@@ -503,8 +503,12 @@ class _MAGICFormClassMethods:
 
                     self.main_interface.hashes["initial_upload_hash"] = None
                     self.set_status_label(response.resource.status)
-                    status_popup = StatusPopup(response.resource, self)
-                    status_popup.show()
+                    if with_popup:
+                        status_popup = StatusPopup(response.resource, self)
+                        status_popup.show()
+                    # If a not with_popup, the calling method expects None or True response.
+                    else:
+                        return True
         else:
             err_popup = ErrorPopup(
                 ["No upload hash is set. Try to upload a file again."],

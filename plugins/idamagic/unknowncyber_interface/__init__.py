@@ -111,7 +111,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
             "Upload Processing Status: Upload a file to track it's status."
         )
         self.status_button = QPushButton("Check Upload Status")
-        self.status_button.clicked.connect(self.get_file_status)
+        self.status_button.clicked.connect(lambda: self.get_file_status(True))
         self.status_button.setEnabled(False)
         self.status_layout = QHBoxLayout()
         self.status_layout.addWidget(self.status_label)
@@ -147,6 +147,9 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
 
     def set_status_label(self, status):
         """Set the color of the status button according to the input status."""
+        status = str(status).lower()
         self.status_label.setText(
-            f"Upload Processing Status: {str(status).capitalize()}"
+            f"Upload Processing Status: {status.capitalize()}"
         )
+        if status == "success":
+            self.status_button.setEnabled(False)
