@@ -13,6 +13,7 @@ import hashlib
 from cythereal_magic.rest import ApiException
 from ..helpers import (
     encode_file,
+    get_disassembly_hashes,
     get_linked_binary_expected_path,
     parse_binary,
     process_api_exception,
@@ -185,8 +186,11 @@ class _MAGICFormClassMethods:
                 )
             response = response.get()
         except ApiException as exp:
-            info_msgs = ["No " + list_type.lower() + " could be gathered from File.\n"]
-            process_api_exception(exp, True, info_msgs)
+            info_msgs = ["No " + list_type.lower() + " could be gathered from File."]
+            if list_type == "Matches":
+                process_api_exception(exp, True, info_msgs)
+            else:
+                process_api_exception(exp, False, info_msgs)
             if list_type == "Matches":
                 self.populate_file_matches(list())
         except Exception as exp:
@@ -195,20 +199,11 @@ class _MAGICFormClassMethods:
         else:
             if list_type == "Matches":
                 if 200 <= response["status"] <= 299:
-                    print(f"{list_type} gathered from File successfully.")
                     self.populate_file_matches(response["resources"])
-                else:
-                    print(f"Error gathering {list_type}.")
-                    print(f"Status Code: {response['status']}")
-                    print(f"Error message: {response['errors']}")
-                    self.populate_file_matches(list())
-                return None
-            if 200 <= response.status <= 299:
-                print(f"{list_type} gathered from File successfully.")
-                if list_type == "Notes":
-                    self.populate_file_notes(response.resources)
-                elif list_type == "Tags":
-                    self.populate_file_tags(response.resources)
+            elif list_type == "Notes":
+                self.populate_file_notes(response.resources)
+            elif list_type == "Tags":
+                self.populate_file_tags(response.resources)
 
     def set_version_hash(self, new_hash):
         """
@@ -324,7 +319,7 @@ class _MAGICFormClassMethods:
             response = response.get()
         except ApiException:
             logger.debug(traceback.format_exc())
-            print("Linked binary previously uploaded.")
+            print("IDB-linked binary previously uploaded.")
             return True
         except Exception as exp:
             process_regular_exception(exp, False, [str(exp)])
@@ -363,7 +358,6 @@ class _MAGICFormClassMethods:
 
     def upload_idb(self):
         idb = create_idb_file()
-        print("Attempting IDB file upload.")
         self.upload_file(idb, None, True)
 
     def upload_binary(self, skip_unpack):
@@ -374,7 +368,6 @@ class _MAGICFormClassMethods:
                 f"Binary file not found at path: {get_linked_binary_expected_path()}."
                 + "To upload this binary, move to this file path."
             )
-        print("Attempting binary file upload.")
         self.upload_file(binary_path, skip_unpack, False)
 
     def upload_file(self, file_path, skip_unpack, is_idb):
@@ -423,7 +416,7 @@ class _MAGICFormClassMethods:
             self.set_status_label("pending")
 
             if response.status == 200:
-                popup = GenericPopup("File previously uploaded and available.")
+                popup = GenericPopup("File previously uploaded and accessible.")
                 popup.exec_()
             elif response.status >= 201 and response.status <= 299:
                 popup = GenericPopup("File upload successful.")
@@ -434,7 +427,19 @@ class _MAGICFormClassMethods:
 
     def upload_disassembled(self):
         """Upload editted binaries button behavior"""
-        zip_path = parse_binary(self.main_interface.hashes)
+        # Check if binary is available and generates hashes before any other actions are taken.
+        disassembly_hashes = get_disassembly_hashes()
+        if (
+            not disassembly_hashes
+            or not disassembly_hashes["sha1"]
+            or not disassembly_hashes["sha512"]
+        ):
+            return None
+
+        zip_path = parse_binary(
+            self.main_interface.hashes,
+            orig_dir=None,
+            disassembly_hashes=disassembly_hashes,)
         api_call = self.ctmfiles.upload_disassembly
 
         try:
@@ -509,7 +514,7 @@ class _MAGICFormClassMethods:
                     # If a not with_popup, the calling method expects None or True response.
                     else:
                         return True
-        else:
+        elif not self.main_interface.file_exists:
             err_popup = ErrorPopup(
                 ["No upload hash is set. Try to upload a file again."],
                 None

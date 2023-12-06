@@ -110,7 +110,6 @@ class _ScrClassMethods:
             return None
         else:
             if 200 <= response.status <= 299:
-                print("Procedures gathered successfully.")
                 if len(response.resource.procedures) < 1:
                     popup = GenericPopup(
                         "The request for procedures came back empty.\n\n" +

@@ -258,19 +258,11 @@ class FileListWidget(BaseListWidget):
                 response = response.get()
             except ApiException as exp:
                 info_msgs = ["Could not delete file " + type_str + "."]
-                process_api_exception(exp, True, info_msgs)
+                process_api_exception(exp, False, info_msgs)
                 return None
             except Exception as exp:
-                process_regular_exception(exp, True, None)
+                process_regular_exception(exp, False, None)
                 return None
-            else:
-                if 200 <= response[1] <= 299:
-                    print(f"File {type_str} removed successfully.")
-                else:
-                    print(f"Error deleting {type_str}.")
-                    print(f"Status Code: {response[1]}")
-                    # print(f"Error message: {response.errors}")
-                    return None
 
             index = self.list_widget.row(item)
             self.list_widget.takeItem(index)
@@ -1144,29 +1136,17 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 )
             response = response.get()
         except ApiException as exp:
-            process_api_exception(exp, True, None)
+            process_api_exception(exp, False, None)
             return None
         except Exception as exp:
-            process_regular_exception(exp, True, None)
+            process_regular_exception(exp, False, None)
             return None
         else:
             if (
                 type_str == "Procedure Group Notes"
                 or type_str == "Procedure Group Tags"
             ):
-                if 200 <= response["status"] <= 299:
-                    print(f"{type_str} gathered successfully.")
-                else:
-                    print(f"Error gathering {type_str}.")
-                    print(f"Status Code: {response['status']}")
-                    print(f"Error message: {response['errors']}")
                 return response["resources"]
-            if 200 <= response.status <= 299:
-                print(f"{type_str} gathered successfully.")
-            else:
-                print(f"Error gathering {type_str}.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")
         return response.resources
 
     def show_popup(
@@ -1415,22 +1395,14 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     + type_str
                     + " from selected procedure."
                 ]
-                process_api_exception(exp, True, info_msgs)
+                process_api_exception(exp, False, info_msgs)
                 return None
             except Exception as exp:
-                process_regular_exception(exp, True, None)
+                process_regular_exception(exp, False, None)
                 return None
             else:
                 if 200 <= response[1] <= 299:
                     item.parent().removeRow(item.row())
-                    print(
-                        f"{type_str} removed from selected procedure successfully."
-                    )
-                else:
-                    print(f"Error deleting {type_str}.")
-                    print(f"Status Code: {response[1]}")
-                    # print(f"Error message: {response.errors}")
-                    return None
                 
                 self.create_button.setEnabled(False)
                 self.edit_button.setEnabled(False)
@@ -1471,10 +1443,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             derived_proc = derived_response.resource
         except ApiException as exp:
             info_msgs = ["Unable to fetch procedure code."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            process_regular_exception(exp, True, None)
+            process_regular_exception(exp, False, None)
             return None
         else:
             popup = ComparePopup(orig_proc, derived_proc)
@@ -1809,14 +1781,13 @@ class ProcTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             info_msgs = ["Could not update " + self.item_type + "."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            process_regular_exception(exp, True, None)
+            process_regular_exception(exp, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
-                print(f"{self.item_type} created successfully.")
                 if (
                     self.item_type == "Notes"
                     or self.item_type == "Derived file note"
@@ -1872,11 +1843,6 @@ class ProcTextPopup(TextPopup):
                         )
                     )
                 return text
-            else:
-                print(f"Error updating {self.item_type}.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")
-                return None
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
@@ -1928,30 +1894,13 @@ class ProcTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             info_msgs = ["Could not update " + self.item_type + "."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            process_regular_exception(exp, True, None)
+            process_regular_exception(exp, False, None)
             return None
         else:
-            if (
-                self.item_type == "Proc Name"
-                or self.item_type == "Procedure Group Notes"
-            ):
-                if 200 <= response.status <= 299:
-                    print(f"{self.item_type} updated successfully.")
-                    return text
-                else:
-                    print(f"Error updating {self.item_type}.")
-                    print(f"Status Code: {response.status}")
-                    return None
-            if 200 <= response[1] <= 299:
-                print(f"{self.item_type} updated successfully.")
-                return text
-            else:
-                print(f"Error updating {self.item_type}.")
-                print(f"Status Code: {response[1]}")
-                return None
+            return text
 
 
 class FileTextPopup(TextPopup):
@@ -2013,10 +1962,10 @@ class FileTextPopup(TextPopup):
             response = response.get()
         except ApiException as exp:
             info_msgs = ["Could not create " + type_str + " for File."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            process_regular_exception(exp, True, None)
+            process_regular_exception(exp, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
@@ -2042,12 +1991,7 @@ class FileTextPopup(TextPopup):
                             )
                         )
                     )
-                print(f"{type_str} for File created successfully.")
                 return text
-            else:
-                print(f"Error updating {type_str}.")
-                print(f"Status Code: {response.status}")
-                return None
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
@@ -2071,19 +2015,13 @@ class FileTextPopup(TextPopup):
         except ApiException as exp:
             logger.debug(traceback.format_exc())
             info_msgs = ["Could not update File " + type_str + "."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exp, False, info_msgs)
             return None
         except Exception as exp:
-            process_regular_exception(exp, True, None)
+            process_regular_exception(exp, False, None)
             return None
         else:
-            if 200 <= response[1] <= 299:
-                print(f"File {type_str} updated successfully.")
-                return text
-            else:
-                print(f"Error updating {type_str}.")
-                print(f"Status Code: {response[1]}")
-                return None
+            return text
 
 
 class FileUploadPopup(QtWidgets.QMessageBox):
