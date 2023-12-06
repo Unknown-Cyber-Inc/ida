@@ -98,15 +98,15 @@ class _ScrClassMethods:
                 async_req=True,
             )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = [
                 "No procedures could be gathered.",
                 "This may occur if the file was recently uploaded."
             ]
-            process_api_exception(exp, False, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             if 200 <= response.status <= 299:

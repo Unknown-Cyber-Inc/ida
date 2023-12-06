@@ -192,12 +192,12 @@ def hash_file(hashtype="sha1"):
                 digest.update(block)
 
             return digest.hexdigest()
-    except FileNotFoundError as exp:
+    except FileNotFoundError as exc:
         info_msgs = [
             "Original binary not accessible."
             + " Place binary in the directory containing the loaded idb file",
         ]
-        process_regular_exception(exp, False, info_msgs)
+        process_regular_exception(exc, False, info_msgs)
         return None
 
 
@@ -1411,14 +1411,14 @@ def get_disassembly_hashes():
                 "sha1": sha1.hexdigest(),
                 "sha512": sha512.hexdigest(),
             }
-    except FileNotFoundError as exp:
+    except FileNotFoundError as exc:
         info_msgs = [
             "Original binary not accessible. "
             + "Place binary in the expected directory below. "
             + "If the expected directory does not exist in your file system, "
             + "consider uploading via IDB instead of disassembly."
         ]
-        process_regular_exception(exp, False, info_msgs)
+        process_regular_exception(exc, False, info_msgs)
         return None
 
 
@@ -1504,52 +1504,52 @@ def get_start_ea(obj):
     except AttributeError:
         return obj.startEA
 
-def process_api_exception(exp, console_only, info_msgs):
+def process_api_exception(exc, console_only, info_msgs):
     """Prepare an APIException to be displayed."""
     from .widgets import ErrorPopup
 
     logger.debug(traceback.format_exc())
     if console_only:
         try:
-            error_body = json.loads(exp.body)
+            error_body = json.loads(exc.body)
             for error in error_body.get("errors", []):
                 logger.info(error["reason"])
                 print(error)
         except json.JSONDecodeError:
-            print(str(exp))
-            print("Received non-JSON response. Body:", exp.body)
+            print(str(exc))
+            print("Received non-JSON response. Body:", exc.body)
             print("Possible API error. Check that the Unknown Cyber dashboard is online.")
         return None
     try:
-        error_msgs = json.loads(exp.body)
+        error_msgs = json.loads(exc.body)
         if error_msgs.get("errors", []):
             for error in error_msgs.get("errors"):
                 logger.info(error["reason"])
     except json.JSONDecodeError:
         error_msgs = [
             "Possible API error. Check that the Unknown Cyber dashboard is online.",
-            str(exp),
-            "Received non-JSON response. Body: " + exp.body
+            str(exc),
+            "Received non-JSON response. Body: " + exc.body
         ]
     err_popup = ErrorPopup(info_msgs, error_msgs)
     err_popup.exec_()
 
-def process_regular_exception(exp, console_only, info_msgs):
+def process_regular_exception(exc, console_only, info_msgs):
     """Prepare an Exception to be displayed."""
     from .widgets import ErrorPopup
 
     logger.debug(traceback.format_exc())
     if console_only:
-        print(f"Error type: {exp.__class__.__name__}")
-        print(f"{str(exp)}")
+        print(f"Error type: {exc.__class__.__name__}")
+        print(f"{str(exc)}")
         # exit if this call fails so user can retry
         # (this func always returns None anyway)
         return None
     error_msgs = [
         f"------------------------------------------"
-        f"\nError type: {exp.__class__.__name__}"
+        f"\nError type: {exc.__class__.__name__}"
         + "\n------------------------------------------"
-        + f"\n{str(exp)}",
+        + f"\n{str(exc)}",
     ]
     err_popup = ErrorPopup(info_msgs, error_msgs)
     err_popup.exec_()

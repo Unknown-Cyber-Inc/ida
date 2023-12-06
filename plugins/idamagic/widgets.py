@@ -256,12 +256,12 @@ class FileListWidget(BaseListWidget):
                         async_req=True,
                     )
                 response = response.get()
-            except ApiException as exp:
+            except ApiException as exc:
                 info_msgs = ["Could not delete file " + type_str + "."]
-                process_api_exception(exp, False, info_msgs)
+                process_api_exception(exc, False, info_msgs)
                 return None
-            except Exception as exp:
-                process_regular_exception(exp, False, None)
+            except Exception as exc:
+                process_regular_exception(exc, False, None)
                 return None
 
             index = self.list_widget.row(item)
@@ -1135,11 +1135,11 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     read_mask=read_mask,
                 )
             response = response.get()
-        except ApiException as exp:
-            process_api_exception(exp, False, None)
+        except ApiException as exc:
+            process_api_exception(exc, False, None)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             if (
@@ -1389,16 +1389,16 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         async_req=True,
                     )
                 response = response.get()
-            except ApiException as exp:
+            except ApiException as exc:
                 info_msgs = [
                     "Could not delete "
                     + type_str
                     + " from selected procedure."
                 ]
-                process_api_exception(exp, False, info_msgs)
+                process_api_exception(exc, False, info_msgs)
                 return None
-            except Exception as exp:
-                process_regular_exception(exp, False, None)
+            except Exception as exc:
+                process_regular_exception(exc, False, None)
                 return None
             else:
                 if 200 <= response[1] <= 299:
@@ -1441,12 +1441,12 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             )
             derived_response = derived_response.get()
             derived_proc = derived_response.resource
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Unable to fetch procedure code."]
-            process_api_exception(exp, False, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             popup = ComparePopup(orig_proc, derived_proc)
@@ -1779,12 +1779,12 @@ class ProcTextPopup(TextPopup):
                     async_req=True,
                 )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Could not update " + self.item_type + "."]
-            process_api_exception(exp, False, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
@@ -1892,12 +1892,12 @@ class ProcTextPopup(TextPopup):
                     async_req=True,
                 )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Could not update " + self.item_type + "."]
-            process_api_exception(exp, False, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             return text
@@ -1960,12 +1960,12 @@ class FileTextPopup(TextPopup):
                     async_req=True,
                 )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Could not create " + type_str + " for File."]
-            process_api_exception(exp, False, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
@@ -2012,13 +2012,13 @@ class FileTextPopup(TextPopup):
                     async_req=True,
                 )
                 response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             logger.debug(traceback.format_exc())
             info_msgs = ["Could not update File " + type_str + "."]
-            process_api_exception(exp, False, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             return text

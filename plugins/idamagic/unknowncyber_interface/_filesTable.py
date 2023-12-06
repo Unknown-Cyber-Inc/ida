@@ -62,9 +62,9 @@ class _MAGICFormClassMethods:
                 async_req=True,
             )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = []
-            if "Unauthorized" in str(exp):
+            if "Unauthorized" in str(exc):
                 info_msgs = [
                     "The `MAGIC_API_KEY` env var is invalid."
                     + " Correct and reload.\n"
@@ -73,18 +73,18 @@ class _MAGICFormClassMethods:
                 info_msgs = [
                     "An unknown error has occured. Please check host domain, "
                     + "port, and api key below.\n",
-                    str(exp),
+                    str(exc),
                 ]
-            process_regular_exception(exp, False, info_msgs)
+            process_regular_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
+        except Exception as exc:
             info_msgs = []
-            if "NameResolutionError" in  str(exp):
+            if "NameResolutionError" in  str(exc):
                 info_msgs = [
                     "The `MAGIC_API_HOST` env var's domain is not set correctly."
                     + " Correct and reload.\n",
                 ]
-            elif "NewConnectionError" in str(exp):
+            elif "NewConnectionError" in str(exc):
                 info_msgs = [
                     "The `MAGIC_API_HOST` env var's port is not set correctly."
                     + " Correct and reload.\n"
@@ -93,9 +93,9 @@ class _MAGICFormClassMethods:
                 info_msgs = [
                     "An unknown error has occured. Please check host domain, "
                     + "port, and api key below.\n",
-                    str(exp),
+                    str(exc),
                 ]
-            process_regular_exception(exp, False, info_msgs)
+            process_regular_exception(exc, False, info_msgs)
             return None
         else:
             return True
@@ -185,16 +185,16 @@ class _MAGICFormClassMethods:
                     binary_id=self.main_interface.hashes["ida_md5"], no_links=True, async_req=True
                 )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["No " + list_type.lower() + " could be gathered from File."]
             if list_type == "Matches":
-                process_api_exception(exp, True, info_msgs)
+                process_api_exception(exc, True, info_msgs)
             else:
-                process_api_exception(exp, False, info_msgs)
+                process_api_exception(exc, False, info_msgs)
             if list_type == "Matches":
                 self.populate_file_matches(list())
-        except Exception as exp:
-            process_regular_exception(exp, False, [str(exp)])
+        except Exception as exc:
+            process_regular_exception(exc, False, [str(exc)])
             return None
         else:
             if list_type == "Matches":
@@ -230,7 +230,7 @@ class _MAGICFormClassMethods:
                 async_req=True,
             )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             print(
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
@@ -240,13 +240,13 @@ class _MAGICFormClassMethods:
                 self.set_version_hash(self.main_interface.hashes["loaded_sha1"])
                 self.list_widget.disable_tab_bar()
                 process_api_exception(
-                    exp,
+                    exc,
                     True,
                     ["No upload has occurred for the loaded IDB's linked binary file."
                     + " This includes any disassembly or IDB uploads."]
                 )
-        except Exception as exp:
-            process_regular_exception(exp, False, [str(exp)])
+        except Exception as exc:
+            process_regular_exception(exc, False, [str(exc)])
             self.list_widget.disable_tab_bar()
             return None
         else:
@@ -276,14 +276,14 @@ class _MAGICFormClassMethods:
                 async_req=True,
             )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = [
                 "IDB-linked binary nor any IDB/disassemblies from this binary uploaded yet.\n"
             ]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exc, True, info_msgs)
             return False
-        except Exception as exp:
-            process_regular_exception(exp, True, [str(exp)])
+        except Exception as exc:
+            process_regular_exception(exc, True, [str(exc)])
             return False
         print("IDB-Linked Binary Found. Checking for content-children.")
         self.populate_content_versions(response.resource)
@@ -321,8 +321,8 @@ class _MAGICFormClassMethods:
             logger.debug(traceback.format_exc())
             print("IDB-linked binary previously uploaded.")
             return True
-        except Exception as exp:
-            process_regular_exception(exp, False, [str(exp)])
+        except Exception as exc:
+            process_regular_exception(exc, False, [str(exc)])
         return False
 
     def populate_content_versions(self, file):
@@ -392,11 +392,11 @@ class _MAGICFormClassMethods:
                 async_req=True,
             )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Error uploading file.\n"]
-            process_api_exception(exp, False, info_msgs)
-        except Exception as exp:
-            process_regular_exception(exp, False, [str(exp)])
+            process_api_exception(exc, False, info_msgs)
+        except Exception as exc:
+            process_regular_exception(exc, False, [str(exc)])
             return None
         else:
             upload_hash = response.resources[0].sha1
@@ -447,11 +447,11 @@ class _MAGICFormClassMethods:
                 filedata=zip_path,
                 no_links=True,
             )
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Disassembly upload failed.\n"]
-            process_api_exception(exp, False, info_msgs)
-        except Exception as exp:
-            process_regular_exception(exp, False, [str(exp)])
+            process_api_exception(exc, False, info_msgs)
+        except Exception as exc:
+            process_regular_exception(exc, False, [str(exc)])
             return None
         else:
             upload_hash = response.resource.sha1
@@ -486,18 +486,18 @@ class _MAGICFormClassMethods:
                     async_req=True,
                 )
                 response = response.get()
-            except ApiException as exp:
+            except ApiException as exc:
                 info_msgs = [
                     "Error retrieving status of uploaded file.\n"
                 ]
-                process_api_exception(exp, False, info_msgs)
+                process_api_exception(exc, False, info_msgs)
                 self.set_status_label("api failure")
                 return None
-            except Exception as exp:
+            except Exception as exc:
                 info_msgs = [
                     "Unknown error retrieving status of uploaded file.\n"
                 ]
-                process_regular_exception(exp, False, info_msgs)
+                process_regular_exception(exc, False, info_msgs)
                 self.set_status_label("api failure")
                 return None
             else:
@@ -538,14 +538,14 @@ class _MAGICFormClassMethods:
                 async_req=True,
             )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = [
                 "Unable to gather information on the uploaded file.\n"
             ]
-            process_api_exception(exp, False, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, [str(exp)])
+        except Exception as exc:
+            process_regular_exception(exc, False, [str(exc)])
             return None
         else:
             latest_child_hash = None
