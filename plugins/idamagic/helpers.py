@@ -1335,7 +1335,6 @@ def create_idb_file(ida_md5):
     try:
         file_name = gen_unique_filename(ida_md5)
     except FileExistsError as exc:
-        print("File exists.")
         process_regular_exception(
             exc,
             False,
@@ -1371,7 +1370,7 @@ def gen_unique_filename(ida_md5, length=3):
     base_str = ida_md5 + "_UC_"
     max_tries = 100
 
-    for _ in range(1):
+    for _ in range(max_tries):
         rand_filename = "".join(random.choices(chars, k=length))
         full_path = base_str + rand_filename + ".i64"
         if not os.path.exists(full_path):
