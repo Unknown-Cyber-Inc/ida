@@ -665,6 +665,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.sha1 = self.widget_parent.main_interface.hashes["version_hash"]
         self.popups = []
         self.init_ui()
+        self.tab_bar.currentChanged.connect(self.update_tab_color)
 
     def init_ui(self):
         """Create widget and handle behavior"""
@@ -672,7 +673,6 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.tabs_widget.setTabsClosable(True)
         self.tabs_widget.setObjectName("tabs_widget")
         self.tab_bar = self.tabs_widget.tabBar()
-        self.tab_bar.currentChanged.connect(self.update_tab_color)
         self.tab_color = None
 
         layout = QtWidgets.QVBoxLayout(self)
