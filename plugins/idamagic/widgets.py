@@ -267,7 +267,7 @@ class FileListWidget(BaseListWidget):
             index = self.list_widget.row(item)
             self.list_widget.takeItem(index)
 
-            self.create_button.setEnabled(False)
+            self.create_button.setEnabled(True)
             self.edit_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         else:
