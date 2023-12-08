@@ -291,8 +291,8 @@ class _MAGICFormClassMethods:
             # Get the second value, a file hash, of that tuple.
             content_child_sha1 = list(self.content_versions.items())[-1][-1][0]
             if content_child_sha1:
-                count = self.files_buttons_layout.dropdown.count()
-                self.files_buttons_layout.dropdown.setCurrentIndex(count - 1)
+                count = self.dropdown.count()
+                self.dropdown.setCurrentIndex(count - 1)
                 self.set_version_hash(content_child_sha1)
                 self.main_interface.set_file_exists(True)
                 return True
@@ -358,7 +358,10 @@ class _MAGICFormClassMethods:
         self.files_buttons_layout.show_file_not_found_popup()
 
     def upload_idb(self):
-        idb = create_idb_file()
+        idb = create_idb_file(self.main_interface.hashes["ida_md5"])
+        if not idb:
+            return None
+        self.created_idb_name = idb
         self.upload_file(idb, None, True)
 
     def upload_binary(self, skip_unpack):
@@ -400,37 +403,41 @@ class _MAGICFormClassMethods:
             process_regular_exception(exc, False, [str(exc)])
             return None
         else:
-            if response.status == 200:
-                popup = GenericPopup("File previously uploaded and accessible.")
+            response_hash = response.resources[0].sha1
+            index = self.dropdown.count()
+
+            if is_idb: # response_hash will belong to the container file object
+                self.main_interface.hashes["upload_container_hashes"][response_hash] = index
+                dropdown_item_data = (response_hash, "container")
+                self.dropdown.addItem("Session IDB Upload", dropdown_item_data)
+
+            else: # response_hash will belong to the original file object
+                dropdown_item_data = (response_hash, "content")
+                self.main_interface.hashes["upload_content_hashes"][response_hash] = 0
+                if not self.check_dropdown_for_original_file():
+                    self.dropdown.insertItem(0, "Session Binary Upload", dropdown_item_data)
+                    self.update_dropdown_indexes()
+
+                self.main_interface.set_file_exists(True)
+                self.set_version_hash(response_hash)
+                self.enable_all_list_tabs()
+
+            self.status_button.setEnabled(True)
+            self.set_status_label("pending")
+
+            if is_idb:
+                popup = GenericPopup(
+                    "IDB upload successful. \n\nCreated IDB filename: "
+                    + f"{self.created_idb_name}"
+                    )
                 popup.exec_()
-
-            elif response.status >= 201 and response.status <= 299:
-                response_hash = response.resources[0].sha1
-                dropdown = self.main_interface.unknown_plugin.files_buttons_layout.dropdown
-                index = dropdown.count()
-
-                if is_idb: # response_hash will belong to the container file object
-                    self.main_interface.hashes["upload_container_hashes"][response_hash] = index
-                    dropdown_item_data = (response_hash, "container")
-                    dropdown.addItem("Session IDB Upload", dropdown_item_data)
-
-                else: # response_hash will belong to the original file object
-
-                    self.main_interface.hashes["upload_content_hashes"][response_hash] = index
-                    dropdown_item_data = (response_hash, "content")
-                    dropdown.addItem("Session Binary Upload", dropdown_item_data)
-
-                    self.main_interface.set_file_exists(True)
-                    self.set_version_hash(response_hash)
-                    self.enable_all_list_tabs()
-
-                self.status_button.setEnabled(True)
-                self.set_status_label("pending")
-
+            else:
                 popup = GenericPopup("File upload successful.")
                 popup.exec_()
-        # finally:
-        #     os.remove(temp_file_path)
+        finally:
+            # if is_idb and self.created_idb_name:
+            #     os.remove(self.created_idb_name)
+            self.created_idb_name = None
 
     def upload_disassembled(self):
         """Upload editted binaries button behavior"""
@@ -462,11 +469,10 @@ class _MAGICFormClassMethods:
             return None
         else:
             response_hash = response.resource.sha1
-            dropdown = self.main_interface.unknown_plugin.files_buttons_layout.dropdown
-            index = dropdown.count()
+            index = self.dropdown.count()
             self.main_interface.hashes["upload_container_hashes"][response_hash] = index
             dropdown_item_data = (response_hash, "container")
-            dropdown.addItem("Session Disassembly Upload", dropdown_item_data)
+            self.dropdown.addItem("Session Disassembly Upload", dropdown_item_data)
 
             self.status_button.setEnabled(True)
             self.set_status_label("pending")
@@ -474,10 +480,32 @@ class _MAGICFormClassMethods:
             popup = GenericPopup("Disassembly Upload Successful.")
             popup.exec_()
 
+    def check_dropdown_for_original_file(self):
+        """
+        Check the 0 index of the dropdown.
+
+        Return:
+        True if the item.text() is 'Original File'.
+        Otherwise, False.
+        """
+        return self.dropdown.itemText(0) == "Original File"
+
+    def update_dropdown_indexes(self):
+        """
+        Used when the original file is uploaded after an IDB or disassembly upload.
+
+        Iterates over the upload_content_hashes dict, incrementing the stored index for
+        each entry by 1.
+        """
+        content_hashes = self.main_interface.hashes["upload_content_hashes"]
+
+        for c_hash in content_hashes:
+            if content_hashes[c_hash] > 0:
+                content_hashes[c_hash] += 1
+
     def get_file_statuses(self):
         """Get the statuses of uploaded files."""
         read_mask = "status,pipeline,sha1,create_time"
-        dropdown = self.main_interface.unknown_plugin.files_buttons_layout.dropdown
         content_hashes = self.main_interface.hashes["upload_content_hashes"]
         container_hashes = self.main_interface.hashes["upload_container_hashes"]
         self.containers_to_content_hashes() # convert container -> child content hashes
@@ -546,24 +574,26 @@ class _MAGICFormClassMethods:
             if any_success or any_pending:
                 self.main_interface.set_file_exists(True)
                 self.enable_all_list_tabs()
-                if dropdown.currentIndex == latest_non_failure[1]:
+                if self.dropdown.currentIndex == latest_non_failure[1]:
                     self.set_version_hash(latest_non_failure[0])
                 else:
-                    dropdown.setCurrentIndex(latest_non_failure[1])
+                    self.dropdown.setCurrentIndex(latest_non_failure[1])
 
             # display status popup
             status_popup = StatusPopup(status_objects, self)
             status_popup.show()
 
         elif not self.main_interface.file_exists:
+            self.status_button.setEnabled(False)
             err_popup = ErrorPopup(
                 ["No record of an uploaded file. Try to upload a file again."],
                 None
             )
             err_popup.exec_()
         elif len(content_hashes) < 1 and len(container_hashes) < 1:
+            self.status_button.setEnabled(False)
             err_popup = ErrorPopup(
-                ["All uploaded files have entered the processing stage."],
+                ["All uploaded files have entered and finished the processing stage."],
                 None
             )
             err_popup.exec_()
@@ -574,7 +604,6 @@ class _MAGICFormClassMethods:
         if len(container_hashes) < 1:
             return None
 
-        dropdown = self.main_interface.unknown_plugin.files_buttons_layout.dropdown
         content_hashes = self.main_interface.hashes["upload_content_hashes"]
         failed_conversions_to_content_hashes = []
         hashes_to_remove = []
@@ -584,8 +613,8 @@ class _MAGICFormClassMethods:
             if content_hash:
                 new_item_data = (content_hash, "content")
                 # update dropdown item
-                dropdown.setItemText(index, timestamp)
-                dropdown.setItemData(index, new_item_data)
+                self.dropdown.setItemText(index, timestamp)
+                self.dropdown.setItemData(index, new_item_data)
                 # add hash/index to content_hashes
                 content_hashes[content_hash] = index
                 # remove hash from container_hashes

@@ -50,6 +50,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         # non pyqt attrs
         self.title: str = title
         self.file_type = None
+        self.created_idb_name = None
         self.main_interface = main_interface
         self.content_versions = OrderedDict()
         self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
@@ -118,6 +119,7 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.status_layout.addWidget(self.status_button)
         self.status_popup = None
         self.files_buttons_layout = FilesButtonsLayout(self)
+        self.dropdown = self.files_buttons_layout.dropdown
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
             list_items=[],

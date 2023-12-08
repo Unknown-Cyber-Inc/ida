@@ -1330,11 +1330,21 @@ def pad_byte_list(byte_list):
     return byte_list + b'\x00' * padding_needed
 
 
-def create_idb_file():
+def create_idb_file(ida_md5):
     """Create an idb file from the currently loaded database."""
-    file_name = gen_random_idb_filename()
-    ida_loader.save_database(file_name, 0)
-    return file_name
+    try:
+        file_name = gen_unique_filename(ida_md5)
+    except FileExistsError as exc:
+        print("File exists.")
+        process_regular_exception(
+            exc,
+            False,
+            [f"Could not upload IDB.\n\nReason: {str(exc)}"]
+        )
+        return None
+    else:
+        ida_loader.save_database(file_name, 0)
+        return file_name
 
 
 def create_proc_name(proc):
@@ -1355,12 +1365,23 @@ def encode_file(file_path):
     return file_bytes
 
 
-def gen_random_idb_filename(length=15):
+def gen_unique_filename(ida_md5, length=3):
     """Generates a random filename of default length 15"""
-    chars = string.ascii_letters + string.digits
-    rand_filename = "".join(random.choice(chars) for i in range(length))
+    chars = string.hexdigits
+    base_str = ida_md5 + "_UC_"
+    max_tries = 100
 
-    return f"{rand_filename}.i64"
+    for _ in range(1):
+        rand_filename = "".join(random.choices(chars, k=length))
+        full_path = base_str + rand_filename + ".i64"
+        if not os.path.exists(full_path):
+            return full_path
+
+    raise FileExistsError(
+        f"Unable to generate a unique file name after {max_tries} tries. "
+        + "Rename or remove some of the existing plugin-created IDB files from previous "
+        + "IDB uploads."
+    )
 
 
 def get_all_idb_hashes():
