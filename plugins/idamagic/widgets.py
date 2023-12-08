@@ -2147,21 +2147,30 @@ class StatusPopup(QtWidgets.QMessageBox):
         "web_request_handler": "Filetype Discovery",
     }
 
-    def __init__(self, resource, widget_parent):
+    def __init__(self, resource_list, widget_parent):
         super(StatusPopup, self).__init__(parent=widget_parent)
         self.widget_parent = widget_parent
-        self.setWindowTitle("Upload Status")
-        mapped_pipelines = self.convert_pipeline_names(resource.pipeline)
+        self.setWindowTitle("Upload Statuses")
 
-        new_text = (
-            "File hash: "
-            + self.widget_parent.main_interface.hashes["upload_hash"]
-            + "\n\nStatus: "
-            + str(resource.status).capitalize()
-            + "\n\n\n"
-            + str(mapped_pipelines)
-        )
-        self.setText(new_text)
+        new_text_list = []
+        for resource in resource_list:
+            if resource.sha1 and resource.status:
+                mapped_pipelines = self.convert_pipeline_names(resource.pipeline)
+
+                new_text_list.append(
+                    "File hash: "
+                    + resource.sha1
+                    + "\n\nCreate time: "
+                    + str(resource.create_time)
+                    + "\n\nStatus: "
+                    + str(resource.status).capitalize()
+                    + "\n\n"
+                    + str(mapped_pipelines)
+                )
+
+        results = "\n\n============================================\n\n".join(new_text_list)
+
+        self.setText(results)
         self.setStandardButtons(QtWidgets.QMessageBox.Ok)
 
     def convert_pipeline_names(self, pipelines):

@@ -3,10 +3,8 @@ Methods and classes in the MAGICPluginFormClass related to populating the files 
 """
 
 import logging
-import json
 import os
 
-# import shutil
 import traceback
 import hashlib
 
@@ -20,7 +18,7 @@ from ..helpers import (
     process_regular_exception,
 )
 from ..widgets import FileSimpleTextNode, StatusPopup, ErrorPopup, GenericPopup
-from ..helpers import create_idb_file, popup_task_completed
+from ..helpers import create_idb_file
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
@@ -235,8 +233,8 @@ class _MAGICFormClassMethods:
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
             self.main_interface.set_file_exists(False)
-            linked_uploaded = self.check_linked_binary_object_exists(False)
-            if not linked_uploaded:
+            linked_binary_uploaded = self.check_linked_binary_object_exists(False)
+            if not linked_binary_uploaded:
                 self.set_version_hash(self.main_interface.hashes["loaded_sha1"])
                 self.list_widget.disable_tab_bar()
                 process_api_exception(
@@ -288,7 +286,10 @@ class _MAGICFormClassMethods:
         print("IDB-Linked Binary Found. Checking for content-children.")
         self.populate_content_versions(response.resource)
         if not idb_uploaded:
-            content_child_sha1 = list(self.content_versions.items())[-1][-1]
+            # Cast content_versions dict to a list.
+            # Select the last item in the list. Select the value, a tuple, of that dict item.
+            # Get the second value, a file hash, of that tuple.
+            content_child_sha1 = list(self.content_versions.items())[-1][-1][0]
             if content_child_sha1:
                 count = self.files_buttons_layout.dropdown.count()
                 self.files_buttons_layout.dropdown.setCurrentIndex(count - 1)
@@ -334,7 +335,7 @@ class _MAGICFormClassMethods:
         Call `populate_versions` to process `content_versions` and add items to the
           dropdown.
         """
-        self.content_versions["Original File"] = file.sha1
+        self.content_versions["Original File"] = (file.sha1, "content")
         for child in file.children:
             if child.get("sha1"):
                 sha1 = child.get("sha1")
@@ -348,7 +349,7 @@ class _MAGICFormClassMethods:
                     and service_name == "alt_juice_handler"
                     or service_name == "webRequestHandler"
                 ):
-                    self.content_versions[timestamp] = sha1
+                    self.content_versions[timestamp] = (sha1, "content")
         self.populate_dropdown()
 
     def process_file_nonexistent(self):
@@ -399,29 +400,35 @@ class _MAGICFormClassMethods:
             process_regular_exception(exc, False, [str(exc)])
             return None
         else:
-            upload_hash = response.resources[0].sha1
-
-            if is_idb:
-                self.main_interface.recent_upload_type = "IDB"
-                self.set_initial_upload_hash(upload_hash)
-            else:
-                self.main_interface.recent_upload_type = "Binary"
-                self.main_interface.set_file_exists(True)
-                self.set_version_hash(upload_hash)
-                self.enable_all_list_tabs()
-
-            self.add_upload_version_to_dropdown(upload_hash)
-            self.main_interface.hashes["upload_hash"] = upload_hash
-            self.status_button.setEnabled(True)
-            self.set_status_label("pending")
-
             if response.status == 200:
                 popup = GenericPopup("File previously uploaded and accessible.")
                 popup.exec_()
+
             elif response.status >= 201 and response.status <= 299:
+                response_hash = response.resources[0].sha1
+                dropdown = self.main_interface.unknown_plugin.files_buttons_layout.dropdown
+                index = dropdown.count()
+
+                if is_idb: # response_hash will belong to the container file object
+                    self.main_interface.hashes["upload_container_hashes"][response_hash] = index
+                    dropdown_item_data = (response_hash, "container")
+                    dropdown.addItem("Session IDB Upload", dropdown_item_data)
+
+                else: # response_hash will belong to the original file object
+
+                    self.main_interface.hashes["upload_content_hashes"][response_hash] = index
+                    dropdown_item_data = (response_hash, "content")
+                    dropdown.addItem("Session Binary Upload", dropdown_item_data)
+
+                    self.main_interface.set_file_exists(True)
+                    self.set_version_hash(response_hash)
+                    self.enable_all_list_tabs()
+
+                self.status_button.setEnabled(True)
+                self.set_status_label("pending")
+
                 popup = GenericPopup("File upload successful.")
                 popup.exec_()
-
         # finally:
         #     os.remove(temp_file_path)
 
@@ -454,76 +461,159 @@ class _MAGICFormClassMethods:
             process_regular_exception(exc, False, [str(exc)])
             return None
         else:
-            upload_hash = response.resource.sha1
-            self.main_interface.recent_upload_type = "Disassembly"
-            self.set_initial_upload_hash(upload_hash)
-            self.add_upload_version_to_dropdown(upload_hash)
-            self.main_interface.hashes["upload_hash"] = upload_hash
+            response_hash = response.resource.sha1
+            dropdown = self.main_interface.unknown_plugin.files_buttons_layout.dropdown
+            index = dropdown.count()
+            self.main_interface.hashes["upload_container_hashes"][response_hash] = index
+            dropdown_item_data = (response_hash, "container")
+            dropdown.addItem("Session Disassembly Upload", dropdown_item_data)
+
             self.status_button.setEnabled(True)
             self.set_status_label("pending")
 
             popup = GenericPopup("Disassembly Upload Successful.")
             popup.exec_()
 
-    def get_file_status(self, with_popup):
-        """Get the status of an uploaded file."""
-        read_mask = "status,pipeline"
-        upload_hash = self.main_interface.hashes["upload_hash"]
-        initial_upload_hash = self.main_interface.hashes["initial_upload_hash"]
-        if upload_hash:
-            try:
-                if initial_upload_hash:
-                    child_hash = self.get_upload_child_hash(initial_upload_hash)
-                else:
-                    child_hash = self.get_upload_child_hash(upload_hash)
-                if child_hash:
-                    self.main_interface.hashes["upload_hash"] = child_hash
-                upload_hash = self.main_interface.hashes["upload_hash"]
-                response = self.ctmfiles.get_file(
-                    binary_id=upload_hash,
-                    no_links=True,
-                    read_mask=read_mask,
-                    async_req=True,
-                )
-                response = response.get()
-            except ApiException as exc:
-                info_msgs = [
-                    "Error retrieving status of uploaded file.\n"
-                ]
-                process_api_exception(exc, False, info_msgs)
-                self.set_status_label("api failure")
-                return None
-            except Exception as exc:
-                info_msgs = [
-                    "Unknown error retrieving status of uploaded file.\n"
-                ]
-                process_regular_exception(exc, False, info_msgs)
-                self.set_status_label("api failure")
-                return None
-            else:
-                if 200 <= response.status <= 299:
-                    self.main_interface.set_file_exists(True)
-                    self.enable_all_list_tabs()
-                    self.set_version_hash(upload_hash)
+    def get_file_statuses(self):
+        """Get the statuses of uploaded files."""
+        read_mask = "status,pipeline,sha1,create_time"
+        dropdown = self.main_interface.unknown_plugin.files_buttons_layout.dropdown
+        content_hashes = self.main_interface.hashes["upload_content_hashes"]
+        container_hashes = self.main_interface.hashes["upload_container_hashes"]
+        self.containers_to_content_hashes() # convert container -> child content hashes
 
-                    self.main_interface.hashes["initial_upload_hash"] = None
-                    self.set_status_label(response.resource.status)
-                    if with_popup:
-                        status_popup = StatusPopup(response.resource, self)
-                        status_popup.show()
-                    # If a not with_popup, the calling method expects None or True response.
-                    else:
-                        return True
+        any_pending = False
+        any_failure = False
+        any_success = False
+        latest_non_failure = None # Value will be a tuple of (hash, dropdown_index)
+        status_objects = []
+
+        if len(content_hashes) > 0:
+            new_content_dict = {}
+            for content_hash, index in content_hashes.items():
+                try:
+                    response = self.ctmfiles.get_file(
+                        binary_id=content_hash,
+                        no_links=True,
+                        read_mask=read_mask,
+                        async_req=True,
+                    )
+                    response = response.get()
+                except ApiException as exc:
+                    info_msgs = [
+                        "Error retrieving status of uploaded file.\n"
+                    ]
+                    process_api_exception(exc, False, info_msgs)
+                    self.set_status_label("Api failure")
+                    return None
+                except Exception as exc:
+                    info_msgs = [
+                        "Unknown error retrieving status of uploaded file.\n"
+                    ]
+                    process_regular_exception(exc, False, info_msgs)
+                    self.set_status_label("Plugin failure")
+                    return None
+                else:
+                    # get upload status
+                    upload_status = response.resource.status.lower()
+                    if upload_status == "pending": # Get hash/index, add to new content dict
+                        any_pending = True
+                        latest_non_failure = (content_hash, index)
+                        new_content_dict[content_hash] = index
+                    elif upload_status == "success": # Get hash/index, don't add to new content dict
+                        any_success = True
+                        latest_non_failure = (content_hash, index)
+                    elif upload_status == "failure":
+                        any_failure = True
+                        new_content_dict[content_hash] = index
+
+                    # capture file status info
+                    status_objects.append(response.resource)
+
+            self.main_interface.hashes["upload_content_hashes"] = new_content_dict
+
+            # update the upload status label
+            status_result = []
+            if any_pending:
+                status_result.append("Pending")
+            if any_failure:
+                status_result.append("Failure")
+            if any_success:
+                status_result.append("Success")
+            self.set_status_label(", ".join(status_result))
+
+            # file exists behavior
+            if any_success or any_pending:
+                self.main_interface.set_file_exists(True)
+                self.enable_all_list_tabs()
+                if dropdown.currentIndex == latest_non_failure[1]:
+                    self.set_version_hash(latest_non_failure[0])
+                else:
+                    dropdown.setCurrentIndex(latest_non_failure[1])
+
+            # display status popup
+            status_popup = StatusPopup(status_objects, self)
+            status_popup.show()
+
         elif not self.main_interface.file_exists:
             err_popup = ErrorPopup(
-                ["No upload hash is set. Try to upload a file again."],
+                ["No record of an uploaded file. Try to upload a file again."],
+                None
+            )
+            err_popup.exec_()
+        elif len(content_hashes) < 1 and len(container_hashes) < 1:
+            err_popup = ErrorPopup(
+                ["All uploaded files have entered the processing stage."],
                 None
             )
             err_popup.exec_()
 
-    def set_initial_upload_hash(self, response_hash):
+    def containers_to_content_hashes(self):
+        """Get the child content hash of the given container hash's file object."""
+        container_hashes = self.main_interface.hashes["upload_container_hashes"]
+        if len(container_hashes) < 1:
+            return None
+
+        dropdown = self.main_interface.unknown_plugin.files_buttons_layout.dropdown
+        content_hashes = self.main_interface.hashes["upload_content_hashes"]
+        failed_conversions_to_content_hashes = []
+        hashes_to_remove = []
+
+        for h, index in container_hashes.items():
+            timestamp, content_hash = self.get_upload_child_hash(h)
+            if content_hash:
+                new_item_data = (content_hash, "content")
+                # update dropdown item
+                dropdown.setItemText(index, timestamp)
+                dropdown.setItemData(index, new_item_data)
+                # add hash/index to content_hashes
+                content_hashes[content_hash] = index
+                # remove hash from container_hashes
+                hashes_to_remove.append(h)
+            else:
+                failed_conversions_to_content_hashes.append(h)
+
+        if len(hashes_to_remove) > 0:
+            for h in hashes_to_remove:
+                del container_hashes[h]
+
+        if failed_conversions_to_content_hashes:
+            failed_hashes = ", ".join(failed_conversions_to_content_hashes)
+            msg = (
+            "Some hashes failed to find their processed files in our system. This could be "
+            + "caused by the recency of the file(s) upload or a failure in file processing. "
+            + "\n\nThe hash(es) with this failure follow:"
+            + f"\n{failed_hashes}"
+            )
+            popup = GenericPopup(msg)
+            popup.show()
+
+    def get_content_hashes_statuses(self):
+        """Get the status of all hashes in the upload_content_hashes dictionary."""
+
+    def add_upload_hash(self, response_hash):
         """Set the initial upload hash to the sha1 in the upload response."""
-        self.main_interface.hashes["initial_upload_hash"] = response_hash
+        self.main_interface.hashes["upload_container_hashes"].append(response_hash)
 
     def get_upload_child_hash(self, response_hash):
         """Get the latest matching upload child."""
@@ -549,6 +639,7 @@ class _MAGICFormClassMethods:
             return None
         else:
             latest_child_hash = None
+            timestamp = None
             for child in response.resource.children:
                 if child.get("sha1"):
                     sha1 = child.get("sha1")
@@ -563,7 +654,7 @@ class _MAGICFormClassMethods:
                         or service_name == "webRequestHandler")
                     ):
                         latest_child_hash = sha1
-            return latest_child_hash
+            return (timestamp, latest_child_hash)
 
     def enable_all_list_tabs(self):
         """Enable all file list tabs (notes, tags, matches)."""

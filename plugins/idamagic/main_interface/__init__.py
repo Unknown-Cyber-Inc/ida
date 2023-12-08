@@ -7,7 +7,7 @@ import os
 
 from PyQt5 import QtWidgets
 
-from ..helpers import to_bool, get_all_idb_hashes
+from ..helpers import get_all_idb_hashes
 from ..IDA_interface import MAGICPluginScrClass
 from ..unknowncyber_interface import MAGICPluginFormClass
 
@@ -35,8 +35,8 @@ class MAGICMainClass(ida_kernwin.PluginForm):
             "version_hash": None,
             "ida_sha256": ida_nalt.retrieve_input_file_sha256().hex(),
             "ida_md5": ida_nalt.retrieve_input_file_md5().hex(),
-            "upload_hash": None,
-            "initial_upload_hash": None,
+            "upload_content_hashes": {},
+            "upload_container_hashes": {},
         }
 
         self.recent_upload_type = None
@@ -84,11 +84,31 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         """
         When dropdown selection changes, update version hashes.
         """
-        sha1 = self.unknown_plugin.files_buttons_layout.dropdown.itemData(
-            index
-        )
-        self.hashes["version_hash"] = sha1
+        dropdown = self.unknown_plugin.files_buttons_layout.dropdown
+        item_data = dropdown.currentData()
+        obj_type = item_data[1]
+        init_hash = item_data[0]
+        converted_hash = None
 
+        # if obj_type is container, query for content
+        if obj_type.lower() == "container":
+            converted_hash = self.unknown_plugin.get_upload_child_hash(init_hash)
+          # if content found:
+            if converted_hash:
+                # remove hash from container hash list,
+                del self.hashes["upload_container_hashes"][init_hash]
+                # add hash to content hash list,
+                self.hashes["upload_content_hashes"][converted_hash] = index
+                # create new data tuple for dropdown item
+                new_data = (converted_hash, "content")
+                # update dropdown item data
+                dropdown.setItemData(index, new_data)
+
+        # update version_hash
+        if converted_hash:
+            self.hashes["version_hash"] = converted_hash
+        else:
+            self.hashes["version_hash"] = init_hash
         self.version_hash_changed()
 
     def version_hash_changed(self):

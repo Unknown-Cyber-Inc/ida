@@ -3,9 +3,7 @@ Methods and classes in the MAGICPluginScrClass related to populating the
 procedure table.
 """
 
-import json
 import logging
-import traceback
 import ida_kernwin
 
 from cythereal_magic.rest import ApiException
@@ -75,14 +73,14 @@ class _ScrClassMethods:
             )
             popup.exec_()
             return None
-        elif self.main_interface.unknown_plugin.get_file_status(with_popup=False):
-            if "pending" in self.main_interface.unknown_plugin.status_label.text().lower():
-                popup = GenericPopup(
-                    "The uploaded file has not finished processing.\n\n"
-                    + "Check the status of the upload with the 'Check Upload Status' button."
-                )
-                popup.exec_()
-                return None
+        elif self.main_interface.unknown_plugin.files_buttons_layout.dropdown.currentData()[1] == "container":
+            popup = GenericPopup(
+                "The file respresented by the current version has not started processing yet.\n\n"
+                + "Use the 'Check Upload Status' to continue with this version or select a "
+                + "different version from the dropdown to view procedures."
+            )
+            popup.exec_()
+            return None
 
         self.proc_table.reset_table()
         genomics_read_mask = "*"
@@ -125,9 +123,3 @@ class _ScrClassMethods:
                     != self.main_interface.hashes["loaded_sha1"]
                 ):
                     self.sync_warning.show()
-            else:
-                popup = GenericPopup(
-                    "Error gathering Procedures.\n\n"
-                    + f"Status Code: {response.status}\n\n"
-                    + f"Error message: {response.errors}"
-                )

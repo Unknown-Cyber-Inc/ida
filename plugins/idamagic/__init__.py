@@ -13,7 +13,6 @@ import os
 from dotenv import load_dotenv
 from ida_kernwin import find_widget, is_idaq, close_widget
 
-from .helpers import to_bool
 from .unknowncyber_interface import MAGICPluginFormClass
 from .IDA_interface import MAGICPluginScrClass
 from .main_interface import MAGICMainClass
