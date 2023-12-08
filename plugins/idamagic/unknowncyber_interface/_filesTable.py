@@ -407,12 +407,19 @@ class _MAGICFormClassMethods:
             index = self.dropdown.count()
 
             if is_idb: # response_hash will belong to the container file object
-                self.main_interface.hashes["upload_container_hashes"][response_hash] = index
                 dropdown_item_data = (response_hash, "container")
+                self.main_interface.hashes["upload_container_hashes"][response_hash] = index
                 self.dropdown.addItem("Session IDB Upload", dropdown_item_data)
+
+                popup = GenericPopup(
+                    "IDB upload successful. \n\nCreated IDB filename: "
+                    + f"{self.created_idb_name}"
+                    )
+                popup.exec_()
 
             else: # response_hash will belong to the original file object
                 dropdown_item_data = (response_hash, "content")
+                # Original binary position in the versions dropdown will always be index 0
                 self.main_interface.hashes["upload_content_hashes"][response_hash] = 0
                 if not self.check_dropdown_for_original_file():
                     self.dropdown.insertItem(0, "Session Binary Upload", dropdown_item_data)
@@ -422,22 +429,15 @@ class _MAGICFormClassMethods:
                 self.set_version_hash(response_hash)
                 self.enable_all_list_tabs()
 
-            self.status_button.setEnabled(True)
-            self.set_status_label("pending")
-
-            if is_idb:
-                popup = GenericPopup(
-                    "IDB upload successful. \n\nCreated IDB filename: "
-                    + f"{self.created_idb_name}"
-                    )
-                popup.exec_()
-            else:
                 popup = GenericPopup("File upload successful.")
                 popup.exec_()
-        finally:
+
+            self.status_button.setEnabled(True)
+            self.set_status_label("pending")
+        # finally:
             # if is_idb and self.created_idb_name:
             #     os.remove(self.created_idb_name)
-            self.created_idb_name = None
+            # self.created_idb_name = None
 
     def upload_disassembled(self):
         """Upload editted binaries button behavior"""
