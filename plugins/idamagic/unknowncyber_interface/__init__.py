@@ -108,10 +108,10 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
         self.version_hash = QLabel(f"Version hash: {self.main_interface.hashes['version_hash']}")
         self.version_hash.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status_label = QLabel(
-            "Upload Processing Status: Upload a file to track it's status."
+            "Upload(s) Status: Upload a file to track it's status."
         )
         self.status_button = QPushButton("Check Upload Status")
-        self.status_button.clicked.connect(self.get_file_status)
+        self.status_button.clicked.connect(self.get_file_statuses)
         self.status_button.setEnabled(False)
         self.status_layout = QHBoxLayout()
         self.status_layout.addWidget(self.status_label)
@@ -133,20 +133,25 @@ class MAGICPluginFormClass(QWidget, _MAGICFormClassMethods):
             for key, value in self.content_versions.items():
                 self.files_buttons_layout.dropdown.addItem(key, value)
 
-    def add_upload_version_to_dropdown(self, binary_id):
+    def add_upload_version_to_dropdown(self, binary_id, obj_type):
         """
         Add the latest uploaded version and binary_id to the version dropdown.
         The version name will be set as a temporary one. Upon reloading the plugin
         or IDA, the version name will be normalized by the API.
         """
+        dropdown_item_data = (binary_id, obj_type)
         if self.files_buttons_layout.dropdown.findText(
             f"Recent {self.main_interface.recent_upload_type} Upload"
         ) == -1:
             self.files_buttons_layout.dropdown.addItem(
-                f"Recent {self.main_interface.recent_upload_type} Upload", binary_id)
+                f"Recent {self.main_interface.recent_upload_type} Upload", dropdown_item_data[0])
 
     def set_status_label(self, status):
-        """Set the color of the status button according to the input status."""
+        """Set the status label text and button interactability according to the status arg."""
+        status = str(status).lower()
         self.status_label.setText(
-            f"Upload Processing Status: {str(status).capitalize()}"
+            f"Upload(s) Status: {status.capitalize()}"
         )
+        # Prevent the status button from being clicked when there are no unprocessed uploads.
+        if status == "success":
+            self.status_button.setEnabled(False)

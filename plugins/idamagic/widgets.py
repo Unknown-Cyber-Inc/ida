@@ -256,26 +256,18 @@ class FileListWidget(BaseListWidget):
                         async_req=True,
                     )
                 response = response.get()
-            except ApiException as exp:
+            except ApiException as exc:
                 info_msgs = ["Could not delete file " + type_str + "."]
-                process_api_exception(exp, True, info_msgs)
+                process_api_exception(exc, False, info_msgs)
                 return None
-            except Exception as exp:
-                process_regular_exception(exp, True, None)
+            except Exception as exc:
+                process_regular_exception(exc, False, None)
                 return None
-            else:
-                if 200 <= response[1] <= 299:
-                    print(f"File {type_str} removed successfully.")
-                else:
-                    print(f"Error deleting {type_str}.")
-                    print(f"Status Code: {response[1]}")
-                    # print(f"Error message: {response.errors}")
-                    return None
 
             index = self.list_widget.row(item)
             self.list_widget.takeItem(index)
 
-            self.create_button.setEnabled(False)
+            self.create_button.setEnabled(True)
             self.edit_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         else:
@@ -671,8 +663,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
         self.sha1 = self.widget_parent.main_interface.hashes["version_hash"]
+        self.ida_md5 = self.widget_parent.main_interface.hashes["ida_md5"]
         self.popups = []
         self.init_ui()
+        self.tab_bar.currentChanged.connect(self.update_tab_color)
 
     def init_ui(self):
         """Create widget and handle behavior"""
@@ -680,7 +674,6 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.tabs_widget.setTabsClosable(True)
         self.tabs_widget.setObjectName("tabs_widget")
         self.tab_bar = self.tabs_widget.tabBar()
-        self.tab_bar.currentChanged.connect(self.update_tab_color)
         self.tab_color = None
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -745,7 +738,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
     def create_tab(self, tab_type, item=None, table_row=None):
         """Add a tab to self.tabs_widget"""
         if tab_type == "Original procedure":
-            tab = CenterProcTab(self, item, table_row)
+            CenterProcTab(self, item, table_row)
             self.remove_default_tab()
             if self.tab_bar.count() == 1:
                 self.tab_color.setGreen(128)
@@ -753,7 +746,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         elif tab_type == "Derived procedure":
             original_tab = self.tabs_widget.currentWidget()
             original_proc = original_tab.item
-            tab = CenterDerivedProcTab(
+            CenterDerivedProcTab(
                 self,
                 item,
                 original_proc.binary_id,
@@ -764,7 +757,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Derived file":
-            tab = CenterDerivedFileTab(self, item)
+            CenterDerivedFileTab(self, item)
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Default tab":
@@ -1022,7 +1015,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
                             text=f"Current File - {bin_id}",
-                            binary_id=bin_id,
+                            binary_id=self.ida_md5,
                             rva=None,
                         )
                     )
@@ -1143,30 +1136,18 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                     read_mask=read_mask,
                 )
             response = response.get()
-        except ApiException as exp:
-            process_api_exception(exp, True, None)
+        except ApiException as exc:
+            process_api_exception(exc, False, None)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, True, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             if (
                 type_str == "Procedure Group Notes"
                 or type_str == "Procedure Group Tags"
             ):
-                if 200 <= response["status"] <= 299:
-                    print(f"{type_str} gathered successfully.")
-                else:
-                    print(f"Error gathering {type_str}.")
-                    print(f"Status Code: {response['status']}")
-                    print(f"Error message: {response['errors']}")
                 return response["resources"]
-            if 200 <= response.status <= 299:
-                print(f"{type_str} gathered successfully.")
-            else:
-                print(f"Error gathering {type_str}.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")
         return response.resources
 
     def show_popup(
@@ -1409,28 +1390,20 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         async_req=True,
                     )
                 response = response.get()
-            except ApiException as exp:
+            except ApiException as exc:
                 info_msgs = [
                     "Could not delete "
                     + type_str
                     + " from selected procedure."
                 ]
-                process_api_exception(exp, True, info_msgs)
+                process_api_exception(exc, False, info_msgs)
                 return None
-            except Exception as exp:
-                process_regular_exception(exp, True, None)
+            except Exception as exc:
+                process_regular_exception(exc, False, None)
                 return None
             else:
                 if 200 <= response[1] <= 299:
                     item.parent().removeRow(item.row())
-                    print(
-                        f"{type_str} removed from selected procedure successfully."
-                    )
-                else:
-                    print(f"Error deleting {type_str}.")
-                    print(f"Status Code: {response[1]}")
-                    # print(f"Error message: {response.errors}")
-                    return None
                 
                 self.create_button.setEnabled(False)
                 self.edit_button.setEnabled(False)
@@ -1469,12 +1442,12 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             )
             derived_response = derived_response.get()
             derived_proc = derived_response.resource
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Unable to fetch procedure code."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, True, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             popup = ComparePopup(orig_proc, derived_proc)
@@ -1807,16 +1780,15 @@ class ProcTextPopup(TextPopup):
                     async_req=True,
                 )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Could not update " + self.item_type + "."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, True, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
-                print(f"{self.item_type} created successfully.")
                 if (
                     self.item_type == "Notes"
                     or self.item_type == "Derived file note"
@@ -1872,11 +1844,6 @@ class ProcTextPopup(TextPopup):
                         )
                     )
                 return text
-            else:
-                print(f"Error updating {self.item_type}.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")
-                return None
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
@@ -1926,32 +1893,15 @@ class ProcTextPopup(TextPopup):
                     async_req=True,
                 )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Could not update " + self.item_type + "."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, True, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
-            if (
-                self.item_type == "Proc Name"
-                or self.item_type == "Procedure Group Notes"
-            ):
-                if 200 <= response.status <= 299:
-                    print(f"{self.item_type} updated successfully.")
-                    return text
-                else:
-                    print(f"Error updating {self.item_type}.")
-                    print(f"Status Code: {response.status}")
-                    return None
-            if 200 <= response[1] <= 299:
-                print(f"{self.item_type} updated successfully.")
-                return text
-            else:
-                print(f"Error updating {self.item_type}.")
-                print(f"Status Code: {response[1]}")
-                return None
+            return text
 
 
 class FileTextPopup(TextPopup):
@@ -2011,12 +1961,12 @@ class FileTextPopup(TextPopup):
                     async_req=True,
                 )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = ["Could not create " + type_str + " for File."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, True, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
@@ -2042,12 +1992,7 @@ class FileTextPopup(TextPopup):
                             )
                         )
                     )
-                print(f"{type_str} for File created successfully.")
                 return text
-            else:
-                print(f"Error updating {type_str}.")
-                print(f"Status Code: {response.status}")
-                return None
 
     def save_edit(self, text, item):
         """API call logic for `edit` submissions"""
@@ -2068,22 +2013,16 @@ class FileTextPopup(TextPopup):
                     async_req=True,
                 )
                 response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             logger.debug(traceback.format_exc())
             info_msgs = ["Could not update File " + type_str + "."]
-            process_api_exception(exp, True, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, True, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
-            if 200 <= response[1] <= 299:
-                print(f"File {type_str} updated successfully.")
-                return text
-            else:
-                print(f"Error updating {type_str}.")
-                print(f"Status Code: {response[1]}")
-                return None
+            return text
 
 
 class FileUploadPopup(QtWidgets.QMessageBox):
@@ -2209,21 +2148,30 @@ class StatusPopup(QtWidgets.QMessageBox):
         "web_request_handler": "Filetype Discovery",
     }
 
-    def __init__(self, resource, widget_parent):
+    def __init__(self, resource_list, widget_parent):
         super(StatusPopup, self).__init__(parent=widget_parent)
         self.widget_parent = widget_parent
-        self.setWindowTitle("Upload Status")
-        mapped_pipelines = self.convert_pipeline_names(resource.pipeline)
+        self.setWindowTitle("Upload Statuses")
 
-        new_text = (
-            "File hash: "
-            + self.widget_parent.main_interface.hashes["upload_hash"]
-            + "\n\nStatus: "
-            + str(resource.status).capitalize()
-            + "\n\n\n"
-            + str(mapped_pipelines)
-        )
-        self.setText(new_text)
+        new_text_list = []
+        for resource in resource_list:
+            if resource.sha1 and resource.status:
+                mapped_pipelines = self.convert_pipeline_names(resource.pipeline)
+
+                new_text_list.append(
+                    "File hash: "
+                    + resource.sha1
+                    + "\n\nCreate time: "
+                    + str(resource.create_time)
+                    + "\n\nStatus: "
+                    + str(resource.status).capitalize()
+                    + "\n\n"
+                    + str(mapped_pipelines)
+                )
+
+        results = "\n\n============================================\n\n".join(new_text_list)
+
+        self.setText(results)
         self.setStandardButtons(QtWidgets.QMessageBox.Ok)
 
     def convert_pipeline_names(self, pipelines):

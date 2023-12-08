@@ -3,9 +3,7 @@ Methods and classes in the MAGICPluginScrClass related to populating the
 procedure table.
 """
 
-import json
 import logging
-import traceback
 import ida_kernwin
 
 from cythereal_magic.rest import ApiException
@@ -68,11 +66,20 @@ class _ScrClassMethods:
         GET from procedures and list all procedures associated with file.
         """
         if not self.main_interface.get_file_exists():
-            print(
-                "Upload a file or IDB first to generate procedures."
-                + " If you have already uploaded, check the status with"
+            popup = GenericPopup(
+                "Upload a file or IDB first to generate procedures.\n\n"
+                + "If you have already uploaded, check the status with"
                 + " the 'Check Upload Status' button."
             )
+            popup.exec_()
+            return None
+        elif self.main_interface.unknown_plugin.files_buttons_layout.dropdown.currentData()[1] == "container":
+            popup = GenericPopup(
+                "The file respresented by the current version has not started processing yet.\n\n"
+                + "Use the 'Check Upload Status' to continue with this version or select a "
+                + "different version from the dropdown to view procedures."
+            )
+            popup.exec_()
             return None
 
         self.proc_table.reset_table()
@@ -89,19 +96,18 @@ class _ScrClassMethods:
                 async_req=True,
             )
             response = response.get()
-        except ApiException as exp:
+        except ApiException as exc:
             info_msgs = [
                 "No procedures could be gathered.",
                 "This may occur if the file was recently uploaded."
             ]
-            process_api_exception(exp, False, info_msgs)
+            process_api_exception(exc, False, info_msgs)
             return None
-        except Exception as exp:
-            process_regular_exception(exp, False, None)
+        except Exception as exc:
+            process_regular_exception(exc, False, None)
             return None
         else:
             if 200 <= response.status <= 299:
-                print("Procedures gathered successfully.")
                 if len(response.resource.procedures) < 1:
                     popup = GenericPopup(
                         "The request for procedures came back empty.\n\n" +
@@ -110,13 +116,10 @@ class _ScrClassMethods:
                         f"Hash: {self.main_interface.hashes['version_hash']}"
                     )
                     popup.exec_()
+                    return None
                 self.populate_proc_table(response.resource)
                 if (
                     self.main_interface.hashes["version_hash"]
                     != self.main_interface.hashes["loaded_sha1"]
                 ):
                     self.sync_warning.show()
-            else:
-                print("Error gathering Procedures.")
-                print(f"Status Code: {response.status}")
-                print(f"Error message: {response.errors}")

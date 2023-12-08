@@ -192,11 +192,12 @@ def hash_file(hashtype="sha1"):
                 digest.update(block)
 
             return digest.hexdigest()
-    except FileNotFoundError:
-        print(
+    except FileNotFoundError as exc:
+        info_msgs = [
             "Original binary not accessible."
-            + " Place binary in the directory containing the loaded idb file"
-        )
+            + " Place binary in the directory containing the loaded idb file",
+        ]
+        process_regular_exception(exc, False, info_msgs)
         return None
 
 
@@ -1147,10 +1148,13 @@ def zip_disassembled(outdir):
         shutil.move(zip_path, outdir)
         return os.path.join(outdir, zip_path)
     except Exception as exc:
-        print(f"Error: {exc}")
+        info_msgs = [
+            f"Error: {exc}",
+        ]
+        process_regular_exception(exc, False, info_msgs)
 
 
-def parse_binary(main_hashes, orig_dir=None):
+def parse_binary(main_hashes=None, orig_dir=None, disassembly_hashes=None):
     """Parse the input binary and run it through the provided factory.
 
     Parameters
@@ -1164,15 +1168,17 @@ def parse_binary(main_hashes, orig_dir=None):
 
         Returns the result of parser.finish()
     """
-    input_path = get_linked_binary_expected_path()
     if orig_dir is None:
-        ida_dir = os.path.dirname(input_path)
+        ida_dir = os.path.dirname(get_linked_binary_expected_path())
         outdir = os.path.join(ida_dir, "outdir")
         if os.path.exists(outdir):
             try:
                 shutil.rmtree(outdir)
             except OSError as exc:
-                print(f"Error: {exc}")
+                info_msgs = [
+                    f"Error: {exc}",
+                ]
+                process_regular_exception(exc, False, info_msgs)
     else:
         outdir = os.path.join(orig_dir, "outdir")
 
@@ -1181,17 +1187,13 @@ def parse_binary(main_hashes, orig_dir=None):
     try:
         os.mkdir(outdir)
         os.mkdir(proc_outdir)
-
-        binary_id = hash_file()
-        disassimly_hashes = get_disassembly_hashes(input_path)
-
         arch = get_file_architecture()
 
         bin_dict = {
             "md5": main_hashes["ida_md5"],
-            "sha1": disassimly_hashes["sha1"],
+            "sha1": disassembly_hashes["sha1"],
             "sha256": main_hashes["ida_sha256"],
-            "sha512": disassimly_hashes["sha512"],
+            "sha512": disassembly_hashes["sha512"],
             "unix_filetype": getUnixFileType(),
             "version": get_ida_version(),
             "disassembler": "ida",
@@ -1206,7 +1208,7 @@ def parse_binary(main_hashes, orig_dir=None):
         with open(bin_path, "w") as outfile:
             json.dump(bin_dict, outfile)
 
-        logger.info("[{}] Started data extraction".format(binary_id))
+        logger.info("[{}] Started data extraction".format(disassembly_hashes["sha1"]))
         # Rebase to 0x0 so that we don't have to worry about the
         # difference between EA and RVA.
         rebase_to_zero()
@@ -1283,7 +1285,7 @@ def parse_binary(main_hashes, orig_dir=None):
             if count % 100 == 0:
                 logger.info(
                     "[{}] Processed {} procedures so far".format(
-                        binary_id, count
+                        disassembly_hashes["sha1"], count
                     )
                 )
 
@@ -1293,7 +1295,7 @@ def parse_binary(main_hashes, orig_dir=None):
             with open(proc_path, "w") as outfile:
                 json.dump(proc_dict, outfile)
 
-        logger.info("Finished parsing %s", binary_id)
+        logger.info("Finished parsing %s", disassembly_hashes["sha1"])
         logger.info(f"Creating archive file {get_input_file_name()}.zip")
         zip_path = zip_disassembled(outdir)
         logger.info(f"Finished creating archive file {get_input_file_name()}.zip")
@@ -1385,7 +1387,7 @@ def get_all_idb_hashes():
     }
 
 
-def get_disassembly_hashes(file_path):
+def get_disassembly_hashes():
     """Hash loaded idb's contents.
 
     Returns
@@ -1393,6 +1395,7 @@ def get_disassembly_hashes(file_path):
     dict
         The hashes of the IDB's contents in hexadecimal format.
     """
+    file_path = get_linked_binary_expected_path()
     sha1 = hashlib.sha1()
     sha512 = hashlib.sha512()
 
@@ -1408,11 +1411,14 @@ def get_disassembly_hashes(file_path):
                 "sha1": sha1.hexdigest(),
                 "sha512": sha512.hexdigest(),
             }
-    except FileNotFoundError:
-        print(
-            "Original binary not accessible."
-            + " Place binary in the directory containing the loaded idb file"
-        )
+    except FileNotFoundError as exc:
+        info_msgs = [
+            "Original binary not accessible. "
+            + "Place binary in the expected directory below. "
+            + "If the expected directory does not exist in your file system, "
+            + "consider uploading via IDB instead of disassembly."
+        ]
+        process_regular_exception(exc, False, info_msgs)
         return None
 
 
@@ -1498,50 +1504,52 @@ def get_start_ea(obj):
     except AttributeError:
         return obj.startEA
 
-def process_api_exception(exp, console_only, info_msgs):
+def process_api_exception(exc, console_only, info_msgs):
     """Prepare an APIException to be displayed."""
     from .widgets import ErrorPopup
 
     logger.debug(traceback.format_exc())
     if console_only:
         try:
-            error_body = json.loads(exp.body)
+            error_body = json.loads(exc.body)
             for error in error_body.get("errors", []):
                 logger.info(error["reason"])
                 print(error)
         except json.JSONDecodeError:
-            print(str(exp))
-            print("Received non-JSON response. Body:", exp.body)
+            print(str(exc))
+            print("Received non-JSON response. Body:", exc.body)
             print("Possible API error. Check that the Unknown Cyber dashboard is online.")
         return None
     try:
-        error_msgs = json.loads(exp.body)
+        error_msgs = json.loads(exc.body)
         if error_msgs.get("errors", []):
             for error in error_msgs.get("errors"):
                 logger.info(error["reason"])
     except json.JSONDecodeError:
         error_msgs = [
             "Possible API error. Check that the Unknown Cyber dashboard is online.",
-            str(exp),
-            "Received non-JSON response. Body: " + exp.body
+            str(exc),
+            "Received non-JSON response. Body: " + exc.body
         ]
     err_popup = ErrorPopup(info_msgs, error_msgs)
     err_popup.exec_()
 
-def process_regular_exception(exp, console_only, info_msgs):
+def process_regular_exception(exc, console_only, info_msgs):
     """Prepare an Exception to be displayed."""
     from .widgets import ErrorPopup
 
     logger.debug(traceback.format_exc())
     if console_only:
-        print("Unknown Error occurred")
-        print(f"<{exp.__class__}>: {str(exp)}")
+        print(f"Error type: {exc.__class__.__name__}")
+        print(f"{str(exc)}")
         # exit if this call fails so user can retry
         # (this func always returns None anyway)
         return None
     error_msgs = [
-        "Unknown Error occurred" + "\n\n",
-        ("<" + str(exp.__class__) + ">:" + str(exp)),
+        f"------------------------------------------"
+        f"\nError type: {exc.__class__.__name__}"
+        + "\n------------------------------------------"
+        + f"\n{str(exc)}",
     ]
     err_popup = ErrorPopup(info_msgs, error_msgs)
     err_popup.exec_()
