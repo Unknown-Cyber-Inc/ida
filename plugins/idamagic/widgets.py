@@ -663,6 +663,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
         self.sha1 = self.widget_parent.main_interface.hashes["version_hash"]
+        self.ida_md5 = self.widget_parent.main_interface.hashes["ida_md5"]
         self.popups = []
         self.init_ui()
         self.tab_bar.currentChanged.connect(self.update_tab_color)
@@ -737,7 +738,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
     def create_tab(self, tab_type, item=None, table_row=None):
         """Add a tab to self.tabs_widget"""
         if tab_type == "Original procedure":
-            tab = CenterProcTab(self, item, table_row)
+            CenterProcTab(self, item, table_row)
             self.remove_default_tab()
             if self.tab_bar.count() == 1:
                 self.tab_color.setGreen(128)
@@ -745,7 +746,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         elif tab_type == "Derived procedure":
             original_tab = self.tabs_widget.currentWidget()
             original_proc = original_tab.item
-            tab = CenterDerivedProcTab(
+            CenterDerivedProcTab(
                 self,
                 item,
                 original_proc.binary_id,
@@ -756,7 +757,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Derived file":
-            tab = CenterDerivedFileTab(self, item)
+            CenterDerivedFileTab(self, item)
             self.remove_default_tab()
             self.add_tab_visuals(tab_type)
         elif tab_type == "Default tab":
@@ -1014,7 +1015,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         ProcSimpleTextNode(
                             hard_hash=similarityRootNode.hard_hash,
                             text=f"Current File - {bin_id}",
-                            binary_id=bin_id,
+                            binary_id=self.ida_md5,
                             rva=None,
                         )
                     )
