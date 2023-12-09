@@ -174,7 +174,7 @@ class _MAGICFormClassMethods:
                     binary_id=self.main_interface.hashes["version_hash"],
                     expand_mask=expand_mask,
                     page_count=page,
-                    page_size=10,
+                    page_size=25,
                     no_links=True,
                     async_req=True,
                 )
@@ -488,7 +488,8 @@ class _MAGICFormClassMethods:
         True if the item.text() is 'Original File'.
         Otherwise, False.
         """
-        return self.dropdown.itemText(0) == "Original File"
+        return (self.dropdown.itemText(0) == "Original File"
+                or self.dropdown.itemText(0) == "Session Binary Upload")
 
     def update_dropdown_indexes(self):
         """
