@@ -88,25 +88,26 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         item_data = dropdown.currentData()
         obj_type = item_data[1]
         init_hash = item_data[0]
-        converted_hash = None
+        content_child_data = None
 
         # if obj_type is container, query for content
         if obj_type.lower() == "container":
-            converted_hash = self.unknown_plugin.get_upload_child_hash(init_hash)
+            content_child_data = self.unknown_plugin.get_upload_child_data(init_hash)
           # if content found:
-            if converted_hash:
+            if content_child_data:
                 # remove hash from container hash list,
                 del self.hashes["upload_container_hashes"][init_hash]
                 # add hash to content hash list,
-                self.hashes["upload_content_hashes"][converted_hash] = index
+                self.hashes["upload_content_hashes"][content_child_data[1]] = index
                 # create new data tuple for dropdown item
-                new_data = (converted_hash, "content")
+                new_data = (content_child_data[1], "content")
                 # update dropdown item data
                 dropdown.setItemData(index, new_data)
+                dropdown.setItemText(index, content_child_data[0])
 
         # update version_hash
-        if converted_hash:
-            self.hashes["version_hash"] = converted_hash
+        if content_child_data:
+            self.hashes["version_hash"] = content_child_data[1]
         else:
             self.hashes["version_hash"] = init_hash
         self.version_hash_changed()
