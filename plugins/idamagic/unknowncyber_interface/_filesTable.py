@@ -610,7 +610,7 @@ class _MAGICFormClassMethods:
         hashes_to_remove = []
 
         for h, index in container_hashes.items():
-            timestamp, content_hash = self.get_upload_child_hash(h)
+            timestamp, content_hash = self.get_upload_child_data(h)
             if content_hash:
                 new_item_data = (content_hash, "content")
                 # update dropdown item
@@ -645,7 +645,7 @@ class _MAGICFormClassMethods:
         """Set the initial upload hash to the sha1 in the upload response."""
         self.main_interface.hashes["upload_container_hashes"].append(response_hash)
 
-    def get_upload_child_hash(self, response_hash):
+    def get_upload_child_data(self, response_hash):
         """Get the latest matching upload child."""
         expand_mask = "children"
         read_mask = "*,children.*"
