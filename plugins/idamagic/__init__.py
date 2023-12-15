@@ -86,6 +86,9 @@ class magic(ida_idaapi.plugin_t):
             unknowncyber.ApiClient()
         )  # Create API client to be used by plugin
 
+        self.api_client.configuration.api_key["key"] = os.getenv("MAGIC_API_KEY")
+        self.api_client.configuration.host = os.getenv("MAGIC_API_HOST")
+
         ida_idaapi.require("idamagic.main_interface")
         ida_idaapi.require("idamagic.unknowncyber_interface")
         ida_idaapi.require("idamagic.IDA_interface")
