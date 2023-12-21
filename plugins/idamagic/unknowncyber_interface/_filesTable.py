@@ -12,6 +12,7 @@ from cythereal_magic.rest import ApiException
 from ..helpers import (
     encode_file,
     get_disassembly_hashes,
+    get_file_architecture,
     get_linked_binary_expected_path,
     parse_binary,
     process_api_exception,
@@ -383,8 +384,17 @@ class _MAGICFormClassMethods:
         tags = []
         notes = []
         filedata = encode_file(file_path)
+        arch_32 = None
+        arch_64 = None
 
         try:
+            arch = get_file_architecture()
+            if arch == "64-bit":
+                arch_64 = True
+            elif arch == "32-bit":
+                arch_32 = True
+
+
             response = api_call(
                 filedata=[filedata],
                 password="",
@@ -393,6 +403,8 @@ class _MAGICFormClassMethods:
                 skip_unpack=skip_unpack,
                 no_links=True,
                 b64=True,
+                use_32 = arch_32,
+                use_64 = arch_64,
                 async_req=True,
             )
             response = response.get()
