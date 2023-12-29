@@ -46,6 +46,7 @@ redist:
     done
     zip -r unknowncyberidaplugin.zip dependencies plugins requirements.txt
     tar cvzf unknowncyberidaplugin.tgz dependencies plugins requirements.txt
+    sha256sum unknowncyberidaplugin.* > checksum
 
 install: redist
     pip install --no-index --find-links=./dependencies -r requirements.txt
