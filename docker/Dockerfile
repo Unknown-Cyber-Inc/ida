@@ -1,4 +1,4 @@
-FROM unknowncyber/base AS ida
+FROM virusbattleacr.azurecr.io/unknowncyber/base AS ida
 ARG IDA_PASSWORD
 ARG IDA_KEYLESS
 ENV QT_DEBUG_PLUGINS=1

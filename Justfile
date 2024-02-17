@@ -28,7 +28,7 @@ format:="'%4s"+gold+"%-20s"+reset+"%s\\n' ''"
 
 # Builds a new ida docker image
 build +V:
-    docker-buildx build --build-arg IDA_KEYLESS=$ida_keyless --build-arg IDA_PASSWORD=$ida_pass -t unknowncyber/ida:{{V}} -f docker/Dockerfile .
+    docker-buildx build --build-arg IDA_KEYLESS=$ida_keyless --build-arg IDA_PASSWORD=$ida_pass -t virusbattleacr.azurecr.io/unknowncyber/ida:{{V}} -f docker/Dockerfile .
 
 # Rebuilds the python distribution tarball
 redist:
