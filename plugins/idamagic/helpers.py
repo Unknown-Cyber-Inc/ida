@@ -10,6 +10,7 @@ import json
 import struct
 import shutil
 import traceback
+from collections import namedtuple
 import six
 import networkx
 
@@ -25,7 +26,6 @@ import ida_ua
 import idautils
 
 from networkx.drawing import nx_pydot
-from collections import namedtuple
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
@@ -1526,7 +1526,7 @@ def get_start_ea(obj):
 
 def process_api_exception(exc, console_only, info_msgs):
     """Prepare an APIException to be displayed."""
-    from .widgets import ErrorPopup
+    from .widgets.popups.popups import ErrorPopup
 
     logger.debug(traceback.format_exc())
     if console_only:
@@ -1556,7 +1556,7 @@ def process_api_exception(exc, console_only, info_msgs):
 
 def process_regular_exception(exc, console_only, info_msgs):
     """Prepare an Exception to be displayed."""
-    from .widgets import ErrorPopup
+    from .widgets.popups.popups import ErrorPopup
 
     logger.debug(traceback.format_exc())
     if console_only:

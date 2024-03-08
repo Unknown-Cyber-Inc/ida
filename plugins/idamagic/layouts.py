@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
 )
 
-from .widgets import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
+from .widgets.popups.popups import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
 
 
 class ProcsToggleLayout(QHBoxLayout):

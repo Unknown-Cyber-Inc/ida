@@ -1,10 +1,9 @@
 """Main interface. Used to hold sub-interfaces."""
-
-import ida_kernwin
-import ida_nalt
 import logging
 import os
 
+import ida_kernwin
+import ida_nalt
 from PyQt5 import QtWidgets
 
 from ..helpers import get_all_idb_hashes
