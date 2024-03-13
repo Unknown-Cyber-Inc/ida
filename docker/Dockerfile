@@ -22,8 +22,6 @@ RUN set -x \
     && rm -rf /var/lib/apt/lists/* \
     && apt -y autoremove
 
-COPY --chown=unknowncyber idasetup/ida.run /tmp/idasetup/ida.run
-
 COPY --chown=unknowncyber plugins /home/unknowncyber/.idapro/plugins
 
 COPY --chown=unknowncyber setup.cfg pyproject.toml .
@@ -37,7 +35,7 @@ RUN set -x \
     && apt -y remove git \
     && apt -y autoremove
 
-RUN set -x \
+RUN --mount=type=bind,source=idasetup/ida.run,target=/tmp/idasetup/ida.run set -x \
     && /tmp/idasetup/ida.run --mode unattended --prefix /opt/ida --installpassword $IDA_PASSWORD \
     && /opt/ida/idapyswitch --force-path /usr/local/lib/libpython3.7m.so \
     && if [ ! -z $IDA_KEYLESS ]; then rm /opt/ida/ida.key; fi;
