@@ -43,6 +43,13 @@ from ..api import (
     upload_disassembly,
     upload_file,
 )
+from ..references import (
+    get_ida_md5,
+    get_loaded_md5,
+    get_loaded_sha1,
+    get_version_hash,
+    set_version_hash,
+)
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
@@ -123,11 +130,11 @@ class MAGICPluginFormClass(QWidget):
         # Personalizing QT items, in decending order of appearance.
         # NOTE! Upon display, actual arrangement is solely determined by
         #       the order widgets are ADDED to the layout.
-        self.loaded_md5 = QLabel(f"IDB md5: {self.main_interface.hashes['loaded_md5']}")
+        self.loaded_md5 = QLabel(f"IDB md5: {get_loaded_md5()}")
         self.loaded_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.linked_md5 = QLabel(f"Binary md5: {self.main_interface.hashes['ida_md5']}")
+        self.linked_md5 = QLabel(f"Binary md5: {get_ida_md5()}")
         self.linked_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.version_hash = QLabel(f"Version hash: {self.main_interface.hashes['version_hash']}")
+        self.version_hash = QLabel(f"Version hash: {get_version_hash()}")
         self.version_hash.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status_label = QLabel(
             "Upload(s) Status: Upload a file to track it's status."
@@ -144,7 +151,7 @@ class MAGICPluginFormClass(QWidget):
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
             list_items=[],
-            binary_id=self.main_interface.hashes["ida_md5"],
+            binary_id=get_ida_md5(),
             widget_parent=self,
         )
 
@@ -187,7 +194,7 @@ class MAGICPluginFormClass(QWidget):
             self.check_idb_uploaded()
             if self.main_interface.get_file_exists():
                 self.list_widget.enable_tab_bar()
-                self.list_widget.binary_id = self.main_interface.hashes["ida_md5"]
+                self.list_widget.binary_id = get_ida_md5()
             else:
                 self.process_file_nonexistent()
 
@@ -198,9 +205,8 @@ class MAGICPluginFormClass(QWidget):
     def check_env_vars(self):
         """Make an API call to check the validity of the API vars."""
         try:
-            sha1 = self.main_interface.hashes["loaded_sha1"]
             response = self.ctmfiles.get_file(
-                binary_id=sha1,
+                binary_id=get_loaded_sha1(),
                 no_links=True,
                 explain=True,
                 async_req=True,
@@ -277,7 +283,7 @@ class MAGICPluginFormClass(QWidget):
         """Populates the File list 'Matches' tab with recieved matches"""
         matches = []
         for match in list_items:
-            if match["sha1"] != self.main_interface.hashes["version_hash"]:
+            if match["sha1"] != get_version_hash():
                 filename = f"sha1: {match['sha1']}"
             else:
                 filename = f"Current file - sha1: {match['sha1']}"
@@ -300,7 +306,7 @@ class MAGICPluginFormClass(QWidget):
         try:
             if list_type == "Tags":
                 response = list_file_tags(
-                    binary_id=self.main_interface.hashes["ida_md5"],
+                    binary_id=get_ida_md5(),
                     info_msgs=[
                         "No Tags could be gathered for file."
                     ]
@@ -308,7 +314,7 @@ class MAGICPluginFormClass(QWidget):
             elif list_type == "Matches":
                 try:
                     response = self.ctmfiles.list_file_matches(
-                        binary_id=self.main_interface.hashes["version_hash"],
+                        binary_id=get_version_hash(),
                         page_count=page,
                         page_size=25,
                         expand_mask="matches",
@@ -326,7 +332,7 @@ class MAGICPluginFormClass(QWidget):
                     return None
             else:
                 response = list_file_notes(
-                    binary_id=self.main_interface.hashes["ida_md5"],
+                    binary_id=get_ida_md5(),
                     info_msgs=[
                         "No notes could be gathered for File."
                     ]
@@ -352,11 +358,11 @@ class MAGICPluginFormClass(QWidget):
             elif list_type == "Tags":
                 self.populate_file_tags(response.resources)
 
-    def set_version_hash(self, new_hash):
+    def update_version_hash(self, new_hash):
         """
         Set the hash for "version".
         """
-        self.main_interface.hashes["version_hash"] = new_hash
+        set_version_hash(new_hash)
         self.main_interface.version_hash_changed()
 
     def check_idb_uploaded(self):
@@ -368,7 +374,7 @@ class MAGICPluginFormClass(QWidget):
         read_mask = "*,children.*"
         expand_mask = "children"
         try:
-            sha1 = self.main_interface.hashes["loaded_sha1"]
+            sha1 = get_loaded_sha1()
             response = self.ctmfiles.get_file(
                 binary_id=sha1,
                 no_links=True,
@@ -384,7 +390,7 @@ class MAGICPluginFormClass(QWidget):
             self.main_interface.set_file_exists(False)
             linked_binary_uploaded = self.check_linked_binary_object_exists(False)
             if not linked_binary_uploaded:
-                self.set_version_hash(self.main_interface.hashes["loaded_sha1"])
+                self.update_version_hash(get_loaded_sha1())
                 self.list_widget.disable_tab_bar()
                 process_api_exception(
                     exc,
@@ -403,7 +409,7 @@ class MAGICPluginFormClass(QWidget):
                 self.list_widget.enable_tab_bar()
                 original_exists = self.check_linked_binary_object_exists(True)
                 if not original_exists:
-                    self.set_version_hash(response.resource.sha1)
+                    self.update_version_hash(response.resource.sha1)
 
     def check_linked_binary_object_exists(self, idb_uploaded):
         """
@@ -416,7 +422,7 @@ class MAGICPluginFormClass(QWidget):
         expand_mask = "children"
         try:
             response = self.ctmfiles.get_file(
-                binary_id=self.main_interface.hashes["ida_md5"],
+                binary_id=get_ida_md5(),
                 no_links=True,
                 read_mask=read_mask,
                 expand_mask=expand_mask,
@@ -442,14 +448,11 @@ class MAGICPluginFormClass(QWidget):
             if content_child_sha1:
                 count = self.dropdown.count()
                 self.dropdown.setCurrentIndex(count - 1)
-                self.set_version_hash(content_child_sha1)
+                self.update_version_hash(content_child_sha1)
                 self.main_interface.set_file_exists(True)
                 return True
             elif self.verify_linked_binary_sha1(response.resource):
-                print(
-                    "No content-children found. Updating set_version_hash to linked-binary's"
-                )
-                self.set_version_hash(response.resource.sha1)
+                self.update_version_hash(response.resource.sha1)
                 self.main_interface.set_file_exists(True)
                 return True
             return False
@@ -507,7 +510,7 @@ class MAGICPluginFormClass(QWidget):
         self.files_buttons_layout.show_file_not_found_popup()
 
     def upload_idb(self):
-        idb = create_idb_file(self.main_interface.hashes["ida_md5"])
+        idb = create_idb_file(get_ida_md5())
         if not idb:
             return None
         self.created_idb_name = idb
@@ -560,7 +563,7 @@ class MAGICPluginFormClass(QWidget):
                 self.update_dropdown_indexes()
 
             self.main_interface.set_file_exists(True)
-            self.set_version_hash(response_hash)
+            self.update_version_hash(response_hash)
             self.enable_all_list_tabs()
 
             popup = GenericPopup("File upload successful.")
@@ -585,7 +588,6 @@ class MAGICPluginFormClass(QWidget):
             return None
 
         zip_path = parse_binary(
-            self.main_interface.hashes,
             orig_dir=None,
             disassembly_hashes=disassembly_hashes,
         )
@@ -703,7 +705,7 @@ class MAGICPluginFormClass(QWidget):
                 self.main_interface.set_file_exists(True)
                 self.enable_all_list_tabs()
                 if self.dropdown.currentIndex == latest_non_failure[1]:
-                    self.set_version_hash(latest_non_failure[0])
+                    self.update_version_hash(latest_non_failure[0])
                 else:
                     self.dropdown.setCurrentIndex(latest_non_failure[1])
 

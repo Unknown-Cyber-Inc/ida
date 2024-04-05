@@ -53,7 +53,7 @@ def upload_file(filedata: list, skip_unpack: bool, info_msgs: list = None):
 
 
         response = ctmfiles.upload_file(
-            filedata=[filedata],
+            filedata=filedata,
             password="",
             tags=[],
             notes=[],
@@ -75,7 +75,7 @@ def upload_file(filedata: list, skip_unpack: bool, info_msgs: list = None):
 
 def upload_disassembly(zip_path: str, info_msgs: list = None):
     try:
-        response, _, _ = ctmfiles.upload_disassembly(
+        response = ctmfiles.upload_disassembly(
             filedata=zip_path,
             no_links=True,
         )
@@ -92,7 +92,6 @@ def list_file_notes(binary_id: str, info_msgs: list = None):
         response = ctmfiles.list_file_notes(
             binary_id=binary_id, no_links=True, async_req=True
         )
-        response = response.get()
     except ApiException as exc:
         process_api_exception(exc, False, info_msgs)
     except Exception as exc:
@@ -109,7 +108,6 @@ def list_file_tags(binary_id: str, info_msgs: list = None):
             no_links=True,
             async_req=True,
         )
-        response = response.get()
     except ApiException as exc:
         process_api_exception(exc, False, info_msgs)
     except Exception as exc:
@@ -149,12 +147,15 @@ def list_file_genomics(binary_id: str, info_msgs: list = None):
         )
         response = response.get()
     except ApiException as exc:
+        print("HIT API EXCEPTION: ", exc)
         process_api_exception(exc, False, info_msgs)
         return None
     except Exception as exc:
+        print("HIT REG EXCEPTION: ", exc)
         process_regular_exception(exc, False, None)
         return None
     else:
+        print("GOT SOME RESPONSE: ", response)
         return response
 
 def create_file_note(binary_id: str, text: str, info_msgs: list = None):
@@ -295,8 +296,7 @@ def add_procedure_tag(proc_hash: str, text: str, info_msgs: list = None):
     try:
         response = ctmprocs.add_procedure_tag(
             proc_hash=proc_hash,
-            note=text,
-            public=False,
+            tag=text,
             no_links=True,
             async_req=True,
         )
@@ -497,7 +497,6 @@ def create_procedure_genomics_tag(binary_id: str, rva: str, text: str, info_msgs
             binary_id=binary_id,
             rva=rva,
             name=text,
-            public=False,
             no_links=True,
             async_req=True,
         )

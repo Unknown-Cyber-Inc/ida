@@ -106,3 +106,9 @@ def get_upload_container_hashes() -> dict:
 ########################
 # Widget References
 ########################
+
+# CHECK WHERE SELF.MAIN_INTERFACE CAN BE REMOVED
+
+# MAGICPluginScrClass object
+
+# 

@@ -18,6 +18,8 @@ from idamagic.api import (
     list_procedure_similarities,
     list_file_procedure_genomics,
 )
+from idamagic.references import get_version_hash, get_ida_md5
+
 from ..tabs.tabs import (
     CenterProcTab,
     CenterDerivedFileTab,
@@ -48,8 +50,8 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         super().__init__()
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
-        self.sha1 = self.widget_parent.main_interface.hashes["version_hash"]
-        self.ida_md5 = self.widget_parent.main_interface.hashes["ida_md5"]
+        self.sha1 = get_version_hash()
+        self.ida_md5 = get_ida_md5()
         self.popups = []
         self.init_ui()
         self.tab_bar.currentChanged.connect(self.update_tab_color)
@@ -480,10 +482,12 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             response = list_file_notes(
                 binary_id=node.binary_id,
             )
+            response = response.get()
         elif type_str == "File tags":
             response = list_file_tags(
                 binary_id=node.binary_id,
             )
+            response = response.get()
         elif type_str in plain_calls:
             response = api_call(
                 binary_id=node.binary_id,

@@ -9,7 +9,15 @@ from PyQt5 import QtWidgets
 from ..helpers import get_all_idb_hashes
 from ..IDA_interface import MAGICPluginScrClass
 from ..unknowncyber_interface import MAGICPluginFormClass
-
+from ..references import (
+    get_version_hash,
+    set_version_hash,
+    set_loaded_sha1,
+    set_loaded_sha256,
+    set_loaded_md5,
+    set_ida_sha256,
+    set_ida_md5,
+)
 logging.basicConfig(level=os.getenv("IDA_LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
@@ -27,13 +35,13 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         super().__init__()
         loaded_hashes = get_all_idb_hashes()
         self.file_exists = False
+        set_loaded_sha1(loaded_hashes.get("sha1", None))
+        set_loaded_md5(loaded_hashes.get("md5", None))
+        set_loaded_sha256(loaded_hashes.get("sha256", None))
+        set_ida_md5(ida_nalt.retrieve_input_file_md5().hex())
+        set_ida_sha256(ida_nalt.retrieve_input_file_sha256().hex())
+        set_version_hash(None)
         self.hashes = {
-            "loaded_sha1": loaded_hashes.get("sha1", None),
-            "loaded_sha256": loaded_hashes.get("sha256", None),
-            "loaded_md5": loaded_hashes.get("md5", None),
-            "version_hash": None,
-            "ida_sha256": ida_nalt.retrieve_input_file_sha256().hex(),
-            "ida_md5": ida_nalt.retrieve_input_file_md5().hex(),
             "upload_content_hashes": {},
             "upload_container_hashes": {},
         }
@@ -106,9 +114,9 @@ class MAGICMainClass(ida_kernwin.PluginForm):
 
         # update version_hash
         if content_child_data:
-            self.hashes["version_hash"] = content_child_data[1]
+            set_version_hash(content_child_data[1])
         else:
-            self.hashes["version_hash"] = init_hash
+            set_version_hash(init_hash)
         self.version_hash_changed()
 
     def version_hash_changed(self):
@@ -118,9 +126,9 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         Clear the procedure table.
         """
         self.ida_plugin.proc_table.reset_table()
-        self.ida_plugin.center_widget.update_sha1(self.hashes["version_hash"])
+        self.ida_plugin.center_widget.update_sha1(get_version_hash())
         self.ida_plugin.update_sync_warning()
-        self.unknown_plugin.version_hash.setText(f"Version hash: {self.hashes['version_hash']}")
+        self.unknown_plugin.version_hash.setText(f"Version hash: {get_version_hash()}")
         self.unknown_plugin.list_widget.list_widget.clear()
         self.unknown_plugin.list_widget.list_widget_tab_bar.setCurrentIndex(2)
         self.unknown_plugin.make_list_api_call("Matches")

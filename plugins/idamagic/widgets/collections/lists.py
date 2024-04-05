@@ -4,6 +4,7 @@ from idamagic.api import delete_file_note, remove_file_tag
 from ..buttons.pagination import PaginationSelector
 from ..popups.popups import FileTextPopup, DeleteConfirmationPopup
 from ..collection_elements.list_items import CustomListItem
+from idamagic.references import get_ida_md5
 
 class BaseListWidget(QtWidgets.QWidget):
     """Base widget for lists"""
@@ -217,9 +218,7 @@ class FileListWidget(BaseListWidget):
                 type_str = "Tags"
             if "Notes" in type_str:
                 response = delete_file_note(
-                    binary_id=self.widget_parent.main_interface.hashes[
-                        "ida_md5"
-                    ],
+                    get_ida_md5(),
                     note_id=item.proc_node.node_id,
                     info_msgs=[
                         "Could not delete file Note."
@@ -227,9 +226,7 @@ class FileListWidget(BaseListWidget):
                 )
             elif "Tags" in type_str:
                 response = remove_file_tag(
-                    binary_id=self.widget_parent.main_interface.hashes[
-                        "ida_md5"
-                    ],
+                    get_ida_md5(),
                     tag_id=item.proc_node.node_id,
                     info_msgs = [
                         "Could not delete file Tag."

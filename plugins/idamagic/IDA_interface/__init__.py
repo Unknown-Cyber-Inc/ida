@@ -25,7 +25,8 @@ from ..widgets.collection_elements.table_items import ProcTableAddressItem, Proc
 from ..widgets.displays.center_display import CenterDisplayWidget
 from ..layouts import ProcsToggleLayout
 from ..helpers import create_proc_name, process_regular_exception, process_api_exception
-from ..api import (list_file_genomics,)
+from ..api import list_file_genomics
+from ..references import get_version_hash, get_loaded_sha1
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ class MAGICPluginScrClass(QWidget):
         self.pushbutton.setCheckable(False)
         self.pushbutton.clicked.connect(self.pushbutton_click)
         self.sync_warning = QLabel(
-            f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
+            f"Showing procedures from file with hash {get_version_hash()}."
             + " Addresses may be out of sync with IDA session."
         )
         self.sync_warning.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -117,7 +118,7 @@ class MAGICPluginScrClass(QWidget):
     def update_sync_warning(self):
         """Update the hash displayed in the sync warning when version hash changes."""
         self.sync_warning.setText(
-            f"Showing procedures from file with hash {self.main_interface.hashes['version_hash']}."
+            f"Showing procedures from file with hash {get_version_hash()}."
             +" Addresses may be out of sync with IDA session."
         )
         self.sync_warning.hide()
@@ -190,13 +191,14 @@ class MAGICPluginScrClass(QWidget):
         self.proc_table.reset_table()
 
         response = list_file_genomics(
-            binary_id=self.main_interface.hashes["version_hash"],
-            info_msgs = [
+            binary_id=get_version_hash(),
+            info_msgs=[
                 "No procedures could be gathered.",
                 "This may occur if the file was recently uploaded."
             ]
         )
-        response = response.get()
+
+        print("RESPONSE: ", response.status)
 
         if 200 <= response.status <= 299:
             if len(response.resource.procedures) < 1:
@@ -204,13 +206,10 @@ class MAGICPluginScrClass(QWidget):
                     "The request for procedures came back empty.\n\n" +
                     "Please check the UnknownCyber dashboard to see if the" +
                     " file associated with the hash below contains any genomics.\n\n" +
-                    f"Hash: {self.main_interface.hashes['version_hash']}"
+                    f"Hash: {get_version_hash()}"
                 )
                 popup.exec_()
                 return None
             self.populate_proc_table(response.resource)
-            if (
-                self.main_interface.hashes["version_hash"]
-                != self.main_interface.hashes["loaded_sha1"]
-            ):
+            if get_version_hash() != get_loaded_sha1():
                 self.sync_warning.show()
