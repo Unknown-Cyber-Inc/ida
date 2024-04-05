@@ -147,15 +147,12 @@ def list_file_genomics(binary_id: str, info_msgs: list = None):
         )
         response = response.get()
     except ApiException as exc:
-        print("HIT API EXCEPTION: ", exc)
         process_api_exception(exc, False, info_msgs)
         return None
     except Exception as exc:
-        print("HIT REG EXCEPTION: ", exc)
         process_regular_exception(exc, False, None)
         return None
     else:
-        print("GOT SOME RESPONSE: ", response)
         return response
 
 def create_file_note(binary_id: str, text: str, info_msgs: list = None):
@@ -296,7 +293,7 @@ def add_procedure_tag(proc_hash: str, text: str, info_msgs: list = None):
     try:
         response = ctmprocs.add_procedure_tag(
             proc_hash=proc_hash,
-            tag=text,
+            name=text,
             no_links=True,
             async_req=True,
         )

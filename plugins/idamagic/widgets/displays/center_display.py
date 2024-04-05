@@ -769,7 +769,6 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 "Unable to fetch procedure code."
             ]
         )
-        orig_response = orig_response.get()
         orig_proc = orig_response.resource
 
         derived_response = list_file_procedure_genomics(
@@ -779,7 +778,6 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 "Unable to fetch procedure code."
             ]
         )
-        derived_response = derived_response.get()
         derived_proc = derived_response.resource
 
         popup = ComparePopup(orig_proc, derived_proc)

@@ -198,8 +198,6 @@ class MAGICPluginScrClass(QWidget):
             ]
         )
 
-        print("RESPONSE: ", response.status)
-
         if 200 <= response.status <= 299:
             if len(response.resource.procedures) < 1:
                 popup = GenericPopup(
