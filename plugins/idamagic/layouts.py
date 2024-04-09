@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 )
 
 from .widgets.popups.popups import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
-from .references import get_version_hash, get_loaded_sha1
+from .references import get_version_hash, get_loaded_sha1, set_dropdown_widget
 
 
 class ProcsToggleLayout(QHBoxLayout):
@@ -74,6 +74,7 @@ class FilesButtonsLayout(QHBoxLayout):
         )
         self.upload_button.clicked.connect(self.main_upload_button_click)
         self.addWidget(self.dropdown)
+        set_dropdown_widget(self.dropdown)
         self.addWidget(self.files_toggle)
         self.addWidget(self.upload_button)
 

@@ -10,13 +10,21 @@ from ..helpers import get_all_idb_hashes
 from ..IDA_interface import MAGICPluginScrClass
 from ..unknowncyber_interface import MAGICPluginFormClass
 from ..references import (
+    add_upload_content_entry,
+    add_upload_container_entry,
     get_version_hash,
+    get_file_exists,
+    remove_upload_container_entry,
+    set_file_exists,
+    set_recent_upload_type,
     set_version_hash,
     set_loaded_sha1,
     set_loaded_sha256,
     set_loaded_md5,
     set_ida_sha256,
     set_ida_md5,
+    set_upload_container_hashes,
+    set_upload_content_hashes
 )
 logging.basicConfig(level=os.getenv("IDA_LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
@@ -34,19 +42,18 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         """Initialize main plugin and attach sub-plugins."""
         super().__init__()
         loaded_hashes = get_all_idb_hashes()
-        self.file_exists = False
+
+        # set global variables
+        set_file_exists(False)
         set_loaded_sha1(loaded_hashes.get("sha1", None))
         set_loaded_md5(loaded_hashes.get("md5", None))
         set_loaded_sha256(loaded_hashes.get("sha256", None))
         set_ida_md5(ida_nalt.retrieve_input_file_md5().hex())
         set_ida_sha256(ida_nalt.retrieve_input_file_sha256().hex())
-        set_version_hash(None)
-        self.hashes = {
-            "upload_content_hashes": {},
-            "upload_container_hashes": {},
-        }
-
-        self.recent_upload_type = None
+        set_version_hash()
+        set_upload_container_hashes()
+        set_upload_content_hashes()
+        set_recent_upload_type()
 
         self.title = main_title
         self.api_client = magic_api_client
@@ -59,9 +66,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
             "Unknown Cyber MAGIC", self.api_client, self
         )
         # create Procedure widget
-        self.ida_plugin = MAGICPluginScrClass(
-            "MAGIC Genomics", self.api_client, self
-        )
+        self.ida_plugin = MAGICPluginScrClass("MAGIC Genomics", self.api_client)
         self.unknown_plugin.init_and_populate()
 
         # set layout for main plugin
@@ -79,14 +84,6 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         if not autoinst:
             self.parent.parent().parent().setSizes([1200, 1])
 
-    def get_file_exists(self):
-        """Return value of self.file_exists"""
-        return self.file_exists
-
-    def set_file_exists(self, val):
-        """Set the value of self.file_exists."""
-        self.file_exists = val
-
     def dropdown_selection_changed(self, index):
         """
         When dropdown selection changes, update version hashes.
@@ -102,10 +99,10 @@ class MAGICMainClass(ida_kernwin.PluginForm):
             content_child_data = self.unknown_plugin.get_upload_child_data(init_hash)
           # if content found:
             if content_child_data:
-                # remove hash from container hash list,
-                del self.hashes["upload_container_hashes"][init_hash]
+                # remove hash from container hash list
+                remove_upload_container_entry(init_hash)
                 # add hash to content hash list,
-                self.hashes["upload_content_hashes"][content_child_data[1]] = index
+                add_upload_content_entry(content_child_data[1], index)
                 # create new data tuple for dropdown item
                 new_data = (content_child_data[1], "content")
                 # update dropdown item data

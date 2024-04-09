@@ -26,7 +26,7 @@ from ..widgets.displays.center_display import CenterDisplayWidget
 from ..layouts import ProcsToggleLayout
 from ..helpers import create_proc_name, process_regular_exception, process_api_exception
 from ..api import list_file_genomics
-from ..references import get_version_hash, get_loaded_sha1
+from ..references import get_version_hash, get_loaded_sha1, get_file_exists, get_dropdown_widget
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +36,13 @@ class MAGICPluginScrClass(QWidget):
     Plugin Scroll UI Object.
     """
 
-    def __init__(self, title, magic_api_client, main_interface):
+    def __init__(self, title, magic_api_client):
         """Initialializes the formtype some UI elements may not be loaded in this case,
             which may cause issues.
         Additionally, sets a few member variables necessary to the function of the plugin.
         A few are variables which are determined by IDA.
         """
         super().__init__()
-        self.main_interface = main_interface
         self.baseRVA = ida_nalt.get_imagebase()
         self.image_base = None
         self.title: str = title
@@ -171,7 +170,7 @@ class MAGICPluginScrClass(QWidget):
 
         GET from procedures and list all procedures associated with file.
         """
-        if not self.main_interface.get_file_exists():
+        if not get_file_exists():
             popup = GenericPopup(
                 "Upload a file or IDB first to generate procedures.\n\n"
                 + "If you have already uploaded, check the status with"
@@ -179,7 +178,7 @@ class MAGICPluginScrClass(QWidget):
             )
             popup.exec_()
             return None
-        elif self.main_interface.unknown_plugin.files_buttons_layout.dropdown.currentData()[1] == "container":
+        elif get_dropdown_widget().currentData()[1] == "container":
             popup = GenericPopup(
                 "The file respresented by the current version has not started processing yet.\n\n"
                 + "Use the 'Check Upload Status' to continue with this version or select a "

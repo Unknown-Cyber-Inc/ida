@@ -505,6 +505,7 @@ class StatusPopup(QtWidgets.QMessageBox):
     PIPELINE_MAP = {
         "dashboard_report": "Label Inference",
         "ioc_handler": "Ioc Extraction",
+        "ioc_extract_handler": "Ioc Extraction",
         "proc_hash_signatures": "Yara Generation",
         "reputation_handler": "Maliciousness Determination",
         "similarity_computation": "Similarity Matching",
@@ -519,7 +520,7 @@ class StatusPopup(QtWidgets.QMessageBox):
     def __init__(self, resource_list, widget_parent):
         super(StatusPopup, self).__init__(parent=widget_parent)
         self.widget_parent = widget_parent
-        self.setWindowTitle("Upload Statuses")
+        self.setWindowTitle("Upload Status")
 
         new_text_list = []
         for resource in resource_list:
