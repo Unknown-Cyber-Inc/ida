@@ -109,7 +109,6 @@ class magic(ida_idaapi.plugin_t):
         if find_widget(self.main_name) is None:
             logger.debug("Creating MAGIC main form")
             self.main_widget = MAGICMainClass(self.main_name, self.api_client)
-            # self.main_widget.parent.parent().setMaximumWidth(400)
 
     def term(self):
         """

@@ -8,7 +8,8 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
 )
 
-from .widgets import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
+from .widgets.popups.popups import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
+from .references import get_version_hash, get_loaded_sha1, set_dropdown_widget
 
 
 class ProcsToggleLayout(QHBoxLayout):
@@ -41,10 +42,7 @@ class ProcsToggleLayout(QHBoxLayout):
         """Set widgets to `show()`"""
         self.layout_parent.pushbutton.show()
         self.layout_parent.proc_table.show()
-        if (
-            self.layout_parent.main_interface.hashes["version_hash"]
-            != self.layout_parent.main_interface.hashes["loaded_sha1"]
-        ):
+        if get_version_hash() != get_loaded_sha1():
             self.layout_parent.sync_warning.show()
 
     def hide_widgets(self):
@@ -76,6 +74,7 @@ class FilesButtonsLayout(QHBoxLayout):
         )
         self.upload_button.clicked.connect(self.main_upload_button_click)
         self.addWidget(self.dropdown)
+        set_dropdown_widget(self.dropdown)
         self.addWidget(self.files_toggle)
         self.addWidget(self.upload_button)
 

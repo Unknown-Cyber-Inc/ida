@@ -10,6 +10,7 @@ import json
 import struct
 import shutil
 import traceback
+from collections import namedtuple
 import six
 import networkx
 
@@ -23,9 +24,9 @@ import ida_funcs
 import ida_name
 import ida_ua
 import idautils
+from .references import get_ida_md5, get_ida_sha256
 
 from networkx.drawing import nx_pydot
-from collections import namedtuple
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
@@ -1154,7 +1155,7 @@ def zip_disassembled(outdir):
         process_regular_exception(exc, False, info_msgs)
 
 
-def parse_binary(main_hashes=None, orig_dir=None, disassembly_hashes=None):
+def parse_binary(orig_dir=None, disassembly_hashes=None):
     """Parse the input binary and run it through the provided factory.
 
     Parameters
@@ -1190,9 +1191,9 @@ def parse_binary(main_hashes=None, orig_dir=None, disassembly_hashes=None):
         arch = get_file_architecture()
 
         bin_dict = {
-            "md5": main_hashes["ida_md5"],
+            "md5": get_ida_md5(),
             "sha1": disassembly_hashes["sha1"],
-            "sha256": main_hashes["ida_sha256"],
+            "sha256": get_ida_sha256(),
             "sha512": disassembly_hashes["sha512"],
             "unix_filetype": getUnixFileType(),
             "version": get_ida_version(),
@@ -1526,7 +1527,7 @@ def get_start_ea(obj):
 
 def process_api_exception(exc, console_only, info_msgs):
     """Prepare an APIException to be displayed."""
-    from .widgets import ErrorPopup
+    from .widgets.popups.popups import ErrorPopup
 
     logger.debug(traceback.format_exc())
     if console_only:
@@ -1556,7 +1557,7 @@ def process_api_exception(exc, console_only, info_msgs):
 
 def process_regular_exception(exc, console_only, info_msgs):
     """Prepare an Exception to be displayed."""
-    from .widgets import ErrorPopup
+    from .widgets.popups.popups import ErrorPopup
 
     logger.debug(traceback.format_exc())
     if console_only:
