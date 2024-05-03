@@ -1,0 +1,39 @@
+name: Create unknowncyberidaplugin.tgz Production Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+    createrelease:
+      name: Build
+      runs-on: [ubuntu-latest]
+      steps:
+        - name: Checkout Development Repo
+          uses: actions/checkout@v4
+
+        - name: Create unknowncyberidaplugin.tgz File
+          run: |
+            PLATFORMS=(manylinux_2_28_64 manylinux_2_28_i686 win_amd64 win32 macosx_10_9_x86_64)
+            PYTHONS=(3.7 3.8 3.9 3.10 3.11)
+            for py in "${PYTHONS[@]}"; do
+                for platform in "${PLATFORMS[@]}"; do
+                    pip download -r requirements.txt \
+                      --python-version $py \
+                      --platform $platform \
+                      -d dependencies \
+                      --no-deps
+                done
+            done
+            zip -r unknowncyberidaplugin.zip dependencies plugins requirements.txt
+            tar cvzf unknowncyberidaplugin.tgz dependencies plugins requirements.txt
+            sha256sum unknowncyberidaplugin.* > checksum
+
+        - name: Release
+          uses: softprops/action-gh-release@v2
+          with:
+            files: unknowncyberidaplugin.tgz
+            name: "UnknownCyber Prod unknowncyberidaplugin.tgz Package"
+            tag_name: "1.0"
