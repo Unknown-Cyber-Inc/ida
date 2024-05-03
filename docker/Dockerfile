@@ -37,7 +37,7 @@ RUN set -x \
 
 RUN --mount=type=bind,source=idasetup/ida.run,target=/tmp/idasetup/ida.run set -x \
     && /tmp/idasetup/ida.run --mode unattended --prefix /opt/ida --installpassword $IDA_PASSWORD \
-    && /opt/ida/idapyswitch --force-path /usr/local/lib/libpython3.7m.so \
+    && /opt/ida/idapyswitch --force-path /usr/local/lib/libpython3.11.so \
     && if [ ! -z $IDA_KEYLESS ]; then rm /opt/ida/ida.key; fi;
 
 USER unknowncyber
