@@ -40,6 +40,9 @@ jobs:
         - name: Release
           uses: softprops/action-gh-release@v2
           with:
-            files: unknowncyberidaplugin.tgz
+            files: |
+              unknowncyberidaplugin.tgz
+              unknowncyberidaplugin.zip
+              checksum
             name: "UnknownCyber IDA Plugin"
             tag_name: ${{github.event.inputs.version}}
