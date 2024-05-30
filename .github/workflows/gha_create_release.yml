@@ -1,7 +1,13 @@
-name: Create unknowncyberidaplugin.tgz Production Release
+name: Create IDA plugin Release
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release Version"
+        required: true
+        type: string
+        pattern: '^\d+\.\d+\.\d+$'
 
 permissions:
   contents: write
@@ -35,5 +41,5 @@ jobs:
           uses: softprops/action-gh-release@v2
           with:
             files: unknowncyberidaplugin.tgz
-            name: "UnknownCyber Prod unknowncyberidaplugin.tgz Package"
-            tag_name: "1.0"
+            name: "UnknownCyber IDA Plugin"
+            tag_name: ${{github.event.inputs.version}}
