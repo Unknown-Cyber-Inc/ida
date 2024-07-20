@@ -19,6 +19,12 @@ RUN set -x \
         libxcb-randr0 \
         libxcb-shape0 \
         libglu1 \
+        libgl1-mesa-glx \
+        libxcb1 \
+        libxcb-render0 \
+        libxcb-shm0 \
+        libxcb-xfixes0 \
+        libxcb-xkb1 \
     && rm -rf /var/lib/apt/lists/* \
     && apt -y autoremove
 
