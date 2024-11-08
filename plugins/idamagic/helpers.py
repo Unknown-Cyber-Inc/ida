@@ -162,10 +162,10 @@ def to_bool(param, default=False):
         # This will happen when param isn't a string
         pass
 
-    if param in {1, "1", "true", "yes", "y", True}:
+    if param in {"1", "true", "yes", "y", True}:
         return True
 
-    if param in {0, "0", "false", "no", "n", "", False}:
+    if param in {"0", "false", "no", "n", "", False}:
         return False
 
     return default
