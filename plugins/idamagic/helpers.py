@@ -19,7 +19,7 @@ import ida_nalt
 import idc
 import idaapi
 import ida_loader
-import sark
+import ida_kernwin
 import ida_funcs
 import ida_name
 import ida_ua
@@ -30,6 +30,15 @@ from networkx.drawing import nx_pydot
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
+
+
+try:
+    import sark
+except Exception as e:
+    logger.error(
+        f"Unable to import the Sark package. Likely IDA version issue. Exception: {str(e)}"
+    )
+    pass
 
 MIN_STRING_LENGTH = 3
 
@@ -798,7 +807,8 @@ def parse_sib(op_t):
 
 def get_ida_version():
     try:
-        version_string = idaapi.IDA_SDK_VERSION
+        # String response is formated "x.y(.z)", e.g. "8.4(.2)"
+        version_string = ida_kernwin.get_kernel_version()
         # Convert string to charlist with list(), then back to dot version
         # ie "800" -> ["8", "0", "0"] -> "8.0.0"
         dotted_version = ".".join(list(str(version_string)))

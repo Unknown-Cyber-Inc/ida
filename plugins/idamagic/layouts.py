@@ -9,7 +9,12 @@ from PyQt5.QtWidgets import (
 )
 
 from .widgets.popups.popups import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
-from .references import get_version_hash, get_loaded_sha1, set_dropdown_widget
+from .references import (
+    get_version_hash,
+    get_loaded_sha1,
+    set_dropdown_widget,
+    get_ida_version_valid,
+)
 
 
 class ProcsToggleLayout(QHBoxLayout):
@@ -92,7 +97,8 @@ class FilesButtonsLayout(QHBoxLayout):
 
         Renders a QMessageBox with all upload buttons
         """
-        upload_popup = FileUploadPopup(self)
+        ida_version_valid = get_ida_version_valid()
+        upload_popup = FileUploadPopup(self, ida_version_valid)
         upload_popup.exec_()
 
     def upload_binary_button_click(self):

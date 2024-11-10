@@ -396,7 +396,7 @@ class FileTextPopup(TextPopup):
 class FileUploadPopup(QtWidgets.QMessageBox):
     """Custom popup with file and disassembly upload buttons."""
 
-    def __init__(self, widget_parent):
+    def __init__(self, widget_parent, ida_version_valid):
         super().__init__()
         self.widget_parent = widget_parent
         self.setWindowTitle("Upload")
@@ -411,22 +411,23 @@ class FileUploadPopup(QtWidgets.QMessageBox):
         binary_upload_button.clicked.connect(
             self.widget_parent.upload_binary_button_click
         )
-        # idb upload button
-        idb_upload_button = self.addButton(
-            "IDB", QtWidgets.QMessageBox.ActionRole
-        )
-        idb_upload_button.setEnabled(True)
-        idb_upload_button.clicked.connect(
-            self.widget_parent.upload_idb_button_click
-        )
-        # Disassembly upload button
-        disassembly_upload_button = self.addButton(
-            "Disassembly", QtWidgets.QMessageBox.ActionRole
-        )
-        disassembly_upload_button.setEnabled(True)
-        disassembly_upload_button.clicked.connect(
-            self.widget_parent.upload_disassembly_button_click
-        )
+        if ida_version_valid:
+            # idb upload button
+            idb_upload_button = self.addButton(
+                "IDB", QtWidgets.QMessageBox.ActionRole
+            )
+            idb_upload_button.setEnabled(True)
+            idb_upload_button.clicked.connect(
+                self.widget_parent.upload_idb_button_click
+            )
+            # Disassembly upload button
+            disassembly_upload_button = self.addButton(
+                "Disassembly", QtWidgets.QMessageBox.ActionRole
+            )
+            disassembly_upload_button.setEnabled(True)
+            disassembly_upload_button.clicked.connect(
+                self.widget_parent.upload_disassembly_button_click
+            )
 
 
 class FileUnpackPopup(QtWidgets.QMessageBox):
