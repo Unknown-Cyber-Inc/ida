@@ -812,11 +812,7 @@ def parse_sib(op_t):
 def get_ida_version():
     try:
         # String response is formated "x.y(.z)", e.g. "8.4(.2)"
-        version_string = ida_kernwin.get_kernel_version()
-        # Convert string to charlist with list(), then back to dot version
-        # ie "800" -> ["8", "0", "0"] -> "8.0.0"
-        dotted_version = ".".join(list(str(version_string)))
-        return dotted_version
+        return ida_kernwin.get_kernel_version()
     except:
         return "8.2.230124"
 

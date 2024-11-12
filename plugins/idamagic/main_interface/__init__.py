@@ -94,8 +94,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
             bool: True if version is 8.x, False otherwise
         """
         try:
-            # version = ida_kernwin.get_kernel_version()
-            version = "9.1"
+            version = ida_kernwin.get_kernel_version()
             major_version = int(version.split('.')[0])
             logger.debug(f"Detected IDA version: {version} (Major: {major_version})")
 
@@ -124,11 +123,6 @@ class MAGICMainClass(ida_kernwin.PluginForm):
                 error_msg
             )
             return False
-
-    def disable_versioned_features(self):
-        """Disables features known to only work with IDA 7/8."""
-
-
 
     def dropdown_selection_changed(self, index):
         """
