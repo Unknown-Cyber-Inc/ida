@@ -23,6 +23,7 @@ from ..references import (
     set_loaded_md5,
     set_ida_sha256,
     set_ida_md5,
+    set_ida_version_valid,
     set_upload_container_hashes,
     set_upload_content_hashes
 )
@@ -40,6 +41,7 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         autoinst=False,
     ):
         """Initialize main plugin and attach sub-plugins."""
+        set_ida_version_valid(self.check_ida_version())
         super().__init__()
         loaded_hashes = get_all_idb_hashes()
 
@@ -83,6 +85,44 @@ class MAGICMainClass(ida_kernwin.PluginForm):
 
         if not autoinst:
             self.parent.parent().parent().setSizes([1200, 1])
+
+    def check_ida_version(self):
+        """
+        Check if IDA version is 8.x.
+
+        Returns:
+            bool: True if version is 8.x, False otherwise
+        """
+        try:
+            version = ida_kernwin.get_kernel_version()
+            major_version = int(version.split('.')[0])
+            logger.debug(f"Detected IDA version: {version} (Major: {major_version})")
+
+            if major_version != 8:
+                error_msg = (
+                    f"The Unknown Cyber plugin requires IDA version 8.x.\n"
+                    f"Detected version: {version}\n"
+                    f"Plugin loading with some features disabled, others may not work as intended."
+                )
+                QtWidgets.QMessageBox.critical(None,
+                    "IDA Version Error",
+                    error_msg
+                )
+                logger.error(
+                    f"Incompatible IDA version for use with Unknown Cyber plugin: {version}"
+                )
+                return False
+
+            return True
+
+        except Exception as e:
+            error_msg = f"Failed to check IDA version: {str(e)}"
+            logger.error(error_msg)
+            QtWidgets.QMessageBox.critical(None,
+                "IDA Version Error",
+                error_msg
+            )
+            return False
 
     def dropdown_selection_changed(self, index):
         """

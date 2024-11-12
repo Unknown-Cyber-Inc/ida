@@ -16,6 +16,7 @@ loaded_md5: str
 version_hash: str
 ida_sha256: str
 ida_md5: str
+ida_version_valid: bool
 upload_content_hashes: dict
 upload_container_hashes: dict
 
@@ -83,6 +84,17 @@ def set_ida_md5(hash: str):
 def get_ida_md5() -> str:
     """Return the global value for the ida_md5"""
     return ida_md5
+
+
+def set_ida_version_valid(valid: bool) -> bool:
+    """Set the global indicating if the IDA SDK version in use is 7/8.x"""
+    global ida_version_valid
+    ida_version_valid = valid
+
+
+def get_ida_version_valid() -> bool:
+    """Return global indicating if the IDA SDK version in use is 7/8.x"""
+    return ida_version_valid
 
 
 def add_upload_content_entry(hash: str, index: int):

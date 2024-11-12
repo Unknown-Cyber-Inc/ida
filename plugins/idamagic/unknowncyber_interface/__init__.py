@@ -607,17 +607,18 @@ class MAGICPluginFormClass(QWidget):
             info_msgs = ["Disassembly upload failed.\n"]
         )
 
-        response_hash = response.resource.sha1
-        index = self.dropdown.count()
-        add_upload_container_entry(response_hash, index)
-        dropdown_item_data = (response_hash, "container")
-        self.dropdown.addItem("Session Disassembly Upload", dropdown_item_data)
+        if response:
+            response_hash = response.resource.sha1
+            index = self.dropdown.count()
+            add_upload_container_entry(response_hash, index)
+            dropdown_item_data = (response_hash, "container")
+            self.dropdown.addItem("Session Disassembly Upload", dropdown_item_data)
 
-        self.status_button.setEnabled(True)
-        self.set_status_label("pending")
+            self.status_button.setEnabled(True)
+            self.set_status_label("pending")
 
-        popup = GenericPopup("Disassembly Upload Successful.")
-        popup.exec_()
+            popup = GenericPopup("Disassembly Upload Successful.")
+            popup.exec_()
 
     def check_dropdown_for_original_file(self):
         """

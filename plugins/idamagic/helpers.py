@@ -19,17 +19,30 @@ import ida_nalt
 import idc
 import idaapi
 import ida_loader
-import sark
+import ida_kernwin
 import ida_funcs
 import ida_name
 import ida_ua
-import idautils
 from .references import get_ida_md5, get_ida_sha256
 
 from networkx.drawing import nx_pydot
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
+
+import idautils
+try:
+    import ida_ida
+except:
+    logger.warning("ida_ida package unable to import. Likely not using version 9.x")
+
+try:
+    import sark
+except Exception as e:
+    logger.error(
+        f"Unable to import the Sark package. Likely IDA version issue. Exception: {str(e)}"
+    )
+    pass
 
 MIN_STRING_LENGTH = 3
 
@@ -162,10 +175,10 @@ def to_bool(param, default=False):
         # This will happen when param isn't a string
         pass
 
-    if param in {1, "1", "true", "yes", "y", True}:
+    if param in {"1", "true", "yes", "y", True}:
         return True
 
-    if param in {0, "0", "false", "no", "n", "", False}:
+    if param in {"0", "false", "no", "n", "", False}:
         return False
 
     return default
@@ -798,11 +811,8 @@ def parse_sib(op_t):
 
 def get_ida_version():
     try:
-        version_string = idaapi.IDA_SDK_VERSION
-        # Convert string to charlist with list(), then back to dot version
-        # ie "800" -> ["8", "0", "0"] -> "8.0.0"
-        dotted_version = ".".join(list(str(version_string)))
-        return dotted_version
+        # String response is formated "x.y(.z)", e.g. "8.4(.2)"
+        return ida_kernwin.get_kernel_version()
     except:
         return "8.2.230124"
 
@@ -994,21 +1004,24 @@ def _prolog_format_operand(op, line_ea):
     # Floating Point (ST) Register (st0 - st7)
     # Sark doesn't provide alias for type values > 7
     # x86 files are coming up as procname 'metapc'.
-    elif op.type.type == 11 and get_procname(
-        idaapi.get_inf_structure()
-    ).lower() in ["metapc"]:
-        opnd = get_operand(line_ea, op.n)
-        # (CAL) Why does this logic exist? Can't we
-        # just return the result of get_operand?
-        if opnd == "st":
-            return "st0"
-        else:
-            match = re.match("st\(([1-7])\)", opnd)
-            if match:
-                stregnum = match.group(1)
-                return "st" + stregnum
+    elif op.type.type == 11:
+        try:
+            procname = get_procname(idaapi.get_inf_structure())
+        except Exception:
+            procname = ida_ida.inf_get_procname()
+        if procname.lower() in ["metapc"]:
+            opnd = get_operand(line_ea, op.n)
+            # (CAL) Why does this logic exist? Can't we
+            # just return the result of get_operand?
+            if opnd == "st":
+                return "st0"
             else:
-                return None
+                match = re.match("st\(([1-7])\)", opnd)
+                if match:
+                    stregnum = match.group(1)
+                    return "st" + stregnum
+                else:
+                    return None
     # On processor specific types, just convert to an atom by surrounding in single quotes
     elif op.type.name == "Processor_specific_type":
         return "'{}'".format(op.text)
@@ -1461,10 +1474,15 @@ def get_file_architecture():
     Get the currently loaded files architecture.
     Only works when running IDA in 64 bit mode.
     """
-    structure = idaapi.get_inf_structure()
-    if structure.is_64bit():
-        return "64-bit"
-    return "32-bit" if structure.is_32bit() else "unknown"
+    try:
+        structure = idaapi.get_inf_structure()
+        if structure.is_64bit():
+            return "64-bit"
+        return "32-bit" if structure.is_32bit() else "unknown"
+    except Exception:
+        if ida_ida.inf_is_64bit():
+            return "64-bit"
+        return "32-bit" if ida_ida.inf_is_32bit_exactly() else "unknown"
 
 
 def get_idb_byte_list() -> list:

@@ -1,5 +1,3 @@
-import json
-import traceback
 import logging
 
 import cythereal_magic
@@ -78,7 +76,9 @@ def upload_disassembly(zip_path: str, info_msgs: list = None):
         response = ctmfiles.upload_disassembly(
             filedata=zip_path,
             no_links=True,
+            async_req=True,
         )
+        response = response.get()
     except ApiException as exc:
         process_api_exception(exc, False, info_msgs)
     except Exception as exc:
