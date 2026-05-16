@@ -24,6 +24,7 @@ from ..widgets.displays.center_display import CenterDisplayWidget
 from ..layouts import ProcsToggleLayout
 from ..helpers import create_proc_name
 from ..api import list_file_genomics
+from ..core.async_api import run_api
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +165,11 @@ class MAGICPluginScrClass(QWidget):
         """What to do when the 'Get Procedures' button is clicked.
 
         GET from procedures and list all procedures associated with file.
+
+        The API call is dispatched on a worker thread; the UI stays
+        responsive and the result is handed back through
+        _on_procedures_loaded. This was previously synchronous,
+        which hung IDA for tens of seconds on large files.
         """
         if not self.ctx.file_exists:
             popup = GenericPopup(
@@ -184,27 +190,48 @@ class MAGICPluginScrClass(QWidget):
 
         self.proc_table.reset_table()
 
-        response = list_file_genomics(
-            binary_id=self.ctx.version_hash,
-            info_msgs=[
-                "No procedures could be gathered.",
-                "This may occur if the file was recently uploaded.",
-            ],
+        # Disable the pushbutton while in flight so users can't queue
+        # 20 of these by impatient clicking.
+        self.pushbutton.setEnabled(False)
+        # Hold a reference so the worker isn't GC'd before completion.
+        self._proc_worker = run_api(
+            parent=self,
+            fn=list_file_genomics,
+            kwargs={
+                "binary_id": self.ctx.version_hash,
+                "info_msgs": [
+                    "No procedures could be gathered.",
+                    "This may occur if the file was recently uploaded.",
+                ],
+            },
+            on_success=self._on_procedures_loaded,
+            on_error=self._on_procedures_failed,
+            busy_message="Loading procedures from MAGIC…",
         )
 
+    def _on_procedures_loaded(self, response):
+        """Callback for pushbutton_click. Runs on the UI thread."""
+        self.pushbutton.setEnabled(True)
         if response is None:
-            return None
+            return
+        if not (200 <= response.status <= 299):
+            return
+        if len(response.resource.procedures) < 1:
+            GenericPopup(
+                "The request for procedures came back empty.\n\n"
+                "Please check the UnknownCyber dashboard to see if the"
+                " file associated with the hash below contains any genomics.\n\n"
+                f"Hash: {self.ctx.version_hash}"
+            ).exec_()
+            return
+        self.populate_proc_table(response.resource)
+        if self.ctx.version_hash != self.ctx.loaded_sha1:
+            self.sync_warning.show()
 
-        if 200 <= response.status <= 299:
-            if len(response.resource.procedures) < 1:
-                popup = GenericPopup(
-                    "The request for procedures came back empty.\n\n"
-                    "Please check the UnknownCyber dashboard to see if the"
-                    " file associated with the hash below contains any genomics.\n\n"
-                    f"Hash: {self.ctx.version_hash}"
-                )
-                popup.exec_()
-                return None
-            self.populate_proc_table(response.resource)
-            if self.ctx.version_hash != self.ctx.loaded_sha1:
-                self.sync_warning.show()
+    def _on_procedures_failed(self, exc):
+        """Error callback for pushbutton_click."""
+        self.pushbutton.setEnabled(True)
+        logger.error("Failed to load procedures: %s", exc)
+        GenericPopup(
+            f"Failed to load procedures.\n\n{exc}"
+        ).exec_()
