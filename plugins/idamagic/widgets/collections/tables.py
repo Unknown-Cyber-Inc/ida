@@ -1,5 +1,6 @@
 import ida_kernwin
 from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt
 
 class ProcTableWidget(QtWidgets.QTableWidget):
     """Custom table widget for procedures"""
@@ -26,19 +27,23 @@ class ProcTableWidget(QtWidgets.QTableWidget):
 
     def on_address_col_double_click(self, item):
         """Handle proc table row double clicks."""
+        proc = item.data(Qt.UserRole)
+        if proc is None:
+            return
         self.widget_parent.center_widget.create_tab(
             "Original procedure",
-            item=item.data(1),
+            item=proc,
             table_row=item.row(),
         )
-        self.proc_tree_jump_to_hex(item.data(1).start_ea)
+        self.proc_tree_jump_to_hex(proc.start_ea)
 
     def proc_tree_jump_to_hex(self, start_ea):
         """From item address in table view, jump IDA to that position."""
         start_ea = ida_kernwin.str2ea(start_ea)
-        found_ea = ida_kernwin.jumpto(start_ea)
-        if not found_ea:
-            start_ea = start_ea + self.widget_parent.image_base
+        jumped = ida_kernwin.jumpto(start_ea)
+        if not jumped:
+            image_base = self.widget_parent.image_base or 0
+            start_ea = start_ea + image_base
             ida_kernwin.jumpto(start_ea)
 
     def reset_table(self):

@@ -7,6 +7,7 @@ Will contain auto_inst_hooks if they are available
 
 import cythereal_magic as unknowncyber
 import ida_idaapi
+import ida_kernwin
 import logging
 import os
 
@@ -72,15 +73,13 @@ class magic(ida_idaapi.plugin_t):
         """
         # check if this is the GUI version of IDA
         if not is_idaq():
-            os.system(
-                "echo This plugin is not yet built for the terminal version."
+            logger.warning(
+                "This plugin is not yet built for the terminal version."
             )
             return ida_idaapi.PLUGIN_SKIP
 
         # display hotkey to user
         logger.info(f'MAGIC widget -- hotkey is "{self.wanted_hotkey}"')
-
-        logger.debug(logger)
 
         self.api_client = (
             unknowncyber.ApiClient()
@@ -94,7 +93,13 @@ class magic(ida_idaapi.plugin_t):
         ida_idaapi.require("idamagic.IDA_interface")
         ida_idaapi.require("idamagic.hooks")
 
-        self.main_widget = register_autoinst_hooks(self.main_name, self.api_client, MAGICMainClass)
+        # Keep a handle on the auto-instantiation hook so we can unhook in term().
+        self.autoinst_hook = register_autoinst_hooks(
+            self.main_name, self.api_client, MAGICMainClass
+        )
+        # Do not store the hook in `self.main_widget` - that field is meant
+        # for the widget instance and is populated on first run().
+        self.main_widget = None
         return ida_idaapi.PLUGIN_KEEP
 
     def run(self, args):
@@ -104,14 +109,28 @@ class magic(ida_idaapi.plugin_t):
 
         @param args: int, most likely bits demonstrating different flags. More research required
         """
-        # if IDA widget with our title does not exist,
-        # create it and populate it. Do nothing otherwise.
-        if find_widget(self.main_name) is None:
+        existing = find_widget(self.main_name)
+        if existing is None:
             logger.debug("Creating MAGIC main form")
             self.main_widget = MAGICMainClass(self.main_name, self.api_client)
+        else:
+            # Re-focus the existing widget instead of doing nothing.
+            ida_kernwin.activate_widget(existing, True)
 
     def term(self):
         """
-        Plugin is unloaded by IDA.
+        Plugin is unloaded by IDA. Clean up hooks and the widget.
         """
-        pass
+        try:
+            if getattr(self, "autoinst_hook", None) is not None:
+                self.autoinst_hook.unhook()
+                self.autoinst_hook = None
+        except Exception:
+            logger.exception("Failed to unhook autoinst hook")
+
+        try:
+            w = find_widget(self.main_name)
+            if w is not None:
+                close_widget(w, 0)
+        except Exception:
+            logger.exception("Failed to close main widget on term")

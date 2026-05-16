@@ -123,7 +123,7 @@ class ProcTextPopup(TextPopup):
                 table_item = self.proc_table.item(
                     self.listing_item.table_row, 0
                 )
-                data = table_item.data(1)
+                data = table_item.data(QtCore.Qt.UserRole)
                 data.procedure_name = text
 
                 updated_item = QTableWidgetItem(data.start_ea + " - " + text)
@@ -133,7 +133,7 @@ class ProcTextPopup(TextPopup):
                 table_item = self.proc_table.item(
                     self.listing_item.table_row, 0
                 )
-                table_item.setData(1, data)
+                table_item.setData(QtCore.Qt.UserRole, data)
 
             elif text:
                 text = (
@@ -455,36 +455,31 @@ class FileUnpackPopup(QtWidgets.QMessageBox):
         unpack_button.clicked.connect(self.widget_parent.binary_unpack)
 
 
-class FileNotFoundPopup(QtWidgets.QWidget):
+class FileNotFoundPopup(QtWidgets.QMessageBox):
     """
-    Widget for the popup displayed when the plugin is loaded with a file that
-    has not yet been uploaded to UnknownCyber Magic. Prompts user to upload.
+    Popup displayed when the plugin is loaded with a file that
+    has not yet been uploaded to UnknownCyber Magic. Prompts user
+    to upload.
+
+    Note: the previous implementation was a QWidget that owned a
+    QMessageBox built and exec_()'d inside __init__, with no
+    reference kept anywhere. After return, the outer widget was
+    garbage-collected immediately. Inheriting QMessageBox directly
+    makes lifetime obvious.
     """
 
-    def __init__(self, func):
+    def __init__(self, on_upload):
         super().__init__()
-        self.message = (
+        self.setWindowTitle("Processed file not available.")
+        self.setText(
             "You have not uploaded this file to UnknownCyber Magic. "
-            + "Upload to have access to any plugin features."
+            "Upload to have access to any plugin features."
         )
-        self.button_function = func
-        self.init_ui()
-
-    def init_ui(self):
-        """Create widgets and populate with data."""
-        # main popup window
-        popup = QtWidgets.QMessageBox()
-        popup.setWindowTitle("Processed file not available.")
-        popup.setText(self.message)
-
-        # upload button
-        upload_button = popup.addButton(
+        upload_button = self.addButton(
             "Upload file", QtWidgets.QMessageBox.ActionRole
         )
-        upload_button.setEnabled(True)
-        upload_button.clicked.connect(self.button_function)
-
-        popup.exec_()
+        upload_button.clicked.connect(on_upload)
+        self.addButton(QtWidgets.QMessageBox.Cancel)
 
 
 class DeleteConfirmationPopup(QtWidgets.QMessageBox):

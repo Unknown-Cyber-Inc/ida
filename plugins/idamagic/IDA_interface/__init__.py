@@ -153,11 +153,13 @@ class MAGICPluginScrClass(QWidget):
                 self.proc_table.setItem(
                         self.proc_table.rowCount() - 1, col, col_item
                     )
-            # Set the row's address column .data() to proc object
+            # Set the row's address column .data() to proc object.
+            # Use Qt.UserRole, not role=1 (which is DecorationRole and
+            # is meant for icons). With UserRole, Qt won't try to
+            # interpret the proc object as drawing data.
             row = self.proc_table.rowCount() - 1
             row_addr_col = self.proc_table.item(row, 0)
-            # QtTableWidgetItem.setData(role: int, value: object)
-            row_addr_col.setData(1, proc)
+            row_addr_col.setData(Qt.UserRole, proc)
 
             # add node to dict to avoid looping through objects in PluginScrHooks
             start_ea = ida_kernwin.str2ea(proc.start_ea)

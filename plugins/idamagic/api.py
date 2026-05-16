@@ -49,7 +49,6 @@ def upload_file(filedata: list, skip_unpack: bool, info_msgs: list = None):
         elif arch == "32-bit":
             arch_32 = True
 
-
         response = ctmfiles.upload_file(
             filedata=filedata,
             password="",
@@ -58,13 +57,14 @@ def upload_file(filedata: list, skip_unpack: bool, info_msgs: list = None):
             skip_unpack=skip_unpack,
             no_links=True,
             b64=True,
-            use_32 = arch_32,
-            use_64 = arch_64,
+            use_32=arch_32,
+            use_64=arch_64,
             async_req=True,
         )
         response = response.get()
     except ApiException as exc:
         process_api_exception(exc, False, info_msgs)
+        return None
     except Exception as exc:
         process_regular_exception(exc, False, [str(exc)])
         return None
@@ -81,6 +81,7 @@ def upload_disassembly(zip_path: str, info_msgs: list = None):
         response = response.get()
     except ApiException as exc:
         process_api_exception(exc, False, info_msgs)
+        return None
     except Exception as exc:
         process_regular_exception(exc, False, [str(exc)])
         return None
@@ -92,8 +93,10 @@ def list_file_notes(binary_id: str, info_msgs: list = None):
         response = ctmfiles.list_file_notes(
             binary_id=binary_id, no_links=True, async_req=True
         )
+        response = response.get()
     except ApiException as exc:
         process_api_exception(exc, False, info_msgs)
+        return None
     except Exception as exc:
         process_regular_exception(exc, False, [str(exc)])
         return None
@@ -108,8 +111,10 @@ def list_file_tags(binary_id: str, info_msgs: list = None):
             no_links=True,
             async_req=True,
         )
+        response = response.get()
     except ApiException as exc:
         process_api_exception(exc, False, info_msgs)
+        return None
     except Exception as exc:
         process_regular_exception(exc, False, [str(exc)])
         return None
@@ -129,6 +134,7 @@ def list_file_matches(binary_id: str, page: int, info_msgs: list = None):
         response = response.get()
     except ApiException as exc:
         process_api_exception(exc, True, info_msgs)
+        return None
     except Exception as exc:
         process_regular_exception(exc, False, [str(exc)])
         return None

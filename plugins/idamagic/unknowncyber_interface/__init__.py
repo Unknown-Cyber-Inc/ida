@@ -311,62 +311,53 @@ class MAGICPluginFormClass(QWidget):
         self.update_list_widget(self.list_widget, matches)
 
     def make_list_api_call(self, list_type, page=1):
-        """Make api call and handle exceptions"""
+        """Make api call and handle exceptions.
 
-        try:
-            if list_type == "Tags":
-                response = list_file_tags(
-                    binary_id=get_ida_md5(),
-                    info_msgs=[
-                        "No Tags could be gathered for file."
-                    ]
-                )
-            elif list_type == "Matches":
-                try:
-                    response = self.ctmfiles.list_file_matches(
-                        binary_id=get_version_hash(),
-                        page_count=page,
-                        page_size=25,
-                        expand_mask="matches",
-                        no_links=True,
-                        async_req=True,
-                    )
-                except ApiException as exc:
-                    info_msgs=[
-                            "No matches could be gathered for File."
-                        ]
-                    process_api_exception(exc, True, info_msgs)
-                    self.populate_file_matches(list())
-                except Exception as exc:
-                    process_regular_exception(exc, False, [str(exc)])
-                    return None
-            else:
-                response = list_file_notes(
-                    binary_id=get_ida_md5(),
-                    info_msgs=[
-                        "No notes could be gathered for File."
-                    ]
-                )
-            response = response.get()
-        except ApiException as exc:
-            info_msgs = ["No " + list_type.lower() + " could be gathered from File."]
-            if list_type == "Matches":
-                process_api_exception(exc, True, info_msgs)
-            else:
-                process_api_exception(exc, False, info_msgs)
-            if list_type == "Matches":
-                self.populate_file_matches(list())
-        except Exception as exc:
-            process_regular_exception(exc, False, [str(exc)])
-            return None
-        else:
-            if list_type == "Matches":
-                if 200 <= response["status"] <= 299:
-                    self.populate_file_matches(response["resources"])
-            elif list_type == "Notes":
-                self.populate_file_notes(response.resources)
-            elif list_type == "Tags":
+        The api.* wrappers now handle exceptions and `.get()` resolution
+        themselves and return None on failure. So we just check for None
+        and dispatch on success.
+        """
+        if list_type == "Tags":
+            response = list_file_tags(
+                binary_id=get_ida_md5(),
+                info_msgs=["No Tags could be gathered for file."],
+            )
+            if response is not None:
                 self.populate_file_tags(response.resources)
+            return
+
+        if list_type == "Notes":
+            response = list_file_notes(
+                binary_id=get_ida_md5(),
+                info_msgs=["No notes could be gathered for File."],
+            )
+            if response is not None:
+                self.populate_file_notes(response.resources)
+            return
+
+        if list_type == "Matches":
+            response = list_file_matches(
+                binary_id=get_version_hash(),
+                page=page,
+                info_msgs=["No matches could be gathered for File."],
+            )
+            if response is None:
+                self.populate_file_matches([])
+                return
+            # cythereal SDK exposes status/resources for the matches endpoint
+            # as dict-style. See populate_file_matches for the access pattern.
+            try:
+                status = response["status"]
+                resources = response["resources"]
+            except (TypeError, KeyError):
+                # Fall back to attribute-style if the SDK ever normalizes.
+                status = getattr(response, "status", 0)
+                resources = getattr(response, "resources", [])
+            if 200 <= status <= 299:
+                self.populate_file_matches(resources)
+            return
+
+        logger.error("Unknown list_type passed to make_list_api_call: %r", list_type)
 
     def update_version_hash(self, new_hash):
         """
@@ -505,11 +496,13 @@ class MAGICPluginFormClass(QWidget):
                 service_data = child.get("service_data", {})
                 timestamp = service_data.get("time", None)
                 obj_type = service_data.get("type", None)
+                # Match the gating in get_upload_child_data: require
+                # timestamp + obj_type, and either service name.
                 if (
                     timestamp
                     and obj_type == "disasm-contents"
-                    and service_name == "alt_juice_handler"
-                    or service_name == "webRequestHandler"
+                    and (service_name == "alt_juice_handler"
+                         or service_name == "webRequestHandler")
                 ):
                     self.content_versions[timestamp] = (sha1, "content")
         self.populate_dropdown()
@@ -529,11 +522,12 @@ class MAGICPluginFormClass(QWidget):
     def upload_binary(self, skip_unpack):
         try:
             binary_path = get_linked_binary_expected_path()
-        except Exception:
+        except Exception as exc:
             GenericPopup(
-                f"Binary file not found at path: {get_linked_binary_expected_path()}."
-                + "To upload this binary, move to this file path."
-            )
+                f"Binary file not found.\n\nReason: {exc}\n\n"
+                "To upload this binary, place it at the expected path."
+            ).exec_()
+            return None
         self.upload_file(binary_path, skip_unpack, False)
 
     def upload_file(self, file_path, skip_unpack, is_idb):
@@ -543,12 +537,19 @@ class MAGICPluginFormClass(QWidget):
         """
         filedata = encode_file(file_path)
 
-
         response = upload_file(
             filedata=[filedata],
             skip_unpack=skip_unpack,
-            info_msgs = ["Error uploading file.\n"]
+            info_msgs=["Error uploading file.\n"],
         )
+
+        if response is None:
+            # The api wrapper already displayed an error popup.
+            return None
+
+        if not getattr(response, "resources", None):
+            GenericPopup("Upload response contained no resources.").exec_()
+            return None
 
         response_hash = response.resources[0].sha1
         index = self.dropdown.count()
@@ -602,23 +603,30 @@ class MAGICPluginFormClass(QWidget):
             disassembly_hashes=disassembly_hashes,
         )
 
-        response, _, _ = upload_disassembly(
+        if zip_path is None:
+            # parse_binary already surfaced the error.
+            return None
+
+        response = upload_disassembly(
             zip_path=zip_path,
-            info_msgs = ["Disassembly upload failed.\n"]
+            info_msgs=["Disassembly upload failed.\n"],
         )
 
-        if response:
-            response_hash = response.resource.sha1
-            index = self.dropdown.count()
-            add_upload_container_entry(response_hash, index)
-            dropdown_item_data = (response_hash, "container")
-            self.dropdown.addItem("Session Disassembly Upload", dropdown_item_data)
+        if response is None:
+            # error popup already shown
+            return None
 
-            self.status_button.setEnabled(True)
-            self.set_status_label("pending")
+        response_hash = response.resource.sha1
+        index = self.dropdown.count()
+        add_upload_container_entry(response_hash, index)
+        dropdown_item_data = (response_hash, "container")
+        self.dropdown.addItem("Session Disassembly Upload", dropdown_item_data)
 
-            popup = GenericPopup("Disassembly Upload Successful.")
-            popup.exec_()
+        self.status_button.setEnabled(True)
+        self.set_status_label("pending")
+
+        popup = GenericPopup("Disassembly Upload Successful.")
+        popup.exec_()
 
     def check_dropdown_for_original_file(self):
         """
@@ -702,10 +710,11 @@ class MAGICPluginFormClass(QWidget):
             if any_success or any_pending:
                 set_file_exists(True)
                 self.enable_all_list_tabs()
-                if self.dropdown.currentIndex == latest_non_failure[1]:
-                    self.update_version_hash(latest_non_failure[0])
-                else:
-                    self.dropdown.setCurrentIndex(latest_non_failure[1])
+                if latest_non_failure is not None:
+                    if self.dropdown.currentIndex() == latest_non_failure[1]:
+                        self.update_version_hash(latest_non_failure[0])
+                    else:
+                        self.dropdown.setCurrentIndex(latest_non_failure[1])
 
             # display status popup
             status_popup = StatusPopup(status_objects, self)

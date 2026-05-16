@@ -84,7 +84,30 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         self.Show()
 
         if not autoinst:
-            self.parent.parent().parent().setSizes([1200, 1])
+            self._try_set_splitter_sizes()
+
+    def _try_set_splitter_sizes(self):
+        """
+        Best-effort: locate the QSplitter that owns our widget and
+        give us most of the space. The previous implementation chained
+        self.parent.parent().parent() three times, which is fragile
+        (it relies on a specific Qt layout depth and breaks if Qt
+        changes the wrapping). This walks up the parent chain looking
+        for the first QSplitter instead.
+        """
+        from PyQt5.QtWidgets import QSplitter
+
+        parent = getattr(self, "parent", None)
+        if parent is None:
+            return
+        widget = parent
+        for _ in range(8):
+            widget = widget.parent()
+            if widget is None:
+                return
+            if isinstance(widget, QSplitter):
+                widget.setSizes([1200, 1])
+                return
 
     def check_ida_version(self):
         """
@@ -173,16 +196,29 @@ class MAGICMainClass(ida_kernwin.PluginForm):
     def OnCreate(self, form):
         """
         Called when the widget is created.
+
+        We avoid re-setting the layout here because main_widget already
+        owns it from __init__. Setting the same QLayout on two widgets
+        causes Qt to silently re-parent it, leaving main_widget
+        layout-less. Instead, embed main_widget inside the IDA-provided
+        parent.
         """
-        # Convert form to PyQt obj
         self.parent = self.FormToPyQtWidget(form)
-        self.parent.setLayout(self.main_layout)
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.main_widget)
+        self.parent.setLayout(layout)
 
     def OnClose(self, form):
         """
         Called when the widget is closed.
         """
-        self.ida_plugin.plugin_hook.unhook()
+        try:
+            if self.ida_plugin.plugin_hook is not None:
+                self.ida_plugin.plugin_hook.unhook()
+                self.ida_plugin.plugin_hook = None
+        except Exception:
+            logger.exception("Failed to unhook plugin_hook on close")
         return
 
     def Show(self):

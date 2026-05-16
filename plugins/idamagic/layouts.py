@@ -124,4 +124,5 @@ class FilesButtonsLayout(QHBoxLayout):
 
     def show_file_not_found_popup(self):
         """Handles displaying the FileNotFound popup."""
-        FileNotFoundPopup(self.main_upload_button_click)
+        popup = FileNotFoundPopup(self.main_upload_button_click)
+        popup.exec_()
