@@ -43,6 +43,7 @@ from ..api import (
     upload_disassembly,
     upload_file,
 )
+from ..core.async_api import run_api
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
@@ -184,15 +185,15 @@ class MAGICPluginFormClass(QWidget):
 
     def init_and_populate(self):
         """
-        Helper, initialize and populate items in analysis tab widget
+        Helper, initialize and populate items in analysis tab widget.
+
+        Kicks off the async file-existence check. The
+        _idb_uploaded_done and _linked_binary_done callbacks finish
+        the population (enabling the tab bar, setting binary_id,
+        showing the "not found" popup) once the API result lands.
         """
         if self.check_env_vars():
             self.check_idb_uploaded()
-            if self.ctx.file_exists:
-                self.list_widget.enable_tab_bar()
-                self.list_widget.binary_id = self.ctx.ida_md5
-            else:
-                self.process_file_nonexistent()
 
     #
     # methods for connecting pyqt signals
@@ -299,48 +300,76 @@ class MAGICPluginFormClass(QWidget):
     def make_list_api_call(self, list_type, page=1):
         """Make api call and handle exceptions.
 
-        The api.* wrappers now handle exceptions and `.get()` resolution
-        themselves and return None on failure. So we just check for None
-        and dispatch on success.
+        The actual API call runs on a worker thread; results are
+        delivered to the appropriate _on_*_loaded callback on the
+        UI thread. The api.* wrappers handle exceptions internally
+        and return None on failure.
+
+        Tab-switch UX: rather than freeze the panel while the request
+        is in flight, we leave the previous content visible until the
+        new content arrives. This matches the pattern in most modern
+        tabbed UIs (browser tabs, IDE panels) and avoids the visible
+        flicker of clearing + repopulating.
         """
         if list_type == "Tags":
-            response = list_file_tags(
-                binary_id=self.ctx.ida_md5,
-                info_msgs=["No Tags could be gathered for file."],
+            self._tags_worker = run_api(
+                parent=self,
+                fn=list_file_tags,
+                kwargs={
+                    "binary_id": self.ctx.ida_md5,
+                    "info_msgs": ["No Tags could be gathered for file."],
+                },
+                on_success=self._on_tags_loaded,
             )
-            if response is not None:
-                self.populate_file_tags(response.resources)
             return
 
         if list_type == "Notes":
-            response = list_file_notes(
-                binary_id=self.ctx.ida_md5,
-                info_msgs=["No notes could be gathered for File."],
+            self._notes_worker = run_api(
+                parent=self,
+                fn=list_file_notes,
+                kwargs={
+                    "binary_id": self.ctx.ida_md5,
+                    "info_msgs": ["No notes could be gathered for File."],
+                },
+                on_success=self._on_notes_loaded,
             )
-            if response is not None:
-                self.populate_file_notes(response.resources)
             return
 
         if list_type == "Matches":
-            response = list_file_matches(
-                binary_id=self.ctx.version_hash,
-                page=page,
-                info_msgs=["No matches could be gathered for File."],
+            self._matches_worker = run_api(
+                parent=self,
+                fn=list_file_matches,
+                kwargs={
+                    "binary_id": self.ctx.version_hash,
+                    "page": page,
+                    "info_msgs": ["No matches could be gathered for File."],
+                },
+                on_success=self._on_matches_loaded,
             )
-            if response is None:
-                self.populate_file_matches([])
-                return
-            try:
-                status = response["status"]
-                resources = response["resources"]
-            except (TypeError, KeyError):
-                status = getattr(response, "status", 0)
-                resources = getattr(response, "resources", [])
-            if 200 <= status <= 299:
-                self.populate_file_matches(resources)
             return
 
         logger.error("Unknown list_type passed to make_list_api_call: %r", list_type)
+
+    def _on_tags_loaded(self, response):
+        if response is not None:
+            self.populate_file_tags(response.resources)
+
+    def _on_notes_loaded(self, response):
+        if response is not None:
+            self.populate_file_notes(response.resources)
+
+    def _on_matches_loaded(self, response):
+        if response is None:
+            self.populate_file_matches([])
+            return
+        try:
+            status = response["status"]
+            resources = response["resources"]
+        except (TypeError, KeyError):
+            status = getattr(response, "status", 0)
+            resources = getattr(response, "resources", [])
+        if 200 <= status <= 299:
+            self.populate_file_matches(resources)
 
     def update_version_hash(self, new_hash):
         """
@@ -353,96 +382,163 @@ class MAGICPluginFormClass(QWidget):
         """
         Call the api at `get_file` to check for idb's pervious upload.
         If not, check for original binary's pervious upload.
+
+        Runs on a worker thread so the plugin doesn't freeze IDA's
+        UI on startup. The full chain is:
+
+            check_idb_uploaded → _idb_uploaded_done
+                ├── success → check_linked_binary_object_exists(True)
+                │             → _linked_binary_done(idb_uploaded=True)
+                └── 404     → check_linked_binary_object_exists(False)
+                              → _linked_binary_done(idb_uploaded=False)
         """
         self.ctx.file_exists = False
-        read_mask = "*,children.*"
-        expand_mask = "children"
-        try:
-            sha1 = self.ctx.loaded_sha1
-            response = self.ctmfiles.get_file(
-                binary_id=sha1,
-                no_links=True,
-                read_mask=read_mask,
-                expand_mask=expand_mask,
-                async_req=True,
-            )
-            response = response.get()
-        except ApiException as exc:
-            print(
-                "Previous IDB upload match failed. Checking for binary or it's child content files."
-            )
-            self.ctx.file_exists = False
-            linked_binary_uploaded = self.check_linked_binary_object_exists(False)
-            if not linked_binary_uploaded:
-                self.update_version_hash(self.ctx.loaded_sha1)
-                self.list_widget.disable_tab_bar()
-                process_api_exception(
-                    exc,
-                    True,
-                    ["No upload has occurred for the loaded IDB's linked binary file."
-                    + " This includes any disassembly or IDB uploads."]
+        ctmfiles = self.ctmfiles
+
+        # Define a small worker that captures the exception so the
+        # callback can distinguish "404, not uploaded yet" (expected)
+        # from real errors.
+        def _fetch():
+            try:
+                response = ctmfiles.get_file(
+                    binary_id=self.ctx.loaded_sha1,
+                    no_links=True,
+                    read_mask="*,children.*",
+                    expand_mask="children",
+                    async_req=True,
                 )
-        except Exception as exc:
-            process_regular_exception(exc, False, [str(exc)])
-            self.list_widget.disable_tab_bar()
-            return None
-        else:
+                return ("ok", response.get())
+            except ApiException as exc:
+                return ("api_error", exc)
+            except Exception as exc:
+                return ("error", exc)
+
+        self._idb_uploaded_worker = run_api(
+            parent=self,
+            fn=_fetch,
+            on_success=self._idb_uploaded_done,
+        )
+
+    def _idb_uploaded_done(self, result):
+        """UI-thread callback for check_idb_uploaded."""
+        kind, payload = result
+        if kind == "ok":
+            response = payload
             if 200 <= response.status <= 299:
-                print("IDB uploaded previously.")
+                logger.info("IDB uploaded previously.")
                 self.ctx.file_exists = True
                 self.list_widget.enable_tab_bar()
-                original_exists = self.check_linked_binary_object_exists(True)
-                if not original_exists:
-                    self.update_version_hash(response.resource.sha1)
+                self.list_widget.binary_id = self.ctx.ida_md5
+                self._idb_uploaded_response = response
+                self.check_linked_binary_object_exists(True)
+            return
+        if kind == "api_error":
+            logger.info(
+                "Previous IDB upload match failed. Checking for binary "
+                "or its child content files."
+            )
+            self.ctx.file_exists = False
+            self._idb_uploaded_exception = payload
+            self.check_linked_binary_object_exists(False)
+            return
+        # kind == "error" → fatal
+        process_regular_exception(payload, False, [str(payload)])
+        self.list_widget.disable_tab_bar()
+        self.process_file_nonexistent()
 
     def check_linked_binary_object_exists(self, idb_uploaded):
         """
         Call the api at `get_file` to check for the real IDB-linked binary's
-          pervious upload with IDA hash md5.
+          previous upload with IDA hash md5.
         If not, check for any content file children in response.
         If content children, return the sha1 of the most recent.
+
+        Async; result handed off to _linked_binary_done.
         """
-        read_mask = "*,children.*"
-        expand_mask = "children"
-        try:
-            response = self.ctmfiles.get_file(
-                binary_id=self.ctx.ida_md5,
-                no_links=True,
-                read_mask=read_mask,
-                expand_mask=expand_mask,
-                async_req=True,
-            )
-            response = response.get()
-        except ApiException as exc:
-            info_msgs = [
-                "IDB-linked binary nor any IDB/disassemblies from this binary uploaded yet.\n"
-            ]
-            process_api_exception(exc, True, info_msgs)
-            return False
-        except Exception as exc:
-            process_regular_exception(exc, True, [str(exc)])
-            return False
-        print("IDB-Linked Binary Found. Checking for content-children.")
+        ctmfiles = self.ctmfiles
+
+        def _fetch():
+            try:
+                response = ctmfiles.get_file(
+                    binary_id=self.ctx.ida_md5,
+                    no_links=True,
+                    read_mask="*,children.*",
+                    expand_mask="children",
+                    async_req=True,
+                )
+                return ("ok", response.get())
+            except ApiException as exc:
+                return ("api_error", exc)
+            except Exception as exc:
+                return ("error", exc)
+
+        # Stash the idb_uploaded flag so the callback knows which
+        # branch it's in. (We avoid functools.partial because we
+        # also want to nullify the worker reference cleanly.)
+        self._linked_idb_uploaded = idb_uploaded
+        self._linked_binary_worker = run_api(
+            parent=self,
+            fn=_fetch,
+            on_success=self._linked_binary_done,
+        )
+
+    def _linked_binary_done(self, result):
+        """UI-thread callback for check_linked_binary_object_exists."""
+        idb_uploaded = self._linked_idb_uploaded
+        kind, payload = result
+
+        if kind != "ok":
+            # Couldn't find the binary. If we got here via the
+            # check_idb_uploaded fallback path, surface the IDB error
+            # and announce that no file exists.
+            if not idb_uploaded:
+                self.update_version_hash(self.ctx.loaded_sha1)
+                self.list_widget.disable_tab_bar()
+                if kind == "api_error":
+                    exc = getattr(self, "_idb_uploaded_exception", payload)
+                    process_api_exception(
+                        exc,
+                        True,
+                        ["No upload has occurred for the loaded IDB's "
+                         "linked binary file. This includes any "
+                         "disassembly or IDB uploads."],
+                    )
+                else:
+                    process_regular_exception(payload, True, [str(payload)])
+                self.process_file_nonexistent()
+            return
+
+        response = payload
+        logger.info("IDB-Linked Binary Found. Checking for content-children.")
         self.populate_content_versions(response.resource)
         if not idb_uploaded:
-            # Cast content_versions dict to a list.
-            # Select the last item in the list. Select the value, a tuple, of that dict item.
-            # Get the second value, a file hash, of that tuple.
             content_child_sha1 = list(self.content_versions.items())[-1][-1][0]
             if content_child_sha1:
                 count = self.dropdown.count()
                 self.dropdown.setCurrentIndex(count - 1)
                 self.update_version_hash(content_child_sha1)
                 self.ctx.file_exists = True
-                return True
-            elif self.verify_linked_binary_sha1(response.resource):
+                self.list_widget.enable_tab_bar()
+                self.list_widget.binary_id = self.ctx.ida_md5
+                return
+            if self.verify_linked_binary_sha1(response.resource):
                 self.update_version_hash(response.resource.sha1)
                 self.ctx.file_exists = True
-                return True
-            return False
-        # idb_uploaded=True path: we found the IDB-linked binary,
-        # populated versions; report success.
-        return True
+                self.list_widget.enable_tab_bar()
+                self.list_widget.binary_id = self.ctx.ida_md5
+                return
+            # No usable record anywhere
+            self.process_file_nonexistent()
+            return
+
+        # idb_uploaded path: the IDB-linked binary check is a
+        # supplementary lookup; if it didn't find a content child,
+        # fall back to the IDB's own sha1.
+        idb_response = getattr(self, "_idb_uploaded_response", None)
+        if idb_response is not None:
+            if len(self.content_versions) <= 1:
+                # Only "Original File" entry; no version children
+                self.update_version_hash(idb_response.resource.sha1)
 
     def verify_linked_binary_sha1(self, file):
         """
@@ -628,100 +724,135 @@ class MAGICPluginFormClass(QWidget):
                 or self.dropdown.itemText(0) == "Session Binary Upload")
 
     def get_file_statuses(self):
-        """Get the statuses of uploaded files."""
-        read_mask = "status,pipeline,sha1,create_time"
-        self.containers_to_content_hashes()  # convert container -> child content hashes
-        content_hashes = self.ctx.upload_content_hashes
+        """Get the statuses of uploaded files.
+
+        The per-file get_file loop runs on a worker thread; the
+        result-processing logic (UI updates, popup display) runs
+        on the UI thread in _file_statuses_done.
+
+        containers_to_content_hashes still runs synchronously
+        because it has interleaved UI updates (dropdown text/data).
+        In practice the container set is small (0-3 items).
+        """
+        self.containers_to_content_hashes()
+        content_hashes = dict(self.ctx.upload_content_hashes)  # snapshot
         container_hashes = self.ctx.upload_container_hashes
 
-        any_pending = False
-        any_failure = False
-        any_success = False
-        latest_non_failure = None  # Value will be a tuple of (hash, dropdown_index)
-        status_objects = []
+        if len(content_hashes) <= 0:
+            # Empty: nothing to fetch; handle the empty-state UI now.
+            if not self.ctx.file_exists:
+                self.status_button.setEnabled(False)
+                ErrorPopup(
+                    ["No record of an uploaded file. Try to upload a file again."],
+                    None,
+                ).exec_()
+            elif len(content_hashes) < 1 and len(container_hashes) < 1:
+                self.status_button.setEnabled(False)
+                ErrorPopup(
+                    ["All uploaded files have entered and finished the processing stage."],
+                    None,
+                ).exec_()
+            return
 
-        if len(content_hashes) > 0:
-            new_content_dict = {}
+        # Disable the button so users don't fire multiple concurrent
+        # status checks. The callback re-enables.
+        self.status_button.setEnabled(False)
+        self.set_status_label("checking…")
+
+        ctmfiles = self.ctmfiles
+        read_mask = "status,pipeline,sha1,create_time"
+
+        def _fetch_all():
+            """Worker: query each content hash, collect resources."""
+            collected = []  # list of (content_hash, index, resource_or_None)
             for content_hash, index in content_hashes.items():
                 try:
-                    response = self.ctmfiles.get_file(
+                    response = ctmfiles.get_file(
                         binary_id=content_hash,
                         no_links=True,
                         read_mask=read_mask,
                         async_req=True,
                     )
                     response = response.get()
+                    collected.append((content_hash, index, response.resource, None))
                 except ApiException as exc:
-                    info_msgs = [
-                        "Error retrieving status of uploaded file.\n"
-                    ]
-                    process_api_exception(exc, False, info_msgs)
-                    self.set_status_label("Api failure")
-                    return None
+                    collected.append((content_hash, index, None, ("api_error", exc)))
                 except Exception as exc:
-                    info_msgs = [
-                        "Unknown error retrieving status of uploaded file.\n"
-                    ]
-                    process_regular_exception(exc, False, info_msgs)
-                    self.set_status_label("Plugin failure")
-                    return None
+                    collected.append((content_hash, index, None, ("error", exc)))
+            return collected
+
+        self._file_statuses_worker = run_api(
+            parent=self,
+            fn=_fetch_all,
+            on_success=self._file_statuses_done,
+            busy_message="Checking upload status…",
+        )
+
+    def _file_statuses_done(self, collected):
+        """UI-thread callback for get_file_statuses."""
+        self.status_button.setEnabled(True)
+
+        # Surface the first error encountered.
+        for _, _, _, err in collected:
+            if err is None:
+                continue
+            kind, exc = err
+            if kind == "api_error":
+                process_api_exception(
+                    exc, False, ["Error retrieving status of uploaded file.\n"]
+                )
+                self.set_status_label("Api failure")
+            else:
+                process_regular_exception(
+                    exc, False, ["Unknown error retrieving status of uploaded file.\n"]
+                )
+                self.set_status_label("Plugin failure")
+            return
+
+        # All-success path: replicate the original aggregation logic.
+        any_pending = False
+        any_failure = False
+        any_success = False
+        latest_non_failure = None
+        status_objects = []
+        new_content_dict = {}
+
+        for content_hash, index, resource, _ in collected:
+            upload_status = resource.status.lower()
+            if upload_status == "pending":
+                any_pending = True
+                latest_non_failure = (content_hash, index)
+                new_content_dict[content_hash] = index
+            elif upload_status == "success":
+                any_success = True
+                latest_non_failure = (content_hash, index)
+            elif upload_status == "failure":
+                any_failure = True
+                new_content_dict[content_hash] = index
+            status_objects.append(resource)
+
+        self.ctx.upload_content_hashes = new_content_dict
+
+        status_result = []
+        if any_pending:
+            status_result.append("Pending")
+        if any_failure:
+            status_result.append("Failure")
+        if any_success:
+            status_result.append("Success")
+        self.set_status_label(", ".join(status_result))
+
+        if any_success or any_pending:
+            self.ctx.file_exists = True
+            self.enable_all_list_tabs()
+            if latest_non_failure is not None:
+                if self.dropdown.currentIndex() == latest_non_failure[1]:
+                    self.update_version_hash(latest_non_failure[0])
                 else:
-                    # get upload status
-                    upload_status = response.resource.status.lower()
-                    if upload_status == "pending":
-                        any_pending = True
-                        latest_non_failure = (content_hash, index)
-                        new_content_dict[content_hash] = index
-                    elif upload_status == "success":
-                        any_success = True
-                        latest_non_failure = (content_hash, index)
-                    elif upload_status == "failure":
-                        any_failure = True
-                        new_content_dict[content_hash] = index
+                    self.dropdown.setCurrentIndex(latest_non_failure[1])
 
-                    # capture file status info
-                    status_objects.append(response.resource)
-
-            self.ctx.upload_content_hashes = new_content_dict
-
-            # update the upload status label
-            status_result = []
-            if any_pending:
-                status_result.append("Pending")
-            if any_failure:
-                status_result.append("Failure")
-            if any_success:
-                status_result.append("Success")
-            self.set_status_label(", ".join(status_result))
-
-            # file exists behavior
-            if any_success or any_pending:
-                self.ctx.file_exists = True
-                self.enable_all_list_tabs()
-                if latest_non_failure is not None:
-                    if self.dropdown.currentIndex() == latest_non_failure[1]:
-                        self.update_version_hash(latest_non_failure[0])
-                    else:
-                        self.dropdown.setCurrentIndex(latest_non_failure[1])
-
-            # display status popup
-            status_popup = StatusPopup(status_objects, self)
-            status_popup.show()
-
-        elif not self.ctx.file_exists:
-            self.status_button.setEnabled(False)
-            err_popup = ErrorPopup(
-                ["No record of an uploaded file. Try to upload a file again."],
-                None
-            )
-            err_popup.exec_()
-        elif len(content_hashes) < 1 and len(container_hashes) < 1:
-            self.status_button.setEnabled(False)
-            err_popup = ErrorPopup(
-                ["All uploaded files have entered and finished the processing stage."],
-                None
-            )
-            err_popup.exec_()
+        status_popup = StatusPopup(status_objects, self)
+        status_popup.show()
 
     def containers_to_content_hashes(self):
         """Get the child content hash of the given container hash's file object."""
