@@ -14,6 +14,7 @@ import os
 from dotenv import load_dotenv
 from ida_kernwin import find_widget, is_idaq, close_widget
 
+from .core.context import PluginContext
 from .unknowncyber_interface import MAGICPluginFormClass
 from .IDA_interface import MAGICPluginScrClass
 from .main_interface import MAGICMainClass
@@ -81,12 +82,18 @@ class magic(ida_idaapi.plugin_t):
         # display hotkey to user
         logger.info(f'MAGIC widget -- hotkey is "{self.wanted_hotkey}"')
 
-        self.api_client = (
-            unknowncyber.ApiClient()
-        )  # Create API client to be used by plugin
+        # Create the session context. The api_client lives here and
+        # is shared with every sub-widget via the context, eliminating
+        # the previous module-global pattern (references.py).
+        self.ctx = PluginContext()
+        self.ctx.api_client = unknowncyber.ApiClient()
+        self.ctx.api_client.configuration.api_key["key"] = os.getenv("MAGIC_API_KEY")
+        self.ctx.api_client.configuration.host = os.getenv("MAGIC_API_HOST")
 
-        self.api_client.configuration.api_key["key"] = os.getenv("MAGIC_API_KEY")
-        self.api_client.configuration.host = os.getenv("MAGIC_API_HOST")
+        # Keep api_client at the old attribute name too so any
+        # external script that pokes at `plugin.api_client` keeps
+        # working. Slated for removal in a future cleanup.
+        self.api_client = self.ctx.api_client
 
         ida_idaapi.require("idamagic.main_interface")
         ida_idaapi.require("idamagic.unknowncyber_interface")
@@ -95,10 +102,8 @@ class magic(ida_idaapi.plugin_t):
 
         # Keep a handle on the auto-instantiation hook so we can unhook in term().
         self.autoinst_hook = register_autoinst_hooks(
-            self.main_name, self.api_client, MAGICMainClass
+            self.main_name, self.ctx, MAGICMainClass
         )
-        # Do not store the hook in `self.main_widget` - that field is meant
-        # for the widget instance and is populated on first run().
         self.main_widget = None
         return ida_idaapi.PLUGIN_KEEP
 
@@ -112,7 +117,7 @@ class magic(ida_idaapi.plugin_t):
         existing = find_widget(self.main_name)
         if existing is None:
             logger.debug("Creating MAGIC main form")
-            self.main_widget = MAGICMainClass(self.main_name, self.api_client)
+            self.main_widget = MAGICMainClass(self.main_name, self.ctx)
         else:
             # Re-focus the existing widget instead of doing nothing.
             ida_kernwin.activate_widget(existing, True)

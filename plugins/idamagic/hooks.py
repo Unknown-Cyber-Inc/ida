@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def register_autoinst_hooks(
-    name, api_client, form_type: ida_kernwin.PluginForm
+    name, ctx, form_type: ida_kernwin.PluginForm
 ):
     """
     Register hook to start unknowncyber_interface automatically at IDA launch,
@@ -23,8 +23,8 @@ def register_autoinst_hooks(
     ----------
     name: str
         The name of the plugin to select.
-    api_client: cythereal_magic.apiClient
-        cythereal_magic's API client to access the system.
+    ctx: idamagic.core.context.PluginContext
+        Shared plugin state, including the API client.
     form_type: ida_kernwin.PluginForm
         The type of form which is to be hooked and returned
     Returns the hook handle so the caller can unhook in term().
@@ -37,7 +37,7 @@ def register_autoinst_hooks(
 
         def create_desktop_widget(self, ttl, cfg):
             if ttl == name:
-                MAGICWidgetPage = form_type(name, api_client, autoinst=True)
+                MAGICWidgetPage = form_type(name, ctx, autoinst=True)
                 return MAGICWidgetPage.GetWidget()
 
     if form_type is MAGICMainClass:

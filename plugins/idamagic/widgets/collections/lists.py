@@ -4,17 +4,22 @@ from idamagic.api import delete_file_note, remove_file_tag
 from ..buttons.pagination import PaginationSelector
 from ..popups.popups import FileTextPopup, DeleteConfirmationPopup
 from ..collection_elements.list_items import CustomListItem
-from idamagic.references import get_ida_md5
+
 
 class BaseListWidget(QtWidgets.QWidget):
     """Base widget for lists"""
 
-    def __init__(self, list_items, parent=None, binary_id=None, popup=None):
+    def __init__(self, list_items, parent=None, ctx=None, binary_id=None, popup=None):
         super().__init__(parent)
 
+        self.ctx = ctx
         self.list_items = list_items
         self.list_widget_tab_bar = QtWidgets.QTabBar()
         self.list_widget = QtWidgets.QListWidget()
+        # Caller can pass binary_id explicitly; otherwise we derive
+        # from the context once it's available.
+        if binary_id is None and ctx is not None:
+            binary_id = ctx.ida_md5
         self.binary_id = binary_id
         self.popup = popup
         self.name = None
@@ -72,11 +77,12 @@ class BaseListWidget(QtWidgets.QWidget):
 class FileListWidget(BaseListWidget):
     """Custom widget to display notes/tags/matches for a file."""
 
-    def __init__(self, list_items, binary_id=None, widget_parent=None):
+    def __init__(self, list_items, ctx=None, widget_parent=None, binary_id=None):
         self.popup = None
         super().__init__(
             list_items=list_items,
             parent=widget_parent,
+            ctx=ctx,
             binary_id=binary_id,
             popup=self.popup,
         )
@@ -218,7 +224,7 @@ class FileListWidget(BaseListWidget):
                 type_str = "Tags"
             if "Notes" in type_str:
                 response = delete_file_note(
-                    get_ida_md5(),
+                    self.ctx.ida_md5,
                     note_id=item.proc_node.node_id,
                     info_msgs=[
                         "Could not delete file Note."
@@ -226,9 +232,9 @@ class FileListWidget(BaseListWidget):
                 )
             elif "Tags" in type_str:
                 response = remove_file_tag(
-                    get_ida_md5(),
+                    self.ctx.ida_md5,
                     tag_id=item.proc_node.node_id,
-                    info_msgs = [
+                    info_msgs=[
                         "Could not delete file Tag."
                     ]
                 )

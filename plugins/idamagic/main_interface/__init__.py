@@ -9,24 +9,7 @@ from PyQt5 import QtWidgets
 from ..helpers import get_all_idb_hashes
 from ..IDA_interface import MAGICPluginScrClass
 from ..unknowncyber_interface import MAGICPluginFormClass
-from ..references import (
-    add_upload_content_entry,
-    add_upload_container_entry,
-    get_version_hash,
-    get_file_exists,
-    remove_upload_container_entry,
-    set_file_exists,
-    set_recent_upload_type,
-    set_version_hash,
-    set_loaded_sha1,
-    set_loaded_sha256,
-    set_loaded_md5,
-    set_ida_sha256,
-    set_ida_md5,
-    set_ida_version_valid,
-    set_upload_container_hashes,
-    set_upload_content_hashes
-)
+
 logging.basicConfig(level=os.getenv("IDA_LOGLEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
@@ -37,38 +20,41 @@ class MAGICMainClass(ida_kernwin.PluginForm):
     def __init__(
         self,
         main_title,
-        magic_api_client,
+        ctx,
         autoinst=False,
     ):
-        """Initialize main plugin and attach sub-plugins."""
-        set_ida_version_valid(self.check_ida_version())
-        super().__init__()
-        loaded_hashes = get_all_idb_hashes()
+        """Initialize main plugin and attach sub-plugins.
 
-        # set global variables
-        set_file_exists(False)
-        set_loaded_sha1(loaded_hashes.get("sha1", None))
-        set_loaded_md5(loaded_hashes.get("md5", None))
-        set_loaded_sha256(loaded_hashes.get("sha256", None))
-        set_ida_md5(ida_nalt.retrieve_input_file_md5().hex())
-        set_ida_sha256(ida_nalt.retrieve_input_file_sha256().hex())
-        set_version_hash()
-        set_upload_container_hashes()
-        set_upload_content_hashes()
-        set_recent_upload_type()
+        ctx is the idamagic.core.context.PluginContext. All shared state
+        lives on it; there are no module-level globals.
+        """
+        self.ctx = ctx
+        ctx.ida_version_valid = self.check_ida_version()
+        super().__init__()
+
+        loaded_hashes = get_all_idb_hashes()
+        ctx.file_exists = False
+        ctx.loaded_sha1 = loaded_hashes.get("sha1")
+        ctx.loaded_md5 = loaded_hashes.get("md5")
+        ctx.loaded_sha256 = loaded_hashes.get("sha256")
+        ctx.ida_md5 = ida_nalt.retrieve_input_file_md5().hex()
+        ctx.ida_sha256 = ida_nalt.retrieve_input_file_sha256().hex()
+        ctx.version_hash = None
+        ctx.upload_container_hashes = {}
+        ctx.upload_content_hashes = {}
+        ctx.recent_upload_type = None
 
         self.title = main_title
-        self.api_client = magic_api_client
 
         # main plugin widget
         self.main_widget = QtWidgets.QWidget()
 
         # create File widget
         self.unknown_plugin = MAGICPluginFormClass(
-            "Unknown Cyber MAGIC", self.api_client, self
+            "Unknown Cyber MAGIC", ctx, self
         )
         # create Procedure widget
-        self.ida_plugin = MAGICPluginScrClass("MAGIC Genomics", self.api_client)
+        self.ida_plugin = MAGICPluginScrClass("MAGIC Genomics", ctx)
         self.unknown_plugin.init_and_populate()
 
         # set layout for main plugin
@@ -160,12 +146,12 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         # if obj_type is container, query for content
         if obj_type.lower() == "container":
             content_child_data = self.unknown_plugin.get_upload_child_data(init_hash)
-          # if content found:
+            # if content found:
             if content_child_data:
                 # remove hash from container hash list
-                remove_upload_container_entry(init_hash)
-                # add hash to content hash list,
-                add_upload_content_entry(content_child_data[1], index)
+                self.ctx.remove_upload_container_entry(init_hash)
+                # add hash to content hash list
+                self.ctx.add_upload_content_entry(content_child_data[1], index)
                 # create new data tuple for dropdown item
                 new_data = (content_child_data[1], "content")
                 # update dropdown item data
@@ -174,9 +160,9 @@ class MAGICMainClass(ida_kernwin.PluginForm):
 
         # update version_hash
         if content_child_data:
-            set_version_hash(content_child_data[1])
+            self.ctx.version_hash = content_child_data[1]
         else:
-            set_version_hash(init_hash)
+            self.ctx.version_hash = init_hash
         self.version_hash_changed()
 
     def version_hash_changed(self):
@@ -186,9 +172,11 @@ class MAGICMainClass(ida_kernwin.PluginForm):
         Clear the procedure table.
         """
         self.ida_plugin.proc_table.reset_table()
-        self.ida_plugin.center_widget.update_sha1(get_version_hash())
+        self.ida_plugin.center_widget.update_sha1(self.ctx.version_hash)
         self.ida_plugin.update_sync_warning()
-        self.unknown_plugin.version_hash.setText(f"Version hash: {get_version_hash()}")
+        self.unknown_plugin.version_hash.setText(
+            f"Version hash: {self.ctx.version_hash}"
+        )
         self.unknown_plugin.list_widget.list_widget.clear()
         self.unknown_plugin.list_widget.list_widget_tab_bar.setCurrentIndex(2)
         self.unknown_plugin.make_list_api_call("Matches")

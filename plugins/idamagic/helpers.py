@@ -24,7 +24,11 @@ import ida_kernwin
 import ida_funcs
 import ida_name
 import ida_ua
-from .references import get_ida_md5, get_ida_sha256
+
+# Note: helpers.py no longer imports from references.py. The two
+# call sites that needed ida_md5/ida_sha256 (parse_binary) now take
+# them as explicit parameters from the caller, which has the
+# PluginContext.
 
 from networkx.drawing import nx_pydot
 
@@ -1168,19 +1172,29 @@ def zip_disassembled(outdir):
         process_regular_exception(exc, False, info_msgs)
 
 
-def parse_binary(orig_dir=None, disassembly_hashes=None):
+def parse_binary(orig_dir=None, disassembly_hashes=None,
+                 ida_md5=None, ida_sha256=None):
     """Parse the input binary and run it through the provided factory.
 
     Parameters
     ----------
-    parser: AbstractBinaryParser
-        The parser to run against the Binary. Defaults to JSONBinaryFactory.
+    orig_dir: str | None
+        If provided, write output into ``{orig_dir}/outdir`` rather than
+        the default location next to the IDB.
+    disassembly_hashes: dict
+        Must include keys 'sha1' and 'sha512' (already computed by the
+        caller for the linked binary).
+    ida_md5: str
+        MD5 of the original binary as recorded by IDA. Previously read
+        from references.get_ida_md5(); now passed explicitly so this
+        function doesn't depend on module-global state.
+    ida_sha256: str
+        SHA256 of the original binary as recorded by IDA.
 
     Returns
     -------
-    varied
-
-        Returns the result of parser.finish()
+    str | None
+        Path to the produced zip archive, or None on failure.
     """
     if orig_dir is None:
         ida_dir = os.path.dirname(get_linked_binary_expected_path())
@@ -1204,9 +1218,9 @@ def parse_binary(orig_dir=None, disassembly_hashes=None):
         arch = get_file_architecture()
 
         bin_dict = {
-            "md5": get_ida_md5(),
+            "md5": ida_md5,
             "sha1": disassembly_hashes["sha1"],
-            "sha256": get_ida_sha256(),
+            "sha256": ida_sha256,
             "sha512": disassembly_hashes["sha512"],
             "unix_filetype": getUnixFileType(),
             "version": get_ida_version(),

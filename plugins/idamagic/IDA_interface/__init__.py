@@ -6,8 +6,6 @@ information of the current file from unknowncyber.
 """
 import logging
 
-import cythereal_magic
-from cythereal_magic.rest import ApiException
 import ida_kernwin
 import ida_nalt
 from PyQt5.QtCore import Qt
@@ -24,9 +22,8 @@ from ..widgets.collections.tables import ProcTableWidget
 from ..widgets.collection_elements.table_items import ProcTableAddressItem, ProcTableIntegerItem
 from ..widgets.displays.center_display import CenterDisplayWidget
 from ..layouts import ProcsToggleLayout
-from ..helpers import create_proc_name, process_regular_exception, process_api_exception
+from ..helpers import create_proc_name
 from ..api import list_file_genomics
-from ..references import get_version_hash, get_loaded_sha1, get_file_exists, get_dropdown_widget
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +33,13 @@ class MAGICPluginScrClass(QWidget):
     Plugin Scroll UI Object.
     """
 
-    def __init__(self, title, magic_api_client):
-        """Initialializes the formtype some UI elements may not be loaded in this case,
-            which may cause issues.
-        Additionally, sets a few member variables necessary to the function of the plugin.
-        A few are variables which are determined by IDA.
+    def __init__(self, title, ctx):
+        """Initialialize the form.
+
+        ctx is the idamagic.core.context.PluginContext.
         """
         super().__init__()
+        self.ctx = ctx
         self.baseRVA = ida_nalt.get_imagebase()
         self.image_base = None
         self.title: str = title
@@ -87,8 +84,8 @@ class MAGICPluginScrClass(QWidget):
         self.pushbutton.setCheckable(False)
         self.pushbutton.clicked.connect(self.pushbutton_click)
         self.sync_warning = QLabel(
-            f"Showing procedures from file with hash {get_version_hash()}."
-            + " Addresses may be out of sync with IDA session."
+            f"Showing procedures from file with hash {self.ctx.version_hash}."
+            " Addresses may be out of sync with IDA session."
         )
         self.sync_warning.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.sync_warning.setWordWrap(True)
@@ -113,12 +110,11 @@ class MAGICPluginScrClass(QWidget):
         # set widget's layout based on the above items
         self.setLayout(self.layout)
 
-
     def update_sync_warning(self):
         """Update the hash displayed in the sync warning when version hash changes."""
         self.sync_warning.setText(
-            f"Showing procedures from file with hash {get_version_hash()}."
-            +" Addresses may be out of sync with IDA session."
+            f"Showing procedures from file with hash {self.ctx.version_hash}."
+            " Addresses may be out of sync with IDA session."
         )
         self.sync_warning.hide()
 
@@ -154,9 +150,6 @@ class MAGICPluginScrClass(QWidget):
                         self.proc_table.rowCount() - 1, col, col_item
                     )
             # Set the row's address column .data() to proc object.
-            # Use Qt.UserRole, not role=1 (which is DecorationRole and
-            # is meant for icons). With UserRole, Qt won't try to
-            # interpret the proc object as drawing data.
             row = self.proc_table.rowCount() - 1
             row_addr_col = self.proc_table.item(row, 0)
             row_addr_col.setData(Qt.UserRole, proc)
@@ -172,19 +165,19 @@ class MAGICPluginScrClass(QWidget):
 
         GET from procedures and list all procedures associated with file.
         """
-        if not get_file_exists():
+        if not self.ctx.file_exists:
             popup = GenericPopup(
                 "Upload a file or IDB first to generate procedures.\n\n"
-                + "If you have already uploaded, check the status with"
-                + " the 'Check Upload Status' button."
+                "If you have already uploaded, check the status with"
+                " the 'Check Upload Status' button."
             )
             popup.exec_()
             return None
-        elif get_dropdown_widget().currentData()[1] == "container":
+        elif self.ctx.dropdown is not None and self.ctx.dropdown.currentData()[1] == "container":
             popup = GenericPopup(
-                "The file respresented by the current version has not started processing yet.\n\n"
-                + "Use the 'Check Upload Status' to continue with this version or select a "
-                + "different version from the dropdown to view procedures."
+                "The file represented by the current version has not started processing yet.\n\n"
+                "Use the 'Check Upload Status' to continue with this version or select a "
+                "different version from the dropdown to view procedures."
             )
             popup.exec_()
             return None
@@ -192,23 +185,26 @@ class MAGICPluginScrClass(QWidget):
         self.proc_table.reset_table()
 
         response = list_file_genomics(
-            binary_id=get_version_hash(),
+            binary_id=self.ctx.version_hash,
             info_msgs=[
                 "No procedures could be gathered.",
-                "This may occur if the file was recently uploaded."
-            ]
+                "This may occur if the file was recently uploaded.",
+            ],
         )
+
+        if response is None:
+            return None
 
         if 200 <= response.status <= 299:
             if len(response.resource.procedures) < 1:
                 popup = GenericPopup(
-                    "The request for procedures came back empty.\n\n" +
-                    "Please check the UnknownCyber dashboard to see if the" +
-                    " file associated with the hash below contains any genomics.\n\n" +
-                    f"Hash: {get_version_hash()}"
+                    "The request for procedures came back empty.\n\n"
+                    "Please check the UnknownCyber dashboard to see if the"
+                    " file associated with the hash below contains any genomics.\n\n"
+                    f"Hash: {self.ctx.version_hash}"
                 )
                 popup.exec_()
                 return None
             self.populate_proc_table(response.resource)
-            if get_version_hash() != get_loaded_sha1():
+            if self.ctx.version_hash != self.ctx.loaded_sha1:
                 self.sync_warning.show()

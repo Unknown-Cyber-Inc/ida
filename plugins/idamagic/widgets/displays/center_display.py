@@ -18,7 +18,6 @@ from idamagic.api import (
     list_procedure_similarities,
     list_file_procedure_genomics,
 )
-from idamagic.references import get_version_hash, get_ida_md5
 
 from ..tabs.tabs import (
     CenterProcTab,
@@ -50,8 +49,10 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         super().__init__()
         self.tabs_widget: QtWidgets.QTabWidget
         self.widget_parent = widget_parent
-        self.sha1 = get_version_hash()
-        self.ida_md5 = get_ida_md5()
+        # widget_parent is MAGICPluginScrClass which owns the ctx.
+        self.ctx = widget_parent.ctx
+        self.sha1 = self.ctx.version_hash
+        self.ida_md5 = self.ctx.ida_md5
         self.popups = []
         self.init_ui()
         self.tab_bar.currentChanged.connect(self.update_tab_color)

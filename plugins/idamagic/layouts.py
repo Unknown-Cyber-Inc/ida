@@ -9,12 +9,6 @@ from PyQt5.QtWidgets import (
 )
 
 from .widgets.popups.popups import FileUploadPopup, FileUnpackPopup, FileNotFoundPopup
-from .references import (
-    get_version_hash,
-    get_loaded_sha1,
-    set_dropdown_widget,
-    get_ida_version_valid,
-)
 
 
 class ProcsToggleLayout(QHBoxLayout):
@@ -23,6 +17,8 @@ class ProcsToggleLayout(QHBoxLayout):
     def __init__(self, layout_parent):
         super().__init__()
         self.layout_parent = layout_parent
+        # The procs widget owns the ctx; reach through it for state.
+        self.ctx = layout_parent.ctx
         self.procs_toggle = QPushButton("Hide Procedures Section")
         self.procs_toggle.clicked.connect(self.toggle_procs)
         self.addWidget(self.procs_toggle)
@@ -47,7 +43,7 @@ class ProcsToggleLayout(QHBoxLayout):
         """Set widgets to `show()`"""
         self.layout_parent.pushbutton.show()
         self.layout_parent.proc_table.show()
-        if get_version_hash() != get_loaded_sha1():
+        if self.ctx.version_hash != self.ctx.loaded_sha1:
             self.layout_parent.sync_warning.show()
 
     def hide_widgets(self):
@@ -63,6 +59,7 @@ class FilesButtonsLayout(QHBoxLayout):
     def __init__(self, layout_parent):
         super().__init__()
         self.layout_parent = layout_parent
+        self.ctx = layout_parent.ctx
 
         self.dropdown = QComboBox()
 
@@ -79,7 +76,8 @@ class FilesButtonsLayout(QHBoxLayout):
         )
         self.upload_button.clicked.connect(self.main_upload_button_click)
         self.addWidget(self.dropdown)
-        set_dropdown_widget(self.dropdown)
+        # Expose the dropdown on the context for use by other widgets.
+        self.ctx.dropdown = self.dropdown
         self.addWidget(self.files_toggle)
         self.addWidget(self.upload_button)
 
@@ -97,8 +95,7 @@ class FilesButtonsLayout(QHBoxLayout):
 
         Renders a QMessageBox with all upload buttons
         """
-        ida_version_valid = get_ida_version_valid()
-        upload_popup = FileUploadPopup(self, ida_version_valid)
+        upload_popup = FileUploadPopup(self, self.ctx.ida_version_valid)
         upload_popup.exec_()
 
     def upload_binary_button_click(self):

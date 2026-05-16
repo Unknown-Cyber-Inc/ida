@@ -43,23 +43,6 @@ from ..api import (
     upload_disassembly,
     upload_file,
 )
-from ..references import (
-    add_upload_content_entry,
-    add_upload_container_entry,
-    get_ida_md5,
-    get_loaded_md5,
-    get_loaded_sha1,
-    get_version_hash,
-    get_upload_content_hashes,
-    get_upload_container_hashes,
-    get_file_exists,
-    set_file_exists,
-    get_recent_upload_type,
-    increment_upload_content_indexes,
-    remove_upload_container_entry,
-    set_upload_content_hashes,
-    set_version_hash,
-)
 
 IDA_LOGLEVEL = str(os.getenv("IDA_LOGLEVEL", "INFO")).upper()
 logger = logging.getLogger(__name__)
@@ -77,21 +60,21 @@ class MAGICPluginFormClass(QWidget):
     # functions for PluginForm object functionality.
     #
 
-    def __init__(self, title, magic_api_client, main_interface):
-        """Initialializes the form object
+    def __init__(self, title, ctx, main_interface):
+        """Initialialize the form object.
 
-        Additionally, sets a few member variables necessary to the function of the plugin.
-        A few are variables which are determined by IDA.
+        ctx is the idamagic.core.context.PluginContext.
         """
         super().__init__()
 
+        self.ctx = ctx
         # non pyqt attrs
         self.title: str = title
         self.file_type = None
         self.created_idb_name = None
         self.main_interface = main_interface
         self.content_versions = OrderedDict()
-        self.ctmfiles = cythereal_magic.FilesApi(magic_api_client)
+        self.ctmfiles = cythereal_magic.FilesApi(ctx.api_client)
 
         # main pyqt widgets used
         self.layout: QVBoxLayout
@@ -140,14 +123,14 @@ class MAGICPluginFormClass(QWidget):
         # Personalizing QT items, in decending order of appearance.
         # NOTE! Upon display, actual arrangement is solely determined by
         #       the order widgets are ADDED to the layout.
-        self.loaded_md5 = QLabel(f"IDB md5: {get_loaded_md5()}")
+        self.loaded_md5 = QLabel(f"IDB md5: {self.ctx.loaded_md5}")
         self.loaded_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.linked_md5 = QLabel(f"Binary md5: {get_ida_md5()}")
+        self.linked_md5 = QLabel(f"Binary md5: {self.ctx.ida_md5}")
         self.linked_md5.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.version_hash = QLabel(f"Version hash: {get_version_hash()}")
+        self.version_hash = QLabel(f"Version hash: {self.ctx.version_hash}")
         self.version_hash.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status_label = QLabel(
-            "Upload(s) Status: Upload a file to track it's status."
+            "Upload(s) Status: Upload a file to track its status."
         )
         self.status_button = QPushButton("Check Upload Status")
         self.status_button.clicked.connect(self.get_file_statuses)
@@ -158,10 +141,13 @@ class MAGICPluginFormClass(QWidget):
         self.status_popup = None
         self.files_buttons_layout = FilesButtonsLayout(self)
         self.dropdown = self.files_buttons_layout.dropdown
+        # Expose the dropdown on the context so other widgets (proc table,
+        # etc) can reach it without importing module globals.
+        self.ctx.dropdown = self.dropdown
         # create main tab bar widget and its tabs
         self.list_widget = FileListWidget(
             list_items=[],
-            binary_id=get_ida_md5(),
+            ctx=self.ctx,
             widget_parent=self,
         )
 
@@ -181,10 +167,10 @@ class MAGICPluginFormClass(QWidget):
         """
         dropdown_item_data = (binary_id, obj_type)
         if self.files_buttons_layout.dropdown.findText(
-            f"Recent {get_recent_upload_type()} Upload"
+            f"Recent {self.ctx.recent_upload_type} Upload"
         ) == -1:
             self.files_buttons_layout.dropdown.addItem(
-                f"Recent {get_recent_upload_type()} Upload", dropdown_item_data[0])
+                f"Recent {self.ctx.recent_upload_type} Upload", dropdown_item_data[0])
 
     def set_status_label(self, status):
         """Set the status label text and button interactability according to the status arg."""
@@ -202,9 +188,9 @@ class MAGICPluginFormClass(QWidget):
         """
         if self.check_env_vars():
             self.check_idb_uploaded()
-            if get_file_exists():
+            if self.ctx.file_exists:
                 self.list_widget.enable_tab_bar()
-                self.list_widget.binary_id = get_ida_md5()
+                self.list_widget.binary_id = self.ctx.ida_md5
             else:
                 self.process_file_nonexistent()
 
@@ -216,7 +202,7 @@ class MAGICPluginFormClass(QWidget):
         """Make an API call to check the validity of the API vars."""
         try:
             response = self.ctmfiles.get_file(
-                binary_id=get_loaded_sha1(),
+                binary_id=self.ctx.loaded_sha1,
                 no_links=True,
                 explain=True,
                 async_req=True,
@@ -293,7 +279,7 @@ class MAGICPluginFormClass(QWidget):
         """Populates the File list 'Matches' tab with recieved matches"""
         matches = []
         for match in list_items:
-            if match["sha1"] != get_version_hash():
+            if match["sha1"] != self.ctx.version_hash:
                 filename = f"sha1: {match['sha1']}"
             else:
                 filename = f"Current file - sha1: {match['sha1']}"
@@ -319,7 +305,7 @@ class MAGICPluginFormClass(QWidget):
         """
         if list_type == "Tags":
             response = list_file_tags(
-                binary_id=get_ida_md5(),
+                binary_id=self.ctx.ida_md5,
                 info_msgs=["No Tags could be gathered for file."],
             )
             if response is not None:
@@ -328,7 +314,7 @@ class MAGICPluginFormClass(QWidget):
 
         if list_type == "Notes":
             response = list_file_notes(
-                binary_id=get_ida_md5(),
+                binary_id=self.ctx.ida_md5,
                 info_msgs=["No notes could be gathered for File."],
             )
             if response is not None:
@@ -337,20 +323,17 @@ class MAGICPluginFormClass(QWidget):
 
         if list_type == "Matches":
             response = list_file_matches(
-                binary_id=get_version_hash(),
+                binary_id=self.ctx.version_hash,
                 page=page,
                 info_msgs=["No matches could be gathered for File."],
             )
             if response is None:
                 self.populate_file_matches([])
                 return
-            # cythereal SDK exposes status/resources for the matches endpoint
-            # as dict-style. See populate_file_matches for the access pattern.
             try:
                 status = response["status"]
                 resources = response["resources"]
             except (TypeError, KeyError):
-                # Fall back to attribute-style if the SDK ever normalizes.
                 status = getattr(response, "status", 0)
                 resources = getattr(response, "resources", [])
             if 200 <= status <= 299:
@@ -363,7 +346,7 @@ class MAGICPluginFormClass(QWidget):
         """
         Set the hash for "version".
         """
-        set_version_hash(new_hash)
+        self.ctx.version_hash = new_hash
         self.main_interface.version_hash_changed()
 
     def check_idb_uploaded(self):
@@ -371,11 +354,11 @@ class MAGICPluginFormClass(QWidget):
         Call the api at `get_file` to check for idb's pervious upload.
         If not, check for original binary's pervious upload.
         """
-        set_file_exists(False)
+        self.ctx.file_exists = False
         read_mask = "*,children.*"
         expand_mask = "children"
         try:
-            sha1 = get_loaded_sha1()
+            sha1 = self.ctx.loaded_sha1
             response = self.ctmfiles.get_file(
                 binary_id=sha1,
                 no_links=True,
@@ -388,10 +371,10 @@ class MAGICPluginFormClass(QWidget):
             print(
                 "Previous IDB upload match failed. Checking for binary or it's child content files."
             )
-            set_file_exists(False)
+            self.ctx.file_exists = False
             linked_binary_uploaded = self.check_linked_binary_object_exists(False)
             if not linked_binary_uploaded:
-                self.update_version_hash(get_loaded_sha1())
+                self.update_version_hash(self.ctx.loaded_sha1)
                 self.list_widget.disable_tab_bar()
                 process_api_exception(
                     exc,
@@ -406,7 +389,7 @@ class MAGICPluginFormClass(QWidget):
         else:
             if 200 <= response.status <= 299:
                 print("IDB uploaded previously.")
-                set_file_exists(True)
+                self.ctx.file_exists = True
                 self.list_widget.enable_tab_bar()
                 original_exists = self.check_linked_binary_object_exists(True)
                 if not original_exists:
@@ -423,7 +406,7 @@ class MAGICPluginFormClass(QWidget):
         expand_mask = "children"
         try:
             response = self.ctmfiles.get_file(
-                binary_id=get_ida_md5(),
+                binary_id=self.ctx.ida_md5,
                 no_links=True,
                 read_mask=read_mask,
                 expand_mask=expand_mask,
@@ -450,13 +433,16 @@ class MAGICPluginFormClass(QWidget):
                 count = self.dropdown.count()
                 self.dropdown.setCurrentIndex(count - 1)
                 self.update_version_hash(content_child_sha1)
-                set_file_exists(True)
+                self.ctx.file_exists = True
                 return True
             elif self.verify_linked_binary_sha1(response.resource):
                 self.update_version_hash(response.resource.sha1)
-                set_file_exists(True)
+                self.ctx.file_exists = True
                 return True
             return False
+        # idb_uploaded=True path: we found the IDB-linked binary,
+        # populated versions; report success.
+        return True
 
     def verify_linked_binary_sha1(self, file):
         """
@@ -513,7 +499,7 @@ class MAGICPluginFormClass(QWidget):
         self.files_buttons_layout.show_file_not_found_popup()
 
     def upload_idb(self):
-        idb = create_idb_file(get_ida_md5())
+        idb = create_idb_file(self.ctx.ida_md5)
         if not idb:
             return None
         self.created_idb_name = idb
@@ -554,9 +540,9 @@ class MAGICPluginFormClass(QWidget):
         response_hash = response.resources[0].sha1
         index = self.dropdown.count()
 
-        if is_idb: # response_hash will belong to the container file object
+        if is_idb:  # response_hash will belong to the container file object
             dropdown_item_data = (response_hash, "container")
-            add_upload_container_entry(response_hash, index)
+            self.ctx.add_upload_container_entry(response_hash, index)
             self.dropdown.addItem("Session IDB Upload", dropdown_item_data)
 
             popup = GenericPopup(
@@ -565,15 +551,15 @@ class MAGICPluginFormClass(QWidget):
                 )
             popup.exec_()
 
-        else: # response_hash will belong to the original file object
+        else:  # response_hash will belong to the original file object
             dropdown_item_data = (response_hash, "content")
             # Original binary position in the versions dropdown will always be index 0
-            add_upload_content_entry(response_hash, 0)
+            self.ctx.add_upload_content_entry(response_hash, 0)
             if not self.check_dropdown_for_original_file():
                 self.dropdown.insertItem(0, "Session Binary Upload", dropdown_item_data)
-                increment_upload_content_indexes()
+                self.ctx.increment_upload_content_indexes()
 
-            set_file_exists(True)
+            self.ctx.file_exists = True
             self.update_version_hash(response_hash)
             self.enable_all_list_tabs()
 
@@ -601,6 +587,8 @@ class MAGICPluginFormClass(QWidget):
         zip_path = parse_binary(
             orig_dir=None,
             disassembly_hashes=disassembly_hashes,
+            ida_md5=self.ctx.ida_md5,
+            ida_sha256=self.ctx.ida_sha256,
         )
 
         if zip_path is None:
@@ -618,7 +606,7 @@ class MAGICPluginFormClass(QWidget):
 
         response_hash = response.resource.sha1
         index = self.dropdown.count()
-        add_upload_container_entry(response_hash, index)
+        self.ctx.add_upload_container_entry(response_hash, index)
         dropdown_item_data = (response_hash, "container")
         self.dropdown.addItem("Session Disassembly Upload", dropdown_item_data)
 
@@ -642,14 +630,14 @@ class MAGICPluginFormClass(QWidget):
     def get_file_statuses(self):
         """Get the statuses of uploaded files."""
         read_mask = "status,pipeline,sha1,create_time"
-        self.containers_to_content_hashes() # convert container -> child content hashes
-        content_hashes = get_upload_content_hashes()
-        container_hashes = get_upload_container_hashes()
+        self.containers_to_content_hashes()  # convert container -> child content hashes
+        content_hashes = self.ctx.upload_content_hashes
+        container_hashes = self.ctx.upload_container_hashes
 
         any_pending = False
         any_failure = False
         any_success = False
-        latest_non_failure = None # Value will be a tuple of (hash, dropdown_index)
+        latest_non_failure = None  # Value will be a tuple of (hash, dropdown_index)
         status_objects = []
 
         if len(content_hashes) > 0:
@@ -680,11 +668,11 @@ class MAGICPluginFormClass(QWidget):
                 else:
                     # get upload status
                     upload_status = response.resource.status.lower()
-                    if upload_status == "pending": # Get hash/index, add to new content dict
+                    if upload_status == "pending":
                         any_pending = True
                         latest_non_failure = (content_hash, index)
                         new_content_dict[content_hash] = index
-                    elif upload_status == "success": # Get hash/index, don't add to new content dict
+                    elif upload_status == "success":
                         any_success = True
                         latest_non_failure = (content_hash, index)
                     elif upload_status == "failure":
@@ -694,7 +682,7 @@ class MAGICPluginFormClass(QWidget):
                     # capture file status info
                     status_objects.append(response.resource)
 
-            set_upload_content_hashes(new_content_dict)
+            self.ctx.upload_content_hashes = new_content_dict
 
             # update the upload status label
             status_result = []
@@ -708,7 +696,7 @@ class MAGICPluginFormClass(QWidget):
 
             # file exists behavior
             if any_success or any_pending:
-                set_file_exists(True)
+                self.ctx.file_exists = True
                 self.enable_all_list_tabs()
                 if latest_non_failure is not None:
                     if self.dropdown.currentIndex() == latest_non_failure[1]:
@@ -720,7 +708,7 @@ class MAGICPluginFormClass(QWidget):
             status_popup = StatusPopup(status_objects, self)
             status_popup.show()
 
-        elif not get_file_exists():
+        elif not self.ctx.file_exists:
             self.status_button.setEnabled(False)
             err_popup = ErrorPopup(
                 ["No record of an uploaded file. Try to upload a file again."],
@@ -737,14 +725,15 @@ class MAGICPluginFormClass(QWidget):
 
     def containers_to_content_hashes(self):
         """Get the child content hash of the given container hash's file object."""
-        container_hashes = get_upload_container_hashes()
+        # Snapshot to a list so we don't mutate the dict mid-iteration.
+        container_hashes = list(self.ctx.upload_container_hashes.items())
         if len(container_hashes) < 1:
             return None
 
         failed_conversions_to_content_hashes = []
         hashes_to_remove = []
 
-        for h, index in container_hashes.items():
+        for h, index in container_hashes:
             timestamp, content_hash = self.get_upload_child_data(h)
             if content_hash:
                 new_item_data = (content_hash, "content")
@@ -752,7 +741,7 @@ class MAGICPluginFormClass(QWidget):
                 self.dropdown.setItemText(index, timestamp)
                 self.dropdown.setItemData(index, new_item_data)
                 # add hash/index to content_hashes
-                add_upload_content_entry(content_hash, index)
+                self.ctx.add_upload_content_entry(content_hash, index)
                 # remove hash from container_hashes
                 hashes_to_remove.append(h)
             else:
@@ -760,15 +749,15 @@ class MAGICPluginFormClass(QWidget):
 
         if len(hashes_to_remove) > 0:
             for h in hashes_to_remove:
-                remove_upload_container_entry(h)
+                self.ctx.remove_upload_container_entry(h)
 
         if failed_conversions_to_content_hashes:
             failed_hashes = ", ".join(failed_conversions_to_content_hashes)
             msg = (
             "Some hashes failed to find their processed files in our system. This could be "
-            + "caused by the recency of the file(s) upload or a failure in file processing. "
-            + "\n\nThe hash(es) with this failure follow:"
-            + f"\n{failed_hashes}"
+            "caused by the recency of the file(s) upload or a failure in file processing. "
+            "\n\nThe hash(es) with this failure follow:"
+            f"\n{failed_hashes}"
             )
             popup = GenericPopup(msg)
             popup.show()
