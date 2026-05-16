@@ -1,15 +1,18 @@
-certifi==2023.7.22
-click==8.1.7
-colorama==0.4.6
-cythereal_magic==2.0.5
-importlib-metadata==6.7.0
-python-dateutil==2.8.2
-python-dotenv==0.21.1
-networkx[all]==2.6.3
-sark==8.2.0
-six==1.16.0
-typing-extensions==4.7.0
-urllib3==1.26.18
-wrapt==1.16.0
-zipp==3.15.0
-#Sark @ git+https://github.com/tmr232/Sark.git#egg=Sark
+# Runtime dependencies for the idamagic plugin.
+#
+# Prefer `pip install -e .` when working from a checkout — that uses
+# pyproject.toml and is the canonical install method. This file
+# exists for environments where pip is too old to handle PEP 621
+# (pip<21.3) or where the tooling expects requirements.txt.
+#
+# Keep this file in sync with the [project.dependencies] section of
+# pyproject.toml.
+
+cythereal_magic>=0.1
+python-dotenv>=0.19
+networkx>=2.5
+six>=1.15
+
+# Dev-only; uncomment for running the test suite locally:
+# pytest>=7.0
+# pyflakes>=3.0

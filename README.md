@@ -1,39 +1,85 @@
-# Unknown Cyber IDA Plugin
-The Unknown Cyber IDA Plugin is designed to integrate Unknown Cyber technologies seamlessly with IDA.
+# idamagic
 
-- Key Features
-  * Binary, IDB, and disassembly uploading
-  * Project creation
-  * CRUD operations for procedures, procedure groups, and file notes/tags
-  * File and procedure similarity matching
-  * Assembly code comparison for matched procedures
+An IDA Pro plugin that integrates with the UnknownCyber MAGIC
+genomics service.
 
-## Built and Verified for
-- IDA Pro 8.2.230124 (64-bit) GUI version
-- IDAPython 64-bit v7.4.0
-- Python 3.7
-- Ubuntu 22.04.2 LTS
+## Install (into IDA)
 
-## Prerequisites
-- IDAPro installation.
-- IDAPro key.
-- ([Unknown Cyber](https://unknowncyber.com/)) user account.
+This package is loaded as an IDA plugin. Copy or symlink the
+`idamagic` directory and `magic_plugin_entry.py` into your IDA
+plugins folder (typically `~/.idapro/plugins/` on Linux/macOS or
+`%APPDATA%\Hex-Rays\IDA Pro\plugins\` on Windows).
 
-## Installation
-The following walkthrough uses the tarball delivery. Change instructions where necessary if using the zipfile.
-- Download `unknowncyeridaplugin.tgz` from a ([release](https://github.com/Unknown-Cyber-Inc/ida/releases/)).
-- Verify the download with the release's checksum.
-- Extract
-  * `tar xvzf unknowncyberidaplugin.tgz`
-- Install dependencies
-  * `python3 pip install -r requirements.txt`
-- Edit `plugins/idamagic/.env`
-  * `MAGIC_API_HOST` - Use `https://api.magic.unknowncyber.com` unless using an offline Unknown Cyber system.
-  * `MAGIC_API_KEY` - Replace with your Unknown Cyber api key.
-- Move just the contents of the `plugins` to the IDA plugins directory. Location can vary.
-  - Typically on Linux it is either:
-    * `~/.idapro/plugins`
-    * `/opt/ida/plugins`
-  - Typically on Windows it is either:
-    * `C:\Program Files\IDA Pro 8.0\plugins`
-    * `%APPDATA%\Hex-Rays\IDA Pro\plugins`
+Configuration: create a `.env` file inside the `idamagic` directory
+with:
+
+    MAGIC_API_KEY=your-api-key
+    MAGIC_API_HOST=https://api.magic.unknowncyber.com
+
+Hotkey: `Ctrl-Shift-A`.
+
+## Install (for development / testing)
+
+The `core` and `core.utils` modules are pure Python and can be
+worked on without IDA running. To set up a dev environment:
+
+    cd plugins
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -e .[dev]
+
+Then run the test suite:
+
+    pytest
+
+or, without pytest:
+
+    python -m unittest discover -s tests -v
+
+All 34 tests pass in plain CPython 3.7+; IDA is not required.
+
+## Layout
+
+    plugins/
+    ├── magic_plugin_entry.py      ← IDA loads this
+    ├── pyproject.toml             ← packaging metadata
+    ├── requirements.txt           ← runtime deps for non-pip-toml use
+    └── idamagic/
+        ├── __init__.py            ← plugin_t (lazy-loaded)
+        ├── api.py                 ← MAGIC API wrappers
+        ├── helpers.py             ← IDA-specific helpers (legacy)
+        ├── hooks.py               ← IDA UI hooks
+        ├── layouts.py             ← Qt layout containers
+        ├── qt_compat.py           ← PyQt5 / PySide6 shim
+        ├── core/                  ← host-agnostic code
+        │   ├── async_api.py
+        │   ├── context.py
+        │   ├── enums.py
+        │   ├── errors.py
+        │   ├── host.py            ← DisassemblerHost ABC
+        │   └── utils.py           ← pure-Python utilities
+        ├── ida/                   ← IDA SDK adapter
+        │   └── host.py            ← IDAHost (concrete)
+        ├── IDA_interface/
+        ├── main_interface/
+        ├── unknowncyber_interface/
+        └── widgets/
+
+For the planned Ghidra and Binary Ninja ports, the plan is to add
+sibling packages `idamagic/ghidra/` and `idamagic/binja/` with their
+own `host.py` implementing `DisassemblerHost`. Widgets, the API
+client, and the data flow stay the same.
+
+## Dependencies
+
+Runtime dependencies (see `pyproject.toml` for versions):
+- `cythereal_magic` — the MAGIC SDK
+- `python-dotenv` — reads `.env`
+- `networkx` — used by the binary parser's flow-graph builder
+- `six` — one legacy callsite uses `six.iteritems`
+
+Not listed (intentionally):
+- `PyQt5` / `PySide6` — provided by IDA's bundled Python
+- `sark` — install separately following Hex-Rays / sark's
+  instructions
+- IDA SDK modules (`ida_kernwin`, `idc`, etc) — provided by IDA

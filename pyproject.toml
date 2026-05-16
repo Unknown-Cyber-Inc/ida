@@ -1,18 +1,108 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.black]
-target-version = ['py37']
-line-length = 79
-include = '\.py?$'
+[project]
+name = "idamagic"
+version = "0.0.1"
+description = "IDA Pro plugin: UnknownCyber MAGIC genomics integration"
+readme = "README.md"
+requires-python = ">=3.7"
+license = { text = "Proprietary" }
+authors = [
+    { name = "UnknownCyber" }
+]
+keywords = ["ida", "reverse-engineering", "binary-analysis", "malware"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Information Technology",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Disassemblers",
+]
 
-[tool.pylama]
-format = "pylint"
-skip = "*/.env.example/*"
-linters = "pylint,pycodestyle,mccabe"
-ignore = "C901"
+# Runtime dependencies.
+#
+# Notes on each:
+# - cythereal_magic: the MAGIC SDK. Pinned loosely; tighten the
+#   upper bound when the SDK has a stable release line.
+# - python-dotenv: reads .env for MAGIC_API_KEY / MAGIC_API_HOST.
+# - networkx: required by JSONFlowGraph in helpers.parse_binary.
+# - six: legacy six.iteritems is still used in one place; remove
+#   when that callsite is cleaned up.
+#
+# What is NOT listed here (intentionally):
+# - PyQt5 / PySide6: provided by IDA itself (and by Binja for the
+#   eventual port). Listing them would either duplicate what's
+#   already on the IDA Python and risk version conflicts, or worse,
+#   pull in a wheel that doesn't match IDA's bundled Qt.
+# - sark: only used by helpers.parse_binary; expected to be
+#   installed manually following the project's existing
+#   instructions. Adding it here would force a hex-rays-sark
+#   download for anyone running tests, which we don't want.
+# - ida_*, idc, idaapi: provided by the IDA Pro installation.
+dependencies = [
+    "cythereal_magic>=0.1",
+    "python-dotenv>=0.19",
+    "networkx>=2.5",
+    "six>=1.15",
+]
 
-[[tool.pylama.files]]
-path = "pylama:*/__init__.py"
-ignore = "W0611,E402"
+[project.optional-dependencies]
+# Dev install: `pip install -e .[dev]`
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pyflakes>=3.0",
+]
+
+[project.urls]
+Homepage = "https://www.unknowncyber.com"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["idamagic*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+# Run tests from the plugins/ directory:
+#   cd plugins && pytest
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]
+
+[tool.coverage.run]
+source = ["idamagic/core", "idamagic/qt_compat"]
+# Don't measure coverage for SDK-bound code: the host adapters
+# require IDA/Ghidra/Binja to import, so they're not exercisable
+# from the standalone test suite.
+omit = [
+    "idamagic/ida/*",
+    "idamagic/__init__.py",
+    "idamagic/api.py",
+    "idamagic/helpers.py",
+    "idamagic/hooks.py",
+    "idamagic/IDA_interface/*",
+    "idamagic/main_interface/*",
+    "idamagic/unknowncyber_interface/*",
+    "idamagic/widgets/*",
+    "idamagic/layouts.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
