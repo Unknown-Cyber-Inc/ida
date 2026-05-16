@@ -163,18 +163,30 @@ class JSONFlowGraph(object):
         # Add edge to link the blocks being split.
         self.cfg.add_edge(blockEA, splitEA)
 
-# Pure-Python utilities have moved to idamagic.core.utils so they
-# can be tested without IDA. The names below are re-exported for
-# backwards compatibility; new code should import from core.utils.
-from .core.utils import (
-    to_bool,
-    strip_parens,
-    ea2str,
-    str2ea,
-    sign_unsigned,
-    create_proc_name,
-)
+def to_bool(param, default=False):
+    """Convert a string environment variable to a boolean value.
 
+    * Strings are case insensitive.
+
+    Parameters
+    ----------
+    param: str
+    default: Any
+        Value to return if the param is not a know boolean value.
+    """
+    try:
+        param = param.lower()
+    except AttributeError:
+        # This will happen when param isn't a string
+        pass
+
+    if param in {"1", "true", "yes", "y", True}:
+        return True
+
+    if param in {"0", "false", "no", "n", "", False}:
+        return False
+
+    return default
 
 def get_disassembly(ea):
     return idc.GetDisasm(ea)
@@ -402,6 +414,10 @@ def demangle(name, disable_mask=None):
     return name
 
 
+def strip_parens(string):
+    """Remove parenthesis and internal content."""
+    return re.sub(r"\([^)]*\)", "", string)
+
 def get_function_name(ea, bare=True, full=False):
     """Get name of function at ea.
     Parameters
@@ -622,6 +638,36 @@ def get_operand(ea, op):
         return idc.GetOpnd(ea, op)
 
 
+def ea2str(ea):
+    """Convert an Effective Address (EA) to string.
+    Parameters
+    ----------
+    ea: long | int
+        The address
+
+    Returns
+    -------
+    ea: str
+        Hex representation of the address. Pattern: "0x[0-9a-f]+"
+    """
+    return "{:#x}".format(ea)
+
+
+def str2ea(ea):
+    """Convert a string representation of an address (EA) back into int.
+    Parameters
+    ----------
+    ea: str
+        The string representation of the address. Expected to be output of ea2str.
+
+    Returns
+    -------
+    long
+        The ea as a long integer
+    """
+    return int(ea, base=16)
+
+
 def get_dtype(obj):
     """
     Generalized function to get the correct dtype property of an
@@ -674,11 +720,49 @@ def dtype2ptr(dtype):
     return mapping.get(dtype, "none")
 
 
-def sign_unsigned_legacy(n):
-    """Deprecated alias; kept only for any external script that
-    imported the original. Use core.utils.sign_unsigned instead.
+def sign_unsigned(n):
+    """Converts an unsigned int into a signed int.
+    This is necessary because IDAPython's GetOperandValue
+    incorrectly returns negative offsets as postive unsigned ints
+
+    Positive numbers are returned correctly. It is safe to pass
+    all offsets through this function.
+
+    Parameters
+    ----------
+    n: int | long
+        An unsigned integer
+
+    Returns
+    -------
+    : int
+        A signed integer
     """
-    return sign_unsigned(n)
+    assert isinstance(n, int)
+
+    # struct.pack/unpack convert between a string representation
+    # of the bytes and the internal data structure.
+    # This essentially converts the unsigned int into a string of bytes
+    # and then interprets these bytes as a signed int.
+    # This is essentially a manual cast from unsigned to signed
+    #
+    # Base the conversion on the size of the int. int.bit_length() returns
+    # the number of bits needed to represent the integer in binary.
+    # If the number of bits does not exactly line up with one of the sizes,
+    # the number is positive, i.e. the sign bit is not set, so we  can
+    # safely return the value unaltered.
+    fmt = {
+        32: "I",  # integer (four bytes)
+        64: "Q",  # long long. Standard long is only considered 32 bits by struct. (8 bytes)
+    }.get(n.bit_length(), None)
+    if fmt is None:
+        return n
+    try:
+        val = struct.unpack(fmt.lower(), struct.pack(fmt, n))[0]
+    except struct.error:
+        logger.exception("Error converting {} to unsigned".format(n))
+        raise
+    return val
 
 
 def parse_sib(op_t):
@@ -1324,6 +1408,17 @@ def create_idb_file(ida_md5):
     else:
         ida_loader.save_database(file_name, 0)
         return file_name
+
+
+def create_proc_name(proc):
+    """If it exists, add procedure name to proc.start_ea"""
+    proc_name = getattr(proc, "procedure_name", None)
+    if proc_name:
+        full_name = f"{proc.start_ea} - {proc_name}"
+    else:
+        full_name = None
+
+    return full_name if proc_name else proc.start_ea
 
 
 def encode_file(file_path):
