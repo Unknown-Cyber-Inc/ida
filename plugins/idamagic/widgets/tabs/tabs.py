@@ -9,9 +9,19 @@ from ..collection_elements.tree_nodes import (
     TreeProcGroupTagsNode,
     ProcSimilarityNode,
 )
+from ...core.enums import TabKind, ItemType
+
 
 class BaseCenterTab(QtWidgets.QWidget):
-    """Base for all tabs to be used within the CenterDisplayWidget.tab_bar."""
+    """Base for all tabs to be used within the CenterDisplayWidget.tab_bar.
+
+    Subclasses set ``kind`` (a TabKind member). The base provides
+    ``current_tab_kind`` helper for dispatch decisions that need to
+    know which kind of tab is active.
+    """
+
+    #: Concrete tab classes override this.
+    kind: TabKind = None  # type: ignore[assignment]
 
     def __init__(self, center_widget):
         super().__init__()
@@ -25,38 +35,54 @@ class BaseCenterTab(QtWidgets.QWidget):
         layout.addWidget(self.tab_tree)
         self.setLayout(layout)
 
+    @staticmethod
+    def current_tab_kind(center_widget) -> TabKind:
+        """Return the TabKind of the currently active tab, or None.
+
+        Replaces the original QColor-based detection. Looks up the
+        active tab widget and reads its ``kind`` class attribute.
+        """
+        tab_index = center_widget.tabs_widget.currentIndex()
+        if tab_index < 0:
+            return None
+        tab = center_widget.tabs_widget.widget(tab_index)
+        return getattr(tab, "kind", None)
+
     def item_selected(self, index):
         self.center_widget.create_button.setEnabled(False)
         self.center_widget.edit_button.setEnabled(False)
         self.center_widget.delete_button.setEnabled(False)
 
-        tab_index = self.center_widget.tabs_widget.currentIndex()
-        tab_color = self.center_widget.tabs_widget.tabBar().tabTextColor(
-            tab_index
-        )
-        if index.parent().data() is None and tab_color.green() == 128:
+        kind = self.current_tab_kind(self.center_widget)
+        data = index.data()
+        parent_data = index.parent().data()
+
+        if index.parent().data() is None and kind is TabKind.DERIVED_PROC:
             # selecting a procedure of ProcRootNode
             self.center_widget.edit_button.setEnabled(True)
-        elif (
-            index.data() == "Tags"
-            or index.data() == "Notes"
-            or index.data() == "Procedure Group Notes"
-            or index.data() == "Procedure Group Tags"
-        ):
-            # selecting the TreeTagsNode or TreeNotesNode
+            return
+
+        # Section headers (Notes / Tags / Procedure Group Notes/Tags) → Create button only
+        try:
+            section = ItemType.from_string(data) if isinstance(data, str) else None
+        except ValueError:
+            section = None
+        if section in (ItemType.TAGS, ItemType.NOTES,
+                       ItemType.PROC_GROUP_NOTES, ItemType.PROC_GROUP_TAGS):
             self.center_widget.create_button.setEnabled(True)
-        elif (
-            index.parent().data() == "Tags"
-            or index.parent().data() == "Procedure Group Tags"
-        ):
-            # selecting a tag node of ProcSimpleTextNode
+            return
+
+        # Items beneath a section
+        try:
+            parent_section = ItemType.from_string(parent_data) if isinstance(parent_data, str) else None
+        except ValueError:
+            parent_section = None
+        if parent_section in (ItemType.TAGS, ItemType.PROC_GROUP_TAGS):
+            # selecting a tag: create + delete
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.delete_button.setEnabled(True)
-        elif (
-            index.parent().data() == "Notes"
-            or index.parent().data() == "Procedure Group Notes"
-        ):
-            # selecting a note node of ProcSimpleTextNode
+        elif parent_section in (ItemType.NOTES, ItemType.PROC_GROUP_NOTES):
+            # selecting a note: create + edit + delete
             self.center_widget.create_button.setEnabled(True)
             self.center_widget.edit_button.setEnabled(True)
             self.center_widget.delete_button.setEnabled(True)
@@ -91,6 +117,8 @@ class CenterProcTab(BaseCenterTab):
     Created from a procedure located within the file loaded into IDA.
     """
 
+    kind = TabKind.PROC_ORIGINAL
+
     def __init__(self, center_widget, item, table_row):
         super().__init__(center_widget)
         self.item = item
@@ -107,6 +135,8 @@ class CenterDerivedFileTab(BaseCenterTab):
     Created from a procedure NOT located within the file loaded into IDA.
     """
 
+    kind = TabKind.DERIVED_FILE
+
     def __init__(self, center_widget, item):
         super().__init__(center_widget)
 
@@ -121,6 +151,8 @@ class CenterDerivedProcTab(BaseCenterTab):
     Tab to be used within the CenterDisplayWidget.tab_bar.
     Created from a procedure NOT located within the file loaded into IDA.
     """
+
+    kind = TabKind.DERIVED_PROC
 
     def __init__(
             self, center_widget,

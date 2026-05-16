@@ -14,8 +14,36 @@ from idamagic.api import (
     update_procedure_genomics_note,
     update_procedure_note,
 )
+from idamagic.core.enums import ItemType
 from ..collection_elements.tree_nodes import ProcSimpleTextNode
 from ..collection_elements.list_items import CustomListItem
+
+
+# Allowed item_type values for ProcTextPopup. Includes the ItemType
+# enum strings plus a few popup-specific values that aren't generic
+# enough to deserve their own ItemType (proc-rename UI, file rename).
+_VALID_ITEM_TYPES = frozenset(
+    {member.value for member in ItemType}
+    | {"Proc Name", "Derived file name"}
+)
+
+
+def _validate_item_type(item_type):
+    """Fail loudly on item_type typos.
+
+    Previously a typo like 'Procedure Group Tags ' (trailing space)
+    silently routed to a no-op branch. Now any unknown value raises
+    at construction time, before any user action.
+
+    None is permitted for popups that don't dispatch on item_type.
+    """
+    if item_type is None:
+        return
+    if item_type not in _VALID_ITEM_TYPES:
+        raise ValueError(
+            f"Unknown item_type {item_type!r}. "
+            f"Valid values: {sorted(_VALID_ITEM_TYPES)}"
+        )
 
 
 class TextPopup(QtWidgets.QDialog):
@@ -96,6 +124,7 @@ class ProcTextPopup(TextPopup):
     ):
         """Init method"""
         super().__init__(fill_text, parent)
+        _validate_item_type(item_type)
         self.parent = parent
         self.listing_item = listing_item
         self.binary_id = binary_id

@@ -24,6 +24,7 @@ from ..tabs.tabs import (
     CenterDerivedFileTab,
     CenterDerivedProcTab,
 )
+from ...core.enums import TabKind
 from ..collection_elements.tree_nodes import (
     ProcRootNode,
     TreeNotesNode,
@@ -102,15 +103,33 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         """Update the has for center display widget."""
         self.sha1 = hash
 
+    def _current_tab_kind(self):
+        """Return the TabKind of the currently active tab, or None.
+
+        Replaces the old QColor-based dispatch (tab_color.red()/blue()/
+        green()), which was both an abuse of the styling system and
+        a source of bugs whenever the theme changed.
+        """
+        idx = self.tabs_widget.currentIndex()
+        if idx < 0:
+            return None
+        tab = self.tabs_widget.widget(idx)
+        return getattr(tab, "kind", None)
+
     def update_tab_color(self, index):
-        """Update the value stored in self.tab_color to the current tab's."""
+        """Update the value stored in self.tab_color to the current tab's.
+
+        Still maintained because some Qt styling code reads it. The
+        dispatch logic in this module no longer reads tab_color,
+        though — it uses _current_tab_kind() instead.
+        """
         self.create_button.setEnabled(False)
         self.edit_button.setEnabled(False)
         self.delete_button.setEnabled(False)
         self.tab_color = self.tab_bar.tabTextColor(index)
 
-        # enable/disable and hide/show compare button based on tab color
-        if self.tab_color.blue() == 255:
+        # enable/disable and hide/show compare button based on tab kind
+        if self._current_tab_kind() is TabKind.DERIVED_FILE:
             self.compare_button.setEnabled(True)
             self.compare_button.show()
         else:
@@ -439,6 +458,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         node_type = type(node)
         api_call = None
         type_str = None
+        tab_kind = self._current_tab_kind()
 
         if node_type is ProcFilesNode:
             type_str = "Files"
@@ -446,20 +466,20 @@ class CenterDisplayWidget(QtWidgets.QWidget):
             type_str = "Procedure Group Notes"
         elif node_type is TreeProcGroupTagsNode:
             type_str = "Procedure Group Tags"
-        elif node_type is TreeNotesNode and self.tab_color.red() == 255:
+        elif node_type is TreeNotesNode and tab_kind is TabKind.PROC_ORIGINAL:
             type_str = "File notes"
-        elif node_type is TreeNotesNode and self.tab_color.blue() == 255:
+        elif node_type is TreeNotesNode and tab_kind is TabKind.DERIVED_FILE:
             api_call = list_procedure_genomics_notes
             type_str = "Derived proc notes"
-        elif node_type is TreeNotesNode and self.tab_color.green() == 128:
+        elif node_type is TreeNotesNode and tab_kind is TabKind.DERIVED_PROC:
             api_call = list_procedure_genomics_notes
             type_str = "Notes"
-        elif node_type is TreeTagsNode and self.tab_color.red() == 255:
+        elif node_type is TreeTagsNode and tab_kind is TabKind.PROC_ORIGINAL:
             type_str = "File tags"
-        elif node_type is TreeTagsNode and self.tab_color.blue() == 255:
+        elif node_type is TreeTagsNode and tab_kind is TabKind.DERIVED_FILE:
             api_call = list_procedure_genomics_tags
             type_str = "Derived proc tags"
-        elif node_type is TreeTagsNode and self.tab_color.green() == 128:
+        elif node_type is TreeTagsNode and tab_kind is TabKind.DERIVED_PROC:
             api_call = list_procedure_genomics_tags
             type_str = "Tags"
         elif node_type is ProcSimilarityNode:
@@ -541,7 +561,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         text = item.text
 
         if isinstance(item, ProcRootNode):
-            if self.tab_color.red() == 255:
+            if self._current_tab_kind() is TabKind.PROC_ORIGINAL:
                 item_type = "Derived file name"
             else:
                 item_type = "Proc Name"
@@ -561,7 +581,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item.parent(), TreeNotesNode):
-            if self.tab_color.red() == 255:
+            if self._current_tab_kind() is TabKind.PROC_ORIGINAL:
                 item_type = "Derived file note"
             else:
                 item_type = "Notes"
@@ -592,7 +612,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         item = index.model().itemFromIndex(index)
 
         if isinstance(item, TreeNotesNode):
-            if self.tab_color.red() == 255:
+            if self._current_tab_kind() is TabKind.PROC_ORIGINAL:
                 item_type = "Derived file note"
             else:
                 item_type = "Notes"
@@ -605,7 +625,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item, TreeTagsNode):
-            if self.tab_color.red() == 255:
+            if self._current_tab_kind() is TabKind.PROC_ORIGINAL:
                 item_type = "Derived file tag"
             else:
                 item_type = "Tags"
@@ -634,7 +654,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item.parent(), TreeNotesNode):
-            if self.tab_color.red() == 255:
+            if self._current_tab_kind() is TabKind.PROC_ORIGINAL:
                 item_type = "Derived file note"
             else:
                 item_type = "Notes"
@@ -647,7 +667,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                 item_type=item_type,
             )
         elif isinstance(item.parent(), TreeTagsNode):
-            if self.tab_color.red() == 255:
+            if self._current_tab_kind() is TabKind.PROC_ORIGINAL:
                 item_type = "Derived file tag"
             else:
                 item_type = "Tags"
@@ -689,7 +709,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
         confirmation = confirmation_popup.exec_()
         if confirmation == QtWidgets.QMessageBox.Ok:
             if type_str == "Notes":
-                if self.tab_color.red() == 255:
+                if self._current_tab_kind() is TabKind.PROC_ORIGINAL:
                     response = delete_file_note(
                         binary_id=item.binary_id,
                         note_id=item.node_id,
@@ -707,7 +727,7 @@ class CenterDisplayWidget(QtWidgets.QWidget):
                         ]
                     )
             if type_str == "Tags":
-                if self.tab_color.red() == 255:
+                if self._current_tab_kind() is TabKind.PROC_ORIGINAL:
                     response = remove_file_tag(
                         binary_id=item.binary_id,
                         tag_id=item.node_id,
