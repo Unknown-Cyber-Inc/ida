@@ -46,5 +46,25 @@ RUN --mount=type=bind,source=idasetup/ida.run,target=/tmp/idasetup/ida.run set -
     && /opt/ida/idapyswitch --force-path /usr/local/lib/libpython3.11.so \
     && if [ ! -z $IDA_KEYLESS ]; then rm /opt/ida/ida.key; fi;
 
+# ---------------------------------------------------------------------------
+# Make the baked plugin survive the runtime bind-mounts.
+#
+# The plugin is COPYed into ~/.idapro/plugins above, but docker-compose mounts
+# $IDA_DIR over /home/unknowncyber/.idapro at runtime (it carries the IDA
+# license + state), which shadows that directory. Copy the plugin into IDA's
+# install-dir plugins folder (/opt/ida/plugins) — which is outside that mount
+# and which IDA also scans on startup — so it's present in the running
+# container. (The plugin's Python deps were pip-installed into ~/.local, which
+# the $IDA_DIR mount does NOT shadow.)
+#
+# /opt/ida exists only after the installer above runs, hence this step's order.
+# For live plugin development, the hot.yml compose override bind-mounts a local
+# build over /opt/ida/plugins.
+# ---------------------------------------------------------------------------
+RUN set -x \
+    && mkdir -p /opt/ida/plugins \
+    && cp -a /home/unknowncyber/.idapro/plugins/. /opt/ida/plugins/ \
+    && chown -R unknowncyber:unknowncyber /opt/ida/plugins
+
 USER unknowncyber
 ENTRYPOINT ["/opt/ida/ida64"]
