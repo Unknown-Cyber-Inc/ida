@@ -226,7 +226,7 @@ class MAGICPluginFormClass(QWidget):
             info_msgs = []
             if "Unauthorized" in str(exc):
                 info_msgs = [
-                    "The `MAGIC_API_KEY` env var is invalid."
+                    "The `ADMIN_API_KEY` env var is invalid."
                     + " Correct and reload.\n"
                 ]
             else:
@@ -241,12 +241,12 @@ class MAGICPluginFormClass(QWidget):
             info_msgs = []
             if "NameResolutionError" in  str(exc):
                 info_msgs = [
-                    "The `MAGIC_API_HOST` env var's domain is not set correctly."
+                    "The `API_HOST` env var's domain is not set correctly."
                     + " Correct and reload.\n",
                 ]
             elif "NewConnectionError" in str(exc):
                 info_msgs = [
-                    "The `MAGIC_API_HOST` env var's port is not set correctly."
+                    "The `API_HOST` env var's port is not set correctly."
                     + " Correct and reload.\n"
                 ]
             else:

@@ -28,8 +28,8 @@ The following walkthrough uses the tarball delivery. Change instructions where n
 - Install dependencies
   * `python3 pip install -r requirements.txt`
 - Edit `plugins/idamagic/.env`
-  * `MAGIC_API_HOST` - Use `https://api.magic.unknowncyber.com` unless using an offline Unknown Cyber system.
-  * `MAGIC_API_KEY` - Replace with your Unknown Cyber api key.
+  * `API_HOST` - Use `https://api.magic.unknowncyber.com` unless using an offline Unknown Cyber system.
+  * `ADMIN_API_KEY` - Replace with your Unknown Cyber api key.
 - Move just the contents of the `plugins` to the IDA plugins directory. Location can vary.
   - Typically on Linux it is either:
     * `~/.idapro/plugins`
