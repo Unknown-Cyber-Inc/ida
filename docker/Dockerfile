@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 FROM virusbattleacr.azurecr.io/unknowncyber/base AS ida
 ARG IDA_PASSWORD
 ARG IDA_KEYLESS
