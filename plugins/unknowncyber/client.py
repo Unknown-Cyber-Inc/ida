@@ -291,7 +291,7 @@ class MagicClient:
             page_count=max(1, int(page)),
             page_size=PAGE_SIZE,
             expand_mask="matches",
-            read_mask="sha1,max_similarity,filename",
+            read_mask="sha1,filename",
         )
         out = []
         for m in _as_list(_field(resp, "resources")):
@@ -473,7 +473,7 @@ class MagicClient:
         resp = self._call(
             self._procs.list_procedure_files,
             proc_hash=require_hash(hard_hash, "procedure hash"),
-            read_mask="sha1,sha256,filename",
+            read_mask="_default",
             expand_mask="files",
             page_size=0,
         )
