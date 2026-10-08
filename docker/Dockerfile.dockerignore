@@ -1,5 +1,6 @@
 *
-!idasetup
-!plugins
-!setup.cfg
-!pyproject.toml
+!idasetup/ida.run
+!plugins/unknowncyber_plugin.py
+!plugins/unknowncyber
+!requirements.txt
+plugins/**/__pycache__

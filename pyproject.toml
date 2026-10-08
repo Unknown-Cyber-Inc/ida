@@ -1,18 +1,22 @@
-[build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+[project]
+name = "unknowncyber-ida-plugin"
+version = "1.1.0"
+description = "Unknown Cyber MAGIC integration for IDA Pro 9.x"
+requires-python = ">=3.8"
+license = { text = "Proprietary" }
 
-[tool.black]
-target-version = ['py37']
-line-length = 79
-include = '\.py?$'
+[tool.ruff]
+line-length = 140
+target-version = "py38"
+src = ["plugins", "tests"]
 
-[tool.pylama]
-format = "pylint"
-skip = "*/.env.example/*"
-linters = "pylint,pycodestyle,mccabe"
-ignore = "C901"
+[tool.ruff.format]
+# Newer ruff versions also format fenced Python blocks in Markdown; keep docs out of CI.
+exclude = ["*.md"]
 
-[[tool.pylama.files]]
-path = "pylama:*/__init__.py"
-ignore = "W0611,E402"
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+ignore = ["E501", "B008", "B009", "B010"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

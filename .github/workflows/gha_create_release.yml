@@ -1,48 +1,62 @@
-name: Create IDA plugin Release
+name: Test and release IDA plugin
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release Version"
+        description: "Release version (x.y.z)"
         required: true
         type: string
-        pattern: '^\d+\.\d+\.\d+$'
+  pull_request:
+  push:
+    branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-    createrelease:
-      name: Build
-      runs-on: [ubuntu-latest]
-      steps:
-        - name: Checkout Development Repo
-          uses: actions/checkout@v4
+  test:
+    name: Lint and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libdbus-1-3
+      - run: python -m pip install --upgrade pip && pip install -r requirements-dev.txt
+      - run: ruff check plugins tests && ruff format --check plugins tests
+      - name: Python 3.8 syntax check (IDA 8.3 interpreters)
+        run: vermin -q --no-tips -t=3.8- --violations plugins
+      - name: Smoke test (PySide6, IDA 9.2+)
+        run: QT_QPA_PLATFORM=offscreen python -m pytest -q tests
+      - name: Smoke test (PyQt5, IDA 8.3 / 9.0 / 9.1)
+        run: UNKNOWNCYBER_QT_BINDING=PyQt5 QT_QPA_PLATFORM=offscreen python -m pytest -q tests
 
-        - name: Create unknowncyberidaplugin.tgz File
-          run: |
-            PLATFORMS=(manylinux_2_28_64 manylinux_2_28_i686 win_amd64 win32 macosx_10_9_x86_64)
-            PYTHONS=(3.7 3.8 3.9 3.10 3.11)
-            for py in "${PYTHONS[@]}"; do
-                for platform in "${PLATFORMS[@]}"; do
-                    pip download -r requirements.txt \
-                      --python-version $py \
-                      --platform $platform \
-                      -d dependencies \
-                      --no-deps
-                done
-            done
-            zip -r unknowncyberidaplugin.zip dependencies plugins requirements.txt
-            tar cvzf unknowncyberidaplugin.tgz dependencies plugins requirements.txt
-            sha256sum unknowncyberidaplugin.* > checksum
-
-        - name: Release
-          uses: softprops/action-gh-release@v2
-          with:
-            files: |
-              unknowncyberidaplugin.tgz
-              unknowncyberidaplugin.zip
-              checksum
-            name: "UnknownCyber IDA Plugin"
-            tag_name: ${{github.event.inputs.version}}
+  release:
+    name: Release
+    if: github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate version
+        run: echo "${{ github.event.inputs.version }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+      - name: Package
+        run: |
+          set -euo pipefail
+          V="${{ github.event.inputs.version }}"
+          mkdir -p dist && cp -r plugins requirements.txt README.md dist/
+          find dist -name "__pycache__" -type d -prune -exec rm -rf {} +
+          (cd dist && zip -qr "../unknowncyberidaplugin-$V.zip" . && tar czf "../unknowncyberidaplugin-$V.tgz" .)
+          sha256sum unknowncyberidaplugin-$V.* > checksum
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: "Unknown Cyber IDA plugin ${{ github.event.inputs.version }}"
+          tag_name: ${{ github.event.inputs.version }}
+          files: |
+            unknowncyberidaplugin-*.zip
+            unknowncyberidaplugin-*.tgz
+            checksum

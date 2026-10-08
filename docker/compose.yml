@@ -1,0 +1,18 @@
+# Example runtime wiring.  `docker compose -f docker/compose.yml run ida`
+# Requires an X11 socket (or Xvfb) and your IDA license/state directory.
+services:
+  ida:
+    image: ${IDA_IMAGE:-virusbattleacr.azurecr.io/unknowncyber/ida:1.0.0}
+    environment:
+      DISPLAY: ${DISPLAY}
+      # Credentials come from the host environment, never from the image.
+      UNKNOWNCYBER_API_KEY: ${UNKNOWNCYBER_API_KEY}
+      UNKNOWNCYBER_API_HOST: ${UNKNOWNCYBER_API_HOST:-https://api.magic.unknowncyber.com}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      # ida.key, ida.reg, saved desktops and unknowncyber.json live here.
+      - ${IDA_DIR:-~/.idapro}:/home/unknowncyber/.idapro
+      - ${SAMPLES_DIR:-./samples}:/samples
+      # Private CA for a self-hosted system (the image defaults UNKNOWNCYBER_CA_BUNDLE to this file).
+      - ${CERT_DIR:-./certs}:/etc/unknowncyber/ssl:ro
+    working_dir: /samples

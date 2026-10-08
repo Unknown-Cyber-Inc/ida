@@ -1,22 +1,16 @@
-# may contain sensitive info
-*.env
-
-# ida files in $HOME/.idapro
-ida*
-idasetup
-!idamagic
-proccache64.lst
-
-# python files
-.python-version
-*__pycache__
-
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
 build/
 dist/
-redist-env/
 dependencies/
+unknowncyberidaplugin.*
+checksum
 
-*.egg*
+# never commit credentials
+*.env
+*.key
 
-unknowncyberidaplugin.tgz
-unknowncyberidaplugin.zip
+# IDA installer is bind-mounted at build time, never committed
+idasetup/

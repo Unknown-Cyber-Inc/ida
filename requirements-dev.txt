@@ -1,0 +1,6 @@
+-r requirements.txt
+PySide6-Essentials>=6.7
+PyQt5>=5.15
+ruff>=0.5
+pytest>=8
+vermin>=1.6
