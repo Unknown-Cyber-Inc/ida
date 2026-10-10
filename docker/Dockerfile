@@ -13,7 +13,7 @@
 # Expects the IDA installer at idasetup/ida.run (bind-mounted at build time,
 # not copied into the image).  See README.md § Docker.
 
-ARG BASE_IMAGE=virusbattleacr.azurecr.io/unknowncyber/base:3.11.16
+ARG BASE_IMAGE=virusbattleacr.azurecr.io/unknowncyber/base:latest
 FROM ${BASE_IMAGE} AS ida
 
 ARG IDA_PREFIX=/opt/ida
